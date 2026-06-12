@@ -1,6 +1,19 @@
 import { create } from "zustand";
-import type { Design, Level, Vec2, Wall } from "../model/types";
-import { createDesign, createWall } from "../model/defaults";
+import type {
+  Design,
+  FloorRegion,
+  Level,
+  MaterialRef,
+  Vec2,
+  Wall,
+  WindowOpening,
+} from "../model/types";
+import {
+  createDesign,
+  createFloor,
+  createWall,
+  createWindow,
+} from "../model/defaults";
 import {
   loadViewPrefs,
   saveViewPrefs,
@@ -9,8 +22,13 @@ import {
   type ViewMode,
 } from "../persistence/viewPrefs";
 
-export type Tool = "select" | "wall";
-export type Selection = { kind: "wall"; id: string } | null;
+export type Tool = "select" | "wall" | "window" | "floor" | "paint";
+export type WallSide = "A" | "B";
+export type Selection =
+  | { kind: "wall"; id: string }
+  | { kind: "window"; wallId: string; id: string }
+  | { kind: "floor"; id: string }
+  | null;
 
 const HISTORY_CAP = 100;
 
@@ -35,6 +53,38 @@ function findWall(
   return levelOf(design, levelId).walls.find((w) => w.id === wallId);
 }
 
+function findWindow(
+  design: Design,
+  levelId: string,
+  wallId: string,
+  windowId: string,
+): WindowOpening | undefined {
+  return findWall(design, levelId, wallId)?.windows.find(
+    (w) => w.id === windowId,
+  );
+}
+
+function findFloor(
+  design: Design,
+  levelId: string,
+  floorId: string,
+): FloorRegion | undefined {
+  return levelOf(design, levelId).floors.find((f) => f.id === floorId);
+}
+
+// Does a selection still point at something that exists?
+function selectionExists(
+  design: Design,
+  levelId: string,
+  sel: Selection,
+): boolean {
+  if (!sel) return false;
+  if (sel.kind === "wall") return !!findWall(design, levelId, sel.id);
+  if (sel.kind === "window")
+    return !!findWindow(design, levelId, sel.wallId, sel.id);
+  return !!findFloor(design, levelId, sel.id);
+}
+
 interface AppState {
   design: Design;
   currentLevelId: string;
@@ -45,6 +95,9 @@ interface AppState {
   viewMode: ViewMode;
   cutawayStyle: CutawayStyle;
   layout: Layout;
+
+  // The material the paint and floor tools apply (a UI preference, persisted).
+  currentMaterial: MaterialRef;
 
   // Undo/redo: snapshots of the whole Design taken before each committed action.
   past: Design[];
@@ -59,11 +112,23 @@ interface AppState {
   setViewMode: (mode: ViewMode) => void;
   setCutawayStyle: (style: CutawayStyle) => void;
   setLayout: (layout: Layout) => void;
+  setCurrentMaterial: (material: MaterialRef) => void;
 
   // --- committed mutations (each = one undo step) ---
   addWall: (start: Vec2, end: Vec2) => void;
   updateWall: (id: string, patch: Partial<Omit<Wall, "id">>) => void;
   deleteWall: (id: string) => void;
+  paintWallSide: (id: string, side: WallSide, material: MaterialRef) => void;
+  addWindow: (wallId: string, window: Omit<WindowOpening, "id">) => void;
+  updateWindow: (
+    wallId: string,
+    id: string,
+    patch: Partial<Omit<WindowOpening, "id">>,
+  ) => void;
+  deleteWindow: (wallId: string, id: string) => void;
+  addFloor: (polygon: Vec2[], material: MaterialRef) => void;
+  updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
+  deleteFloor: (id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
 
@@ -71,6 +136,7 @@ interface AppState {
   beginDrag: () => void;
   moveWallEndpoint: (id: string, which: "start" | "end", point: Vec2) => void;
   translateWall: (id: string, start: Vec2, end: Vec2) => void;
+  moveWindow: (wallId: string, id: string, t: number) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -88,23 +154,20 @@ export const useStore = create<AppState>((set, get) => {
     set({ past: next, future: [] });
   };
 
-  // Drop a selection that no longer points at an existing wall.
+  // Drop a selection that no longer points at an existing entity.
   const sanitizeSelection = (
     design: Design,
     levelId: string,
     sel: Selection,
-  ): Selection => {
-    if (sel && !findWall(design, levelId, sel.id)) return null;
-    return sel;
-  };
+  ): Selection => (selectionExists(design, levelId, sel) ? sel : null);
 
   const initialDesign = createDesign();
   const prefs = loadViewPrefs();
 
   // Write the current view prefs through to localStorage after a change.
   const persistViewPrefs = () => {
-    const { viewMode, cutawayStyle, layout } = get();
-    saveViewPrefs({ viewMode, cutawayStyle, layout });
+    const { viewMode, cutawayStyle, layout, currentMaterial } = get();
+    saveViewPrefs({ viewMode, cutawayStyle, layout, currentMaterial });
   };
 
   return {
@@ -115,6 +178,7 @@ export const useStore = create<AppState>((set, get) => {
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
+    currentMaterial: prefs.currentMaterial,
     past: [],
     future: [],
     dragBaseline: null,
@@ -131,6 +195,10 @@ export const useStore = create<AppState>((set, get) => {
     },
     setLayout: (layout) => {
       set({ layout });
+      persistViewPrefs();
+    },
+    setCurrentMaterial: (currentMaterial) => {
+      set({ currentMaterial });
       persistViewPrefs();
     },
 
@@ -164,8 +232,95 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const level = levelOf(design, s.currentLevelId);
         level.walls = level.walls.filter((w) => w.id !== id);
-        const selection = s.selection?.id === id ? null : s.selection;
-        return { design, selection };
+        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
+    paintWallSide: (id, side, material) => {
+      const existing = findWall(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const wall = findWall(design, s.currentLevelId, id);
+        if (wall) {
+          if (side === "A") wall.paintA = clone(material);
+          else wall.paintB = clone(material);
+        }
+        return { design };
+      });
+    },
+
+    addWindow: (wallId, window) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      const win = createWindow(window);
+      set((s) => {
+        const design = clone(s.design);
+        findWall(design, s.currentLevelId, wallId)?.windows.push(win);
+        return { design, selection: { kind: "window", wallId, id: win.id } };
+      });
+    },
+
+    updateWindow: (wallId, id, patch) => {
+      const existing = findWindow(get().design, get().currentLevelId, wallId, id);
+      if (!existing) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const win = findWindow(design, s.currentLevelId, wallId, id);
+        if (win) Object.assign(win, patch);
+        return { design };
+      });
+    },
+
+    deleteWindow: (wallId, id) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const w = findWall(design, s.currentLevelId, wallId);
+        if (w) w.windows = w.windows.filter((win) => win.id !== id);
+        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
+    addFloor: (polygon, material) => {
+      pushHistory();
+      const floor = createFloor(polygon, material);
+      set((s) => {
+        const design = clone(s.design);
+        levelOf(design, s.currentLevelId).floors.push(floor);
+        return { design, selection: { kind: "floor", id: floor.id } };
+      });
+    },
+
+    updateFloor: (id, patch) => {
+      const existing = findFloor(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const floor = findFloor(design, s.currentLevelId, id);
+        if (floor) Object.assign(floor, patch);
+        return { design };
+      });
+    },
+
+    deleteFloor: (id) => {
+      const existing = findFloor(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        level.floors = level.floors.filter((f) => f.id !== id);
+        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        return { design, selection: stillThere ? s.selection : null };
       });
     },
 
@@ -208,6 +363,15 @@ export const useStore = create<AppState>((set, get) => {
         if (!wall) return {};
         wall.start = start;
         wall.end = end;
+        return { design };
+      }),
+
+    moveWindow: (wallId, id, t) =>
+      set((s) => {
+        const design = clone(s.design);
+        const win = findWindow(design, s.currentLevelId, wallId, id);
+        if (!win) return {};
+        win.t = t;
         return { design };
       }),
 

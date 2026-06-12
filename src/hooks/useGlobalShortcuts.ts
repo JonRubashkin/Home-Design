@@ -40,13 +40,29 @@ export function useGlobalShortcuts(): void {
         case "W":
           s.setActiveTool("wall");
           break;
+        case "n":
+        case "N":
+          s.setActiveTool("window");
+          break;
+        case "f":
+        case "F":
+          s.setActiveTool("floor");
+          break;
+        case "p":
+        case "P":
+          s.setActiveTool("paint");
+          break;
         case "Delete":
-        case "Backspace":
-          if (s.selection) {
+        case "Backspace": {
+          const sel = s.selection;
+          if (sel) {
             e.preventDefault();
-            s.deleteWall(s.selection.id);
+            if (sel.kind === "wall") s.deleteWall(sel.id);
+            else if (sel.kind === "window") s.deleteWindow(sel.wallId, sel.id);
+            else s.deleteFloor(sel.id);
           }
           break;
+        }
       }
     };
 

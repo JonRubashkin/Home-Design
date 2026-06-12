@@ -15,6 +15,14 @@ export function wallNormal(wall: Pick<Wall, "start" | "end">): Vec2 {
   return perpLeft(wallDirection(wall));
 }
 
+// Midpoint of a wall in plan space.
+export function wallMidpoint(wall: Pick<Wall, "start" | "end">): Vec2 {
+  return {
+    x: (wall.start.x + wall.end.x) / 2,
+    y: (wall.start.y + wall.end.y) / 2,
+  };
+}
+
 // Shortest distance from a point to a finite segment.
 export function distancePointToSegment(p: Vec2, a: Vec2, b: Vec2): number {
   const ab = sub(b, a);

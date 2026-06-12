@@ -20,7 +20,11 @@ function levelOf(design: Design, levelId: string): Level {
   return level;
 }
 
-function findWall(design: Design, levelId: string, wallId: string): Wall | undefined {
+function findWall(
+  design: Design,
+  levelId: string,
+  wallId: string,
+): Wall | undefined {
   return levelOf(design, levelId).walls.find((w) => w.id === wallId);
 }
 
@@ -70,7 +74,11 @@ export const useStore = create<AppState>((set, get) => {
   };
 
   // Drop a selection that no longer points at an existing wall.
-  const sanitizeSelection = (design: Design, levelId: string, sel: Selection): Selection => {
+  const sanitizeSelection = (
+    design: Design,
+    levelId: string,
+    sel: Selection,
+  ): Selection => {
     if (sel && !findWall(design, levelId, sel.id)) return null;
     return sel;
   };

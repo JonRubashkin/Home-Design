@@ -12,7 +12,10 @@ export type ValidationResult =
 // future versions rather than corrupting data (per CLAUDE.md).
 export function validateDesign(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null) {
-    return { ok: false, error: "File is not a valid design (expected an object)." };
+    return {
+      ok: false,
+      error: "File is not a valid design (expected an object).",
+    };
   }
   const obj = data as Record<string, unknown>;
   const version = obj.schemaVersion;

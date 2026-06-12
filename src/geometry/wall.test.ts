@@ -111,7 +111,7 @@ describe("nearestEndpoint", () => {
 
   it("returns a copy, not a reference to wall data", () => {
     const r = nearestEndpoint({ x: 0, y: 0 }, walls, 0.15);
-    expect(r).not.toBe(walls[0].start);
+    expect(r).not.toBe(walls[0]!.start);
     expect(r).toEqual({ x: 0, y: 0 });
   });
 });

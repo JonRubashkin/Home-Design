@@ -48,11 +48,7 @@ export function nearestEndpoint(
 }
 
 // True when point is within the wall's thick body (thickness/2) plus tolerance.
-export function hitTestWall(
-  point: Vec2,
-  wall: Wall,
-  tolerance = 0,
-): boolean {
+export function hitTestWall(point: Vec2, wall: Wall, tolerance = 0): boolean {
   const d = distancePointToSegment(point, wall.start, wall.end);
   return d <= wall.thickness / 2 + tolerance;
 }

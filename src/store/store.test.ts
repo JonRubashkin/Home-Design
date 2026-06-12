@@ -141,3 +141,110 @@ describe("history cap", () => {
     expect(state().past.length).toBeLessThanOrEqual(100);
   });
 });
+
+const firstWallId = () => walls()[0]!.id;
+
+describe("windows", () => {
+  it("adds, selects, and undoes a window", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    expect(walls()[0]!.windows).toHaveLength(1);
+    expect(state().selection).toEqual({
+      kind: "window",
+      wallId: id,
+      id: walls()[0]!.windows[0]!.id,
+    });
+    state().undo();
+    expect(walls()[0]!.windows).toHaveLength(0);
+  });
+
+  it("moves a window as a single drag step", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    const winId = walls()[0]!.windows[0]!.id;
+    const pastBefore = state().past.length;
+    state().beginDrag();
+    state().moveWindow(id, winId, 0.4);
+    state().moveWindow(id, winId, 0.3);
+    state().endDrag();
+    expect(state().past.length).toBe(pastBefore + 1);
+    expect(walls()[0]!.windows[0]!.t).toBeCloseTo(0.3);
+    state().undo();
+    expect(walls()[0]!.windows[0]!.t).toBeCloseTo(0.5);
+  });
+
+  it("deletes a window and clears its selection", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    const winId = walls()[0]!.windows[0]!.id;
+    state().deleteWindow(id, winId);
+    expect(walls()[0]!.windows).toHaveLength(0);
+    expect(state().selection).toBeNull();
+  });
+});
+
+describe("paintWallSide", () => {
+  it("paints one side as a single undo step", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().paintWallSide(id, "A", { kind: "solid", color: "#123456" });
+    expect(walls()[0]!.paintA).toEqual({ kind: "solid", color: "#123456" });
+    expect(walls()[0]!.paintB).toEqual({ kind: "solid", color: "#e8e4dc" });
+    state().undo();
+    expect(walls()[0]!.paintA).toEqual({ kind: "solid", color: "#e8e4dc" });
+  });
+});
+
+const floors = () => selectCurrentLevel(useStore.getState()).floors;
+
+describe("floors", () => {
+  const square = [
+    { x: 0, y: 0 },
+    { x: 3, y: 0 },
+    { x: 3, y: 3 },
+    { x: 0, y: 3 },
+  ];
+
+  it("adds, selects, and undoes a floor region", () => {
+    state().addFloor(square, { kind: "solid", color: "#abcdef" });
+    expect(floors()).toHaveLength(1);
+    expect(state().selection).toEqual({ kind: "floor", id: floors()[0]!.id });
+    state().undo();
+    expect(floors()).toHaveLength(0);
+  });
+
+  it("updates a floor material and deletes it", () => {
+    state().addFloor(square, { kind: "solid", color: "#abcdef" });
+    const id = floors()[0]!.id;
+    state().updateFloor(id, {
+      material: {
+        kind: "pattern",
+        pattern: "tile",
+        colorA: "#1",
+        colorB: "#2",
+      },
+    });
+    expect(floors()[0]!.material).toEqual({
+      kind: "pattern",
+      pattern: "tile",
+      colorA: "#1",
+      colorB: "#2",
+    });
+    state().deleteFloor(id);
+    expect(floors()).toHaveLength(0);
+    expect(state().selection).toBeNull();
+  });
+});
+
+describe("currentMaterial", () => {
+  it("updates the current material", () => {
+    state().setCurrentMaterial({ kind: "solid", color: "#ff8800" });
+    expect(state().currentMaterial).toEqual({
+      kind: "solid",
+      color: "#ff8800",
+    });
+  });
+});

@@ -26,9 +26,54 @@ const WallIcon = (
   </svg>
 );
 
+const WindowIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <rect
+      x="4"
+      y="4"
+      width="16"
+      height="16"
+      rx="1"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="2" />
+  </svg>
+);
+
+const FloorIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <path d="M3 8l9-4 9 4-9 4z" fill="currentColor" opacity="0.55" />
+    <path
+      d="M3 8l9 4 9-4v8l-9 4-9-4z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const PaintIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <rect x="5" y="3" width="12" height="8" rx="1.5" fill="currentColor" />
+    <path
+      d="M17 7h2.5a1.5 1.5 0 0 1 1.5 1.5V12a2 2 0 0 1-2 2h-6v3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+    <rect x="10.5" y="16" width="3" height="5" rx="1" fill="currentColor" />
+  </svg>
+);
+
 const TOOLS: ToolDef[] = [
   { tool: "select", label: "Select", shortcut: "V", icon: SelectIcon },
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
+  { tool: "window", label: "Window", shortcut: "N", icon: WindowIcon },
+  { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
+  { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
 ];
 
 export function Toolbar() {

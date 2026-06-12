@@ -4,3 +4,5 @@ export * from "./wall";
 export * from "./mapping";
 export * from "./boxes";
 export * from "./cutaway";
+export * from "./windows";
+export * from "./polygon";

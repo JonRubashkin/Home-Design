@@ -1,3 +1,6 @@
+import type { MaterialRef, PatternId } from "../model/types";
+import { DEFAULT_MATERIAL } from "../model/defaults";
+
 // UI view preferences — persisted separately from the Design document (these are
 // not part of the design and never enter undo history).
 
@@ -9,12 +12,14 @@ export interface ViewPrefs {
   viewMode: ViewMode;
   cutawayStyle: CutawayStyle;
   layout: Layout;
+  currentMaterial: MaterialRef;
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   viewMode: "full",
   cutawayStyle: "ghost",
   layout: "split",
+  currentMaterial: DEFAULT_MATERIAL,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -22,6 +27,30 @@ const STORAGE_KEY = "home-design:viewprefs:v1";
 const VIEW_MODES: ViewMode[] = ["full", "cutaway", "stubs"];
 const CUTAWAY_STYLES: CutawayStyle[] = ["invisible", "ghost"];
 const LAYOUTS: Layout[] = ["plan", "3d", "split"];
+const PATTERNS: PatternId[] = ["checker", "planks", "tile", "stripes"];
+
+// Accept only well-formed material refs (untrusted localStorage input).
+function parseMaterial(value: unknown): MaterialRef {
+  if (typeof value !== "object" || value === null) return DEFAULT_MATERIAL;
+  const m = value as Record<string, unknown>;
+  if (m.kind === "solid" && typeof m.color === "string") {
+    return { kind: "solid", color: m.color };
+  }
+  if (
+    m.kind === "pattern" &&
+    PATTERNS.includes(m.pattern as PatternId) &&
+    typeof m.colorA === "string" &&
+    typeof m.colorB === "string"
+  ) {
+    return {
+      kind: "pattern",
+      pattern: m.pattern as PatternId,
+      colorA: m.colorA,
+      colorB: m.colorB,
+    };
+  }
+  return DEFAULT_MATERIAL;
+}
 
 // Load saved prefs, falling back to defaults for any missing/invalid field.
 export function loadViewPrefs(): ViewPrefs {
@@ -39,6 +68,7 @@ export function loadViewPrefs(): ViewPrefs {
       layout: LAYOUTS.includes(parsed.layout as Layout)
         ? (parsed.layout as Layout)
         : DEFAULT_VIEW_PREFS.layout,
+      currentMaterial: parseMaterial(parsed.currentMaterial),
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Walls3D } from "./Walls3D";
+import { Floors3D } from "./Floors3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
 
@@ -47,6 +48,7 @@ export function Preview3D() {
         <ambientLight intensity={0.75} />
         <directionalLight position={[18, 30, 12]} intensity={0.9} />
         <Ground />
+        <Floors3D />
         <Walls3D />
         <CameraController fitNonce={fitNonce} />
         <OrbitControls

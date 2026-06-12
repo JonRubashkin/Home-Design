@@ -1,4 +1,12 @@
-import type { Design, Level, MaterialRef, Wall } from "./types";
+import type {
+  Design,
+  FloorRegion,
+  Level,
+  MaterialRef,
+  Vec2,
+  Wall,
+  WindowOpening,
+} from "./types";
 
 // Defaults from CLAUDE.md "Coordinate system & units".
 export const DEFAULT_WALL_HEIGHT = 2.4;
@@ -12,6 +20,12 @@ export const ENDPOINT_SNAP_RADIUS = 0.15; // meters; endpoint snap takes priorit
 
 // New walls get this paint on both sides.
 export const DEFAULT_PAINT: MaterialRef = { kind: "solid", color: "#e8e4dc" };
+
+// Starting "current material" for the paint and floor tools (a warm wood tone).
+export const DEFAULT_MATERIAL: MaterialRef = {
+  kind: "solid",
+  color: "#b9966b",
+};
 
 // Reasonably unique id without extra deps.
 export function makeId(prefix = "id"): string {
@@ -32,6 +46,29 @@ export function createWall(
     paintA: { ...DEFAULT_PAINT },
     paintB: { ...DEFAULT_PAINT },
     windows: [],
+  };
+}
+
+export function createWindow(
+  opts?: Partial<Omit<WindowOpening, "id">>,
+): WindowOpening {
+  return {
+    id: makeId("win"),
+    t: opts?.t ?? 0.5,
+    width: opts?.width ?? DEFAULT_WINDOW_WIDTH,
+    height: opts?.height ?? DEFAULT_WINDOW_HEIGHT,
+    sillHeight: opts?.sillHeight ?? DEFAULT_WINDOW_SILL_HEIGHT,
+  };
+}
+
+export function createFloor(
+  polygon: Vec2[],
+  material: MaterialRef,
+): FloorRegion {
+  return {
+    id: makeId("floor"),
+    polygon,
+    material: { ...material },
   };
 }
 

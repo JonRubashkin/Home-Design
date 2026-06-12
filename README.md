@@ -4,9 +4,9 @@ A browser-based home design tool. Draw walls in a 2D plan editor and see them
 live in a 3D preview; later phases add windows, paint, and floor materials.
 Everything runs client-side — no backend.
 
-**Current phase: 1b** — the live 3D preview (orthographic, orbit/zoom, three wall
-view modes, selection echo) alongside the phase-1a 2D plan editor. Windows,
-paint, and floor tools arrive in phase 1c.
+**Phase 1 complete (1a + 1b + 1c).** A 2D plan editor with walls, windows, wall
+paint, and floor regions, plus a live 3D preview with three wall view modes —
+all editing in 2D, the 3D view is read-only.
 
 ## Tech stack
 
@@ -55,9 +55,30 @@ npm run format   # Prettier
     handed off smoothly as you orbit, so the interior stays visible. A sub-toggle
     chooses **Invisible** (not drawn) or **Ghost** (~15% opacity).
   - **Stubs** — all walls render at 10% height.
-- **Selection echo** — the wall selected in the plan is highlighted in 3D.
+- **Selection echo** — the wall, window, or floor selected in the plan is
+  highlighted in 3D.
 - **Layout:** **Plan / Split / 3D** (Split is the default). The view mode,
-  cutaway style, and layout persist across reloads (separate from the design).
+  cutaway style, layout, and current material persist across reloads (separate
+  from the design).
+
+### Surfaces & openings (phase 1c)
+
+- **Window tool (N)** — hover a wall to preview a window (invalid spots show
+  red), click to place. Windows are selectable, drag along their wall, and edit
+  (width / height / sill / position) in the panel. In 3D the opening is a real
+  hole (sub-boxes) with a translucent glass pane that ghosts/suppresses with its
+  wall and disappears in Stubs mode.
+- **Paint tool (P)** — hover a wall to highlight the **near side**, click to
+  paint that face with the current material. Each wall's two sides are also
+  editable from its properties panel (the chips highlight their side on hover).
+- **Floor tool (F)** — click to outline a region with grid + endpoint snapping
+  and a live closing preview; click the first point or press `Enter` to close
+  (`Backspace` removes the last point, `Esc` cancels). Self-intersecting outlines
+  are rejected. Floors fill the plan beneath walls and render as flat meshes in
+  3D in all view modes.
+- **Material picker** — preset swatches, a color wheel + hex input for solids,
+  and four procedural patterns (checker, planks, tile, stripes) with two colors
+  each; patterns render as textures in both the plan and 3D.
 
 ## Controls & keyboard shortcuts
 
@@ -65,15 +86,22 @@ npm run format   # Prettier
 | ------------------------- | ------------------------------------------- |
 | Select tool               | `V`                                         |
 | Wall tool                 | `W`                                         |
-| Draw / place point        | Click (Wall tool)                           |
+| Window tool               | `N`                                         |
+| Floor tool                | `F`                                         |
+| Paint tool                | `P`                                         |
+| Draw / place point        | Click (Wall / Floor tools)                  |
 | Chain walls               | Keep clicking                               |
 | Finish wall chain         | `Enter` or double-click                     |
-| Cancel current wall       | `Esc`                                       |
+| Close floor outline       | Click the first point or `Enter`            |
+| Remove last floor point   | `Backspace`                                 |
+| Cancel current draw       | `Esc`                                       |
 | Constrain to 0 / 45 / 90° | Hold `Shift` while drawing                  |
-| Select a wall             | Click it (Select tool)                      |
-| Move a wall               | Drag its body (Select tool)                 |
+| Place a window            | Hover a wall, click (Window tool)           |
+| Paint a wall face         | Hover the near side, click (Paint tool)     |
+| Select wall/window/floor  | Click it (Select tool)                      |
+| Move a wall / window      | Drag its body / drag along the wall         |
 | Move an endpoint          | Drag an endpoint handle (Select tool)       |
-| Delete selected wall      | `Delete` or `Backspace`                     |
+| Delete selection          | `Delete` or `Backspace`                     |
 | Pan                       | `Space`-drag or middle-mouse drag           |
 | Zoom                      | Scroll wheel (centered on cursor)           |
 | Undo                      | `Ctrl/Cmd` + `Z`                            |
@@ -90,11 +118,14 @@ npm run format   # Prettier
 ```
 src/
   model/         schema-v1 types + defaults/factories
-  geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway) + tests
+  geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
+                 windows, polygon) + tests
+  materials/     material cache keys (tested) + procedural pattern textures
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle
-    preview/      3D preview: Canvas/scene, wall meshes, cutaway, camera fit
+    material/     reusable material picker, chips, thumbnails
+    preview/      3D preview: Canvas/scene, wall + floor meshes, cutaway, camera
   hooks/          global shortcuts, autosave
   lib/            small UI utilities
 ```

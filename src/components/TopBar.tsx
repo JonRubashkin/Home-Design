@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useStore } from "../store/store";
 import { exportDesignToFile, parseImportedDesign } from "../persistence/io";
+import { LayoutToggle } from "./LayoutToggle";
 
 export function TopBar() {
   const design = useStore((s) => s.design);
@@ -44,6 +45,8 @@ export function TopBar() {
         <strong>Home Design</strong>
         <span className="topbar-docname">{design.name}</span>
       </div>
+
+      <LayoutToggle />
 
       <div className="topbar-actions">
         <button

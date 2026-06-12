@@ -29,8 +29,7 @@ export function isWallFrontFacing(
 ): boolean {
   const mid = wallMidpoint(wall);
   const n = wallNormal(wall);
-  const outward =
-    dot(n, sub(mid, centroid)) >= 0 ? n : { x: -n.x, y: -n.y };
+  const outward = dot(n, sub(mid, centroid)) >= 0 ? n : { x: -n.x, y: -n.y };
   const toCamera = normalize(sub(cameraPlan, mid));
   return dot(outward, toCamera) > threshold;
 }

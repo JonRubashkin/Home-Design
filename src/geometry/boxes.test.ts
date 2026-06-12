@@ -74,14 +74,14 @@ describe("wallToBoxes — window edge cases", () => {
   it("omits the under-sill box for a floor-level window", () => {
     const boxes = wallToBoxes(baseWall([win({ sillHeight: 0, height: 2.0 })]));
     // piers x2 + over-head (no under-sill)
-    const under = boxes.filter((b) => b.center[1] < 0.5 && close(b.size[0], 1.2));
+    const under = boxes.filter(
+      (b) => b.center[1] < 0.5 && close(b.size[0], 1.2),
+    );
     expect(under).toHaveLength(0);
   });
 
   it("omits the over-head box for a full-height window", () => {
-    const boxes = wallToBoxes(
-      baseWall([win({ sillHeight: 0, height: 2.4 })]),
-    );
+    const boxes = wallToBoxes(baseWall([win({ sillHeight: 0, height: 2.4 })]));
     // Only the two piers remain (window opening reaches floor to ceiling).
     expect(boxes).toHaveLength(2);
     expect(boxes.every((b) => close(b.size[1], 2.4))).toBe(true);

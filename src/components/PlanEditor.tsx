@@ -25,7 +25,7 @@ import {
   wallPlanSegments,
 } from "../geometry/windows";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
-import { materialKey } from "../materials/key";
+import { materialKey, materialDomId } from "../materials/key";
 import { patternDataUrl } from "../materials/textures";
 import { PATTERN_TILE_METERS } from "../materials/patterns";
 import { useElementSize } from "../lib/useElementSize";
@@ -107,7 +107,7 @@ function sideOf(wall: Wall, p: Vec2): WallSide {
 function fillFor(material: MaterialRef): string {
   return material.kind === "solid"
     ? material.color
-    : `url(#mat-${materialKey(material)})`;
+    : `url(#${materialDomId(material)})`;
 }
 
 export function PlanEditor() {
@@ -603,7 +603,7 @@ export function PlanEditor() {
           {[...patternDefs.entries()].map(([key, mat]) => (
             <pattern
               key={key}
-              id={`mat-${key}`}
+              id={materialDomId(mat)}
               patternUnits="userSpaceOnUse"
               width={PATTERN_TILE_METERS}
               height={PATTERN_TILE_METERS}

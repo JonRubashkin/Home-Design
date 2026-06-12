@@ -7,6 +7,13 @@ export function materialKey(ref: MaterialRef): string {
   return `pattern:${ref.pattern}:${ref.colorA.toLowerCase()}:${ref.colorB.toLowerCase()}`;
 }
 
+// A DOM-safe id derived from the material key (hex colors contain '#', which
+// would break an SVG `url(#...)` fragment reference). Distinct materials keep
+// distinct ids because all alphanumerics are preserved.
+export function materialDomId(ref: MaterialRef): string {
+  return `mat-${materialKey(ref).replace(/[^a-z0-9]+/gi, "-")}`;
+}
+
 // A short human label for a material (used in chips / tooltips).
 export function materialLabel(ref: MaterialRef): string {
   return ref.kind === "solid"

@@ -1,6 +1,11 @@
 import type { MaterialRef, PatternId } from "../model/types";
 
-export const PATTERN_IDS: PatternId[] = ["checker", "planks", "tile", "stripes"];
+export const PATTERN_IDS: PatternId[] = [
+  "checker",
+  "planks",
+  "tile",
+  "stripes",
+];
 
 // Tile resolution and how many world-meters one tile covers (shared by 2D fills
 // and 3D textures so the plan and preview match).

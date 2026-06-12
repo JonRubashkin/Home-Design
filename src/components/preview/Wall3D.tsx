@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import type { MaterialRef, Wall } from "../../model/types";
-import { wallToBoxes } from "../../geometry/boxes";
+import { wallToBoxes, windowGlassBox } from "../../geometry/boxes";
+import { patternTextureSized } from "../../materials/textures";
+import { PATTERN_TILE_METERS } from "../../materials/patterns";
 
-// Neutral tones for the faces that aren't painted sides (top / ends / bottom).
 const NEUTRAL_TOP = "#d8d4cc";
 const NEUTRAL_END = "#c4bfb5";
 const SELECT_EMISSIVE = "#2563eb";
+const GLASS_COLOR = "#bcd4e6";
 
-function solidColor(ref: MaterialRef): string {
-  // Phase 1c introduces patterns; until then fall back to the primary color.
-  return ref.kind === "solid" ? ref.color : ref.colorA;
-}
+const solid = (color: string): MaterialRef => ({ kind: "solid", color });
 
 interface Props {
   wall: Wall;
@@ -18,6 +17,56 @@ interface Props {
   selected: boolean;
   stub: boolean;
   ghost: boolean;
+}
+
+// One BoxGeometry face material. Solid materials use a color; patterns use a
+// repeating texture sized to the face (width/height in meters).
+function FaceMaterial({
+  attach,
+  material,
+  width,
+  height,
+  selected,
+  ghost,
+}: {
+  attach: string;
+  material: MaterialRef;
+  width: number;
+  height: number;
+  selected: boolean;
+  ghost: boolean;
+}) {
+  const common = {
+    roughness: 0.92,
+    metalness: 0,
+    emissive: selected ? SELECT_EMISSIVE : "#000000",
+    emissiveIntensity: selected ? 0.4 : 0,
+    transparent: ghost,
+    opacity: ghost ? 0.15 : 1,
+    depthWrite: !ghost,
+  };
+  if (material.kind === "solid") {
+    return (
+      <meshStandardMaterial
+        attach={attach}
+        color={material.color}
+        {...common}
+      />
+    );
+  }
+  const tex = patternTextureSized(
+    material,
+    width / PATTERN_TILE_METERS,
+    height / PATTERN_TILE_METERS,
+  );
+  return (
+    <meshStandardMaterial
+      attach={attach}
+      map={tex}
+      color="#ffffff"
+      {...common}
+    />
+  );
 }
 
 export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
@@ -32,46 +81,94 @@ export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
     return wallToBoxes(wall, elevation);
   }, [wall, elevation, stub]);
 
-  // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z. Local +Z faces side B,
-  // local -Z faces side A (see boxes.ts rotation derivation).
-  const faceColors = useMemo(
-    () => [
-      NEUTRAL_END,
-      NEUTRAL_END,
-      NEUTRAL_TOP,
-      NEUTRAL_END,
-      solidColor(wall.paintB),
-      solidColor(wall.paintA),
-    ],
-    [wall.paintA, wall.paintB],
-  );
-
   return (
     <group renderOrder={ghost ? 2 : 0}>
-      {boxes.map((b, i) => (
-        <mesh
-          key={i}
-          position={b.center}
-          rotation={[0, b.rotationY, 0]}
-          renderOrder={ghost ? 2 : 0}
-        >
-          <boxGeometry args={b.size} />
-          {faceColors.map((color, f) => (
-            <meshStandardMaterial
-              key={f}
-              attach={`material-${f}`}
-              color={color}
-              roughness={0.92}
-              metalness={0}
-              emissive={selected ? SELECT_EMISSIVE : "#000000"}
-              emissiveIntensity={selected ? 0.45 : 0}
-              transparent={ghost}
-              opacity={ghost ? 0.15 : 1}
-              depthWrite={!ghost}
+      {boxes.map((b, i) => {
+        // Face order: +X, -X (ends), +Y (top), -Y (bottom), +Z (side B), -Z (side A).
+        const [len, hgt] = b.size;
+        return (
+          <mesh
+            key={i}
+            position={b.center}
+            rotation={[0, b.rotationY, 0]}
+            renderOrder={ghost ? 2 : 0}
+          >
+            <boxGeometry args={b.size} />
+            <FaceMaterial
+              attach="material-0"
+              material={solid(NEUTRAL_END)}
+              width={1}
+              height={1}
+              selected={selected}
+              ghost={ghost}
             />
-          ))}
-        </mesh>
-      ))}
+            <FaceMaterial
+              attach="material-1"
+              material={solid(NEUTRAL_END)}
+              width={1}
+              height={1}
+              selected={selected}
+              ghost={ghost}
+            />
+            <FaceMaterial
+              attach="material-2"
+              material={solid(NEUTRAL_TOP)}
+              width={1}
+              height={1}
+              selected={selected}
+              ghost={ghost}
+            />
+            <FaceMaterial
+              attach="material-3"
+              material={solid(NEUTRAL_END)}
+              width={1}
+              height={1}
+              selected={selected}
+              ghost={ghost}
+            />
+            <FaceMaterial
+              attach="material-4"
+              material={wall.paintB}
+              width={len}
+              height={hgt}
+              selected={selected}
+              ghost={ghost}
+            />
+            <FaceMaterial
+              attach="material-5"
+              material={wall.paintA}
+              width={len}
+              height={hgt}
+              selected={selected}
+              ghost={ghost}
+            />
+          </mesh>
+        );
+      })}
+
+      {/* Translucent glass panes (not in stub mode). */}
+      {!stub &&
+        wall.windows.map((win) => {
+          const g = windowGlassBox(wall, win, elevation);
+          return (
+            <mesh
+              key={win.id}
+              position={g.center}
+              rotation={[0, g.rotationY, 0]}
+              renderOrder={3}
+            >
+              <boxGeometry args={g.size} />
+              <meshStandardMaterial
+                color={GLASS_COLOR}
+                transparent
+                opacity={ghost ? 0.12 : 0.28}
+                depthWrite={false}
+                roughness={0.1}
+                metalness={0}
+              />
+            </mesh>
+          );
+        })}
     </group>
   );
 }

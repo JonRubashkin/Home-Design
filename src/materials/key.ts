@@ -9,7 +9,9 @@ export function materialKey(ref: MaterialRef): string {
 
 // A short human label for a material (used in chips / tooltips).
 export function materialLabel(ref: MaterialRef): string {
-  return ref.kind === "solid" ? ref.color.toUpperCase() : titleCase(ref.pattern);
+  return ref.kind === "solid"
+    ? ref.color.toUpperCase()
+    : titleCase(ref.pattern);
 }
 
 function titleCase(s: string): string {

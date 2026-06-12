@@ -37,6 +37,31 @@ export function patternTexture(
   return tex;
 }
 
+// A pattern texture cloned with a specific repeat (for wall faces, where each
+// face needs tiling proportional to its size). Cached by key + rounded repeat so
+// identical faces share one clone and nothing leaks per render.
+const sizedCache = new Map<string, THREE.Texture>();
+export function patternTextureSized(
+  ref: Extract<MaterialRef, { kind: "pattern" }>,
+  repeatX: number,
+  repeatY: number,
+): THREE.Texture {
+  const rx = Math.max(0.05, repeatX);
+  const ry = Math.max(0.05, repeatY);
+  const key = `${materialKey(ref)}@${rx.toFixed(2)}x${ry.toFixed(2)}`;
+  let tex = sizedCache.get(key);
+  if (!tex) {
+    tex = patternTexture(ref).clone();
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(rx, ry);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    sizedCache.set(key, tex);
+  }
+  return tex;
+}
+
 // Plain hex for solids; the dominant tone for patterns (used as a fallback /
 // chip background where a full pattern fill isn't drawn).
 export function representativeColor(ref: MaterialRef): string {

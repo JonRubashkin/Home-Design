@@ -72,7 +72,8 @@ describe("validateWindow", () => {
   it("allows two non-overlapping windows", () => {
     const existing = win({ id: "a", t: 0.25, width: 1.0 });
     expect(
-      validateWindow(wall([existing]), win({ id: "b", t: 0.75, width: 1.0 })).ok,
+      validateWindow(wall([existing]), win({ id: "b", t: 0.75, width: 1.0 }))
+        .ok,
     ).toBe(true);
   });
 });

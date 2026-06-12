@@ -91,6 +91,10 @@ interface AppState {
   activeTool: Tool;
   selection: Selection;
 
+  // Transient hover hint: which wall side to spotlight in the plan (paint tool
+  // hover and the properties-panel side chips). Not persisted, not in history.
+  sideHighlight: { wallId: string; side: WallSide } | null;
+
   // 3D view preferences (persisted to localStorage, never in the Design).
   viewMode: ViewMode;
   cutawayStyle: CutawayStyle;
@@ -105,10 +109,17 @@ interface AppState {
   // Baseline captured at the start of a drag; used to record exactly one history
   // entry per drag and to detect no-op drags. Null when not dragging.
   dragBaseline: Design | null;
+  // Collapse rapid commits to the same target (e.g. dragging the color wheel)
+  // into a single undo step. Internal.
+  coalesceKey: string | null;
+  coalesceAt: number;
 
   // --- view/selection actions ---
   setActiveTool: (tool: Tool) => void;
   setSelection: (selection: Selection) => void;
+  setSideHighlight: (
+    highlight: { wallId: string; side: WallSide } | null,
+  ) => void;
   setViewMode: (mode: ViewMode) => void;
   setCutawayStyle: (style: CutawayStyle) => void;
   setLayout: (layout: Layout) => void;
@@ -128,6 +139,7 @@ interface AppState {
   deleteWindow: (wallId: string, id: string) => void;
   addFloor: (polygon: Vec2[], material: MaterialRef) => void;
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
+  setFloorMaterial: (id: string, material: MaterialRef) => void;
   deleteFloor: (id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
@@ -151,7 +163,23 @@ export const useStore = create<AppState>((set, get) => {
     const { design, past } = get();
     const next = [...past, clone(design)];
     while (next.length > HISTORY_CAP) next.shift();
-    set({ past: next, future: [] });
+    set({ past: next, future: [], coalesceKey: null });
+  };
+
+  // Commit a material/property change, collapsing rapid edits to the same target
+  // (e.g. dragging the color wheel) into a single undo step.
+  const commitCoalesced = (key: string, producer: (d: Design) => void) => {
+    const now = Date.now();
+    const s = get();
+    const coalesce = s.coalesceKey === key && now - s.coalesceAt < 1200;
+    if (!coalesce) {
+      const next = [...s.past, clone(s.design)];
+      while (next.length > HISTORY_CAP) next.shift();
+      set({ past: next, future: [] });
+    }
+    const design = clone(get().design);
+    producer(design);
+    set({ design, coalesceKey: key, coalesceAt: now });
   };
 
   // Drop a selection that no longer points at an existing entity.
@@ -175,6 +203,7 @@ export const useStore = create<AppState>((set, get) => {
     currentLevelId: initialDesign.levels[0]!.id,
     activeTool: "wall",
     selection: null,
+    sideHighlight: null,
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
@@ -182,9 +211,12 @@ export const useStore = create<AppState>((set, get) => {
     past: [],
     future: [],
     dragBaseline: null,
+    coalesceKey: null,
+    coalesceAt: 0,
 
     setActiveTool: (tool) => set({ activeTool: tool }),
     setSelection: (selection) => set({ selection }),
+    setSideHighlight: (sideHighlight) => set({ sideHighlight }),
     setViewMode: (viewMode) => {
       set({ viewMode });
       persistViewPrefs();
@@ -232,23 +264,23 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const level = levelOf(design, s.currentLevelId);
         level.walls = level.walls.filter((w) => w.id !== id);
-        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
         return { design, selection: stillThere ? s.selection : null };
       });
     },
 
     paintWallSide: (id, side, material) => {
-      const existing = findWall(get().design, get().currentLevelId, id);
-      if (!existing) return;
-      pushHistory();
-      set((s) => {
-        const design = clone(s.design);
-        const wall = findWall(design, s.currentLevelId, id);
+      if (!findWall(get().design, get().currentLevelId, id)) return;
+      commitCoalesced(`paint:${id}:${side}`, (design) => {
+        const wall = findWall(design, get().currentLevelId, id);
         if (wall) {
           if (side === "A") wall.paintA = clone(material);
           else wall.paintB = clone(material);
         }
-        return { design };
       });
     },
 
@@ -265,7 +297,12 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     updateWindow: (wallId, id, patch) => {
-      const existing = findWindow(get().design, get().currentLevelId, wallId, id);
+      const existing = findWindow(
+        get().design,
+        get().currentLevelId,
+        wallId,
+        id,
+      );
       if (!existing) return;
       pushHistory();
       set((s) => {
@@ -284,7 +321,11 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const w = findWall(design, s.currentLevelId, wallId);
         if (w) w.windows = w.windows.filter((win) => win.id !== id);
-        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
         return { design, selection: stillThere ? s.selection : null };
       });
     },
@@ -311,6 +352,14 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    setFloorMaterial: (id, material) => {
+      if (!findFloor(get().design, get().currentLevelId, id)) return;
+      commitCoalesced(`floor-mat:${id}`, (design) => {
+        const floor = findFloor(design, get().currentLevelId, id);
+        if (floor) floor.material = clone(material);
+      });
+    },
+
     deleteFloor: (id) => {
       const existing = findFloor(get().design, get().currentLevelId, id);
       if (!existing) return;
@@ -319,7 +368,11 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const level = levelOf(design, s.currentLevelId);
         level.floors = level.floors.filter((f) => f.id !== id);
-        const stillThere = selectionExists(design, s.currentLevelId, s.selection);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
         return { design, selection: stillThere ? s.selection : null };
       });
     },

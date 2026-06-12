@@ -86,7 +86,12 @@ describe("isValidFloorPolygon", () => {
     expect(isValidFloorPolygon(square)).toBe(true);
   });
   it("rejects fewer than three points", () => {
-    expect(isValidFloorPolygon([{ x: 0, y: 0 }, { x: 1, y: 1 }])).toBe(false);
+    expect(
+      isValidFloorPolygon([
+        { x: 0, y: 0 },
+        { x: 1, y: 1 },
+      ]),
+    ).toBe(false);
   });
   it("rejects a self-intersecting polygon", () => {
     expect(isValidFloorPolygon(bowtie)).toBe(false);

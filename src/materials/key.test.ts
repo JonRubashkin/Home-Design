@@ -11,7 +11,9 @@ const pattern = (
 
 describe("materialKey", () => {
   it("distinguishes solids by color", () => {
-    expect(materialKey(solid("#ff0000"))).not.toBe(materialKey(solid("#00ff00")));
+    expect(materialKey(solid("#ff0000"))).not.toBe(
+      materialKey(solid("#00ff00")),
+    );
   });
 
   it("is identical for equal materials (so they share a texture)", () => {

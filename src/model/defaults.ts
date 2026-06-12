@@ -22,7 +22,10 @@ export const ENDPOINT_SNAP_RADIUS = 0.15; // meters; endpoint snap takes priorit
 export const DEFAULT_PAINT: MaterialRef = { kind: "solid", color: "#e8e4dc" };
 
 // Starting "current material" for the paint and floor tools (a warm wood tone).
-export const DEFAULT_MATERIAL: MaterialRef = { kind: "solid", color: "#b9966b" };
+export const DEFAULT_MATERIAL: MaterialRef = {
+  kind: "solid",
+  color: "#b9966b",
+};
 
 // Reasonably unique id without extra deps.
 export function makeId(prefix = "id"): string {

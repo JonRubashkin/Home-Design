@@ -220,7 +220,12 @@ describe("floors", () => {
     state().addFloor(square, { kind: "solid", color: "#abcdef" });
     const id = floors()[0]!.id;
     state().updateFloor(id, {
-      material: { kind: "pattern", pattern: "tile", colorA: "#1", colorB: "#2" },
+      material: {
+        kind: "pattern",
+        pattern: "tile",
+        colorA: "#1",
+        colorB: "#2",
+      },
     });
     expect(floors()[0]!.material).toEqual({
       kind: "pattern",
@@ -237,6 +242,9 @@ describe("floors", () => {
 describe("currentMaterial", () => {
   it("updates the current material", () => {
     state().setCurrentMaterial({ kind: "solid", color: "#ff8800" });
-    expect(state().currentMaterial).toEqual({ kind: "solid", color: "#ff8800" });
+    expect(state().currentMaterial).toEqual({
+      kind: "solid",
+      color: "#ff8800",
+    });
   });
 });

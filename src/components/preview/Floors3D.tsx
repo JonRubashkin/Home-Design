@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import type { FloorRegion } from "../../model/types";
 import { selectCurrentLevel, useStore } from "../../store/store";
-import { patternTexture } from "../../materials/textures";
+import { useThreeMaterial } from "../../materials/threeMaterial";
+import { PATTERN_TILE_METERS } from "../../materials/patterns";
 
 // Triangulate a plan polygon into a flat, upward-facing mesh at world height y.
 // UVs are in meters so pattern textures tile one cell per meter (matching 2D).
@@ -38,19 +39,17 @@ function Floor3D({
     () => floorGeometry(floor.polygon, y),
     [floor.polygon, y],
   );
-  const mat = floor.material;
-  const tex = mat.kind === "pattern" ? patternTexture(mat) : null;
+  // UVs are in metres; repeat so one tile spans PATTERN_TILE_METERS (same density
+  // as walls). Built via the shared factory so floors and walls branch identically.
+  const r = 1 / PATTERN_TILE_METERS;
+  const material = useThreeMaterial(
+    floor.material,
+    { repeat: [r, r], offset: [0, 0], side: THREE.DoubleSide, roughness: 0.95 },
+    { selected },
+  );
   return (
     <mesh geometry={geometry}>
-      <meshStandardMaterial
-        side={THREE.DoubleSide}
-        color={mat.kind === "solid" ? mat.color : "#ffffff"}
-        map={tex ?? undefined}
-        roughness={0.95}
-        metalness={0}
-        emissive={selected ? "#2563eb" : "#000000"}
-        emissiveIntensity={selected ? 0.3 : 0}
-      />
+      <primitive object={material} attach="material" />
     </mesh>
   );
 }

@@ -1,15 +1,17 @@
 import { useMemo } from "react";
 import type { MaterialRef, Wall } from "../../model/types";
-import { wallToBoxes, windowGlassBox } from "../../geometry/boxes";
-import { patternTextureSized } from "../../materials/textures";
+import {
+  wallToBoxes,
+  windowGlassBox,
+  type Box3Spec,
+} from "../../geometry/boxes";
+import { faceTextureTransform } from "../../materials/faceUV";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
+import { useThreeMaterial } from "../../materials/threeMaterial";
 
-const NEUTRAL_TOP = "#d8d4cc";
-const NEUTRAL_END = "#c4bfb5";
-const SELECT_EMISSIVE = "#2563eb";
+const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
+const NEUTRAL_END: MaterialRef = { kind: "solid", color: "#c4bfb5" };
 const GLASS_COLOR = "#bcd4e6";
-
-const solid = (color: string): MaterialRef => ({ kind: "solid", color });
 
 interface Props {
   wall: Wall;
@@ -19,53 +21,96 @@ interface Props {
   ghost: boolean;
 }
 
-// One BoxGeometry face material. Solid materials use a color; patterns use a
-// repeating texture sized to the face (width/height in meters).
-function FaceMaterial({
+// One box face: solid or world-anchored pattern, built by the shared factory.
+function BoxFace({
   attach,
   material,
-  width,
-  height,
+  repeat,
+  offset,
   selected,
   ghost,
 }: {
   attach: string;
   material: MaterialRef;
-  width: number;
-  height: number;
+  repeat?: [number, number];
+  offset?: [number, number];
   selected: boolean;
   ghost: boolean;
 }) {
-  const common = {
-    roughness: 0.92,
-    metalness: 0,
-    emissive: selected ? SELECT_EMISSIVE : "#000000",
-    emissiveIntensity: selected ? 0.4 : 0,
-    transparent: ghost,
-    opacity: ghost ? 0.15 : 1,
-    depthWrite: !ghost,
-  };
-  if (material.kind === "solid") {
-    return (
-      <meshStandardMaterial
-        attach={attach}
-        color={material.color}
-        {...common}
-      />
-    );
-  }
-  const tex = patternTextureSized(
+  const mat = useThreeMaterial(
     material,
-    width / PATTERN_TILE_METERS,
-    height / PATTERN_TILE_METERS,
+    { repeat, offset },
+    { selected, ghost },
   );
+  return <primitive object={mat} attach={attach} />;
+}
+
+// One wall sub-box. Side B is the +Z face (material-4), side A the -Z face
+// (material-5); each painted face is textured so the pattern flows continuously
+// across all of a wall's sub-boxes (piers, under-sill, over-head).
+function WallBox({
+  box,
+  paintA,
+  paintB,
+  selected,
+  ghost,
+}: {
+  box: Box3Spec;
+  paintA: MaterialRef;
+  paintB: MaterialRef;
+  selected: boolean;
+  ghost: boolean;
+}) {
+  const tB = faceTextureTransform(box.face, PATTERN_TILE_METERS, false);
+  const tA = faceTextureTransform(box.face, PATTERN_TILE_METERS, true);
   return (
-    <meshStandardMaterial
-      attach={attach}
-      map={tex}
-      color="#ffffff"
-      {...common}
-    />
+    <mesh
+      position={box.center}
+      rotation={[0, box.rotationY, 0]}
+      renderOrder={ghost ? 2 : 0}
+    >
+      <boxGeometry args={box.size} />
+      <BoxFace
+        attach="material-0"
+        material={NEUTRAL_END}
+        selected={selected}
+        ghost={ghost}
+      />
+      <BoxFace
+        attach="material-1"
+        material={NEUTRAL_END}
+        selected={selected}
+        ghost={ghost}
+      />
+      <BoxFace
+        attach="material-2"
+        material={NEUTRAL_TOP}
+        selected={selected}
+        ghost={ghost}
+      />
+      <BoxFace
+        attach="material-3"
+        material={NEUTRAL_END}
+        selected={selected}
+        ghost={ghost}
+      />
+      <BoxFace
+        attach="material-4"
+        material={paintB}
+        repeat={tB.repeat}
+        offset={tB.offset}
+        selected={selected}
+        ghost={ghost}
+      />
+      <BoxFace
+        attach="material-5"
+        material={paintA}
+        repeat={tA.repeat}
+        offset={tA.offset}
+        selected={selected}
+        ghost={ghost}
+      />
+    </mesh>
   );
 }
 
@@ -83,68 +128,16 @@ export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
 
   return (
     <group renderOrder={ghost ? 2 : 0}>
-      {boxes.map((b, i) => {
-        // Face order: +X, -X (ends), +Y (top), -Y (bottom), +Z (side B), -Z (side A).
-        const [len, hgt] = b.size;
-        return (
-          <mesh
-            key={i}
-            position={b.center}
-            rotation={[0, b.rotationY, 0]}
-            renderOrder={ghost ? 2 : 0}
-          >
-            <boxGeometry args={b.size} />
-            <FaceMaterial
-              attach="material-0"
-              material={solid(NEUTRAL_END)}
-              width={1}
-              height={1}
-              selected={selected}
-              ghost={ghost}
-            />
-            <FaceMaterial
-              attach="material-1"
-              material={solid(NEUTRAL_END)}
-              width={1}
-              height={1}
-              selected={selected}
-              ghost={ghost}
-            />
-            <FaceMaterial
-              attach="material-2"
-              material={solid(NEUTRAL_TOP)}
-              width={1}
-              height={1}
-              selected={selected}
-              ghost={ghost}
-            />
-            <FaceMaterial
-              attach="material-3"
-              material={solid(NEUTRAL_END)}
-              width={1}
-              height={1}
-              selected={selected}
-              ghost={ghost}
-            />
-            <FaceMaterial
-              attach="material-4"
-              material={wall.paintB}
-              width={len}
-              height={hgt}
-              selected={selected}
-              ghost={ghost}
-            />
-            <FaceMaterial
-              attach="material-5"
-              material={wall.paintA}
-              width={len}
-              height={hgt}
-              selected={selected}
-              ghost={ghost}
-            />
-          </mesh>
-        );
-      })}
+      {boxes.map((b, i) => (
+        <WallBox
+          key={i}
+          box={b}
+          paintA={wall.paintA}
+          paintB={wall.paintB}
+          selected={selected}
+          ghost={ghost}
+        />
+      ))}
 
       {/* Translucent glass panes (not in stub mode). */}
       {!stub &&

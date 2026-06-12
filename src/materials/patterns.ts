@@ -1,6 +1,11 @@
 import type { MaterialRef, PatternId } from "../model/types";
 
-export const PATTERN_IDS: PatternId[] = ["checker", "planks", "tile", "stripes"];
+export const PATTERN_IDS: PatternId[] = [
+  "checker",
+  "planks",
+  "tile",
+  "stripes",
+];
 
 // Tile resolution and how many world-meters one tile covers (shared by 2D fills
 // and 3D textures so the plan and preview match).
@@ -98,7 +103,12 @@ export function createPatternCanvas(
   canvas.height = TILE_PX;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    const rgba = renderPatternRGBA(ref.pattern, ref.colorA, ref.colorB, TILE_PX);
+    const rgba = renderPatternRGBA(
+      ref.pattern,
+      ref.colorA,
+      ref.colorB,
+      TILE_PX,
+    );
     const image = ctx.createImageData(TILE_PX, TILE_PX);
     image.data.set(rgba);
     ctx.putImageData(image, 0, 0);

@@ -37,27 +37,39 @@ export function patternTexture(
   return tex;
 }
 
-// A pattern texture cloned with a specific repeat (for wall faces, where each
-// face needs tiling proportional to its size). Cached by key + rounded repeat so
-// identical faces share one clone and nothing leaks per render.
-const sizedCache = new Map<string, THREE.Texture>();
-export function patternTextureSized(
+// A pattern texture cloned with a specific repeat + offset (each wall face tiles
+// at a world-fixed size and is offset so the pattern is continuous across a
+// wall's sub-boxes). Cached by key + repeat + offset; three.js shares the image,
+// so clones are cheap and nothing leaks per render.
+const variantCache = new Map<string, THREE.Texture>();
+
+export function patternTextureVariantKey(
   ref: Extract<MaterialRef, { kind: "pattern" }>,
-  repeatX: number,
-  repeatY: number,
+  repeat: [number, number],
+  offset: [number, number],
+): string {
+  return `${materialKey(ref)}@r${repeat[0].toFixed(3)},${repeat[1].toFixed(
+    3,
+  )}o${offset[0].toFixed(3)},${offset[1].toFixed(3)}`;
+}
+
+export function patternTextureVariant(
+  ref: Extract<MaterialRef, { kind: "pattern" }>,
+  repeat: [number, number],
+  offset: [number, number],
 ): THREE.Texture {
-  const rx = Math.max(0.05, repeatX);
-  const ry = Math.max(0.05, repeatY);
-  const key = `${materialKey(ref)}@${rx.toFixed(2)}x${ry.toFixed(2)}`;
-  let tex = sizedCache.get(key);
+  const key = patternTextureVariantKey(ref, repeat, offset);
+  let tex = variantCache.get(key);
   if (!tex) {
     tex = patternTexture(ref).clone();
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(rx, ry);
+    tex.repeat.set(repeat[0], repeat[1]);
+    tex.offset.set(offset[0], offset[1]);
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
     tex.needsUpdate = true;
-    sizedCache.set(key, tex);
+    variantCache.set(key, tex);
   }
   return tex;
 }

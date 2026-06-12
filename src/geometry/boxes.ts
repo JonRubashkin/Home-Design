@@ -5,11 +5,21 @@ import { windowSpan } from "./windows";
 
 // An oriented box in world space, ready to render as a Three.js BoxGeometry.
 // `size` is [alongWall, height, thickness]; the box is rotated about world Y by
-// `rotationY` so its local X axis follows the wall direction.
+// `rotationY` so its local X axis follows the wall direction. `face` locates the
+// box on the whole wall face (u0 = along-wall start, v0 = height start, w/h =
+// extent, all metres) so textures can flow continuously across sub-boxes.
+export interface FaceRect {
+  u0: number;
+  v0: number;
+  w: number;
+  h: number;
+}
+
 export interface Box3Spec {
   center: [number, number, number];
   size: [number, number, number];
   rotationY: number;
+  face: FaceRect;
 }
 
 const clamp = (n: number, lo: number, hi: number) =>
@@ -41,6 +51,7 @@ export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
       center: [wx, elevation + (y0 + y1) / 2, wz],
       size: [b - a, y1 - y0, T],
       rotationY,
+      face: { u0: a, v0: y0, w: b - a, h: y1 - y0 },
     };
   };
 
@@ -94,5 +105,6 @@ export function windowGlassBox(
     center: [wx, elevation + win.sillHeight + win.height / 2, wz],
     size: [win.width, win.height, glassThickness],
     rotationY,
+    face: { u0: a, v0: win.sillHeight, w: win.width, h: win.height },
   };
 }

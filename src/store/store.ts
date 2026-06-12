@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import type { Design, Level, Vec2, Wall } from "../model/types";
 import { createDesign, createWall } from "../model/defaults";
+import {
+  loadViewPrefs,
+  saveViewPrefs,
+  type CutawayStyle,
+  type Layout,
+  type ViewMode,
+} from "../persistence/viewPrefs";
 
 export type Tool = "select" | "wall";
 export type Selection = { kind: "wall"; id: string } | null;
@@ -34,6 +41,11 @@ interface AppState {
   activeTool: Tool;
   selection: Selection;
 
+  // 3D view preferences (persisted to localStorage, never in the Design).
+  viewMode: ViewMode;
+  cutawayStyle: CutawayStyle;
+  layout: Layout;
+
   // Undo/redo: snapshots of the whole Design taken before each committed action.
   past: Design[];
   future: Design[];
@@ -44,6 +56,9 @@ interface AppState {
   // --- view/selection actions ---
   setActiveTool: (tool: Tool) => void;
   setSelection: (selection: Selection) => void;
+  setViewMode: (mode: ViewMode) => void;
+  setCutawayStyle: (style: CutawayStyle) => void;
+  setLayout: (layout: Layout) => void;
 
   // --- committed mutations (each = one undo step) ---
   addWall: (start: Vec2, end: Vec2) => void;
@@ -84,18 +99,40 @@ export const useStore = create<AppState>((set, get) => {
   };
 
   const initialDesign = createDesign();
+  const prefs = loadViewPrefs();
+
+  // Write the current view prefs through to localStorage after a change.
+  const persistViewPrefs = () => {
+    const { viewMode, cutawayStyle, layout } = get();
+    saveViewPrefs({ viewMode, cutawayStyle, layout });
+  };
 
   return {
     design: initialDesign,
     currentLevelId: initialDesign.levels[0]!.id,
     activeTool: "wall",
     selection: null,
+    viewMode: prefs.viewMode,
+    cutawayStyle: prefs.cutawayStyle,
+    layout: prefs.layout,
     past: [],
     future: [],
     dragBaseline: null,
 
     setActiveTool: (tool) => set({ activeTool: tool }),
     setSelection: (selection) => set({ selection }),
+    setViewMode: (viewMode) => {
+      set({ viewMode });
+      persistViewPrefs();
+    },
+    setCutawayStyle: (cutawayStyle) => {
+      set({ cutawayStyle });
+      persistViewPrefs();
+    },
+    setLayout: (layout) => {
+      set({ layout });
+      persistViewPrefs();
+    },
 
     addWall: (start, end) => {
       pushHistory();

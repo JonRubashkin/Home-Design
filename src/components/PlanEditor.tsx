@@ -154,11 +154,16 @@ export function PlanEditor() {
       ? walls.find((w) => w.id === selection.id)
       : undefined;
 
-  // Distinct pattern materials used by floors -> SVG <pattern> defs.
+  // Distinct pattern materials used by floors and wall side-A fills -> SVG
+  // <pattern> defs.
   const patternDefs = new Map<string, MaterialRef>();
   for (const f of floors) {
     if (f.material.kind === "pattern")
       patternDefs.set(materialKey(f.material), f.material);
+  }
+  for (const w of walls) {
+    if (w.paintA.kind === "pattern")
+      patternDefs.set(materialKey(w.paintA), w.paintA);
   }
   if (activeTool === "floor" && currentMaterial.kind === "pattern")
     patternDefs.set(materialKey(currentMaterial), currentMaterial);
@@ -653,6 +658,7 @@ export function PlanEditor() {
                     key={i}
                     className={`wall${isSel ? " selected" : ""}`}
                     points={toPoints(spanCorners(w, seg.a, seg.b))}
+                    fill={fillFor(w.paintA)}
                     vectorEffect="non-scaling-stroke"
                   />
                 ))}

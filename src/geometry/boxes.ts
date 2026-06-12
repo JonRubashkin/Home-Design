@@ -1,6 +1,7 @@
 import type { Wall } from "../model/types";
 import { wallLength, wallDirection } from "./wall";
 import { planToWorld } from "./mapping";
+import { windowSpan } from "./windows";
 
 // An oriented box in world space, ready to render as a Three.js BoxGeometry.
 // `size` is [alongWall, height, thickness]; the box is rotated about world Y by
@@ -71,4 +72,27 @@ export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
   if (cursor < L - 1e-9) boxes.push(makeBox(cursor, L, 0, H)); // final pier
 
   return boxes;
+}
+
+// A thin oriented box filling one window opening, for the translucent glass pane.
+// Thinner than the wall so it sits inside the reveal.
+export function windowGlassBox(
+  wall: Wall,
+  win: { t: number; width: number; height: number; sillHeight: number },
+  elevation = 0,
+): Box3Spec {
+  const L = wallLength(wall);
+  const dir = wallDirection(wall);
+  const rotationY = Math.atan2(-dir.y, dir.x);
+  const { a, b } = windowSpan(L, win.t, win.width);
+  const alongCenter = (a + b) / 2;
+  const px = wall.start.x + dir.x * alongCenter;
+  const py = wall.start.y + dir.y * alongCenter;
+  const [wx, , wz] = planToWorld({ x: px, y: py }, elevation);
+  const glassThickness = Math.min(0.04, wall.thickness * 0.4);
+  return {
+    center: [wx, elevation + win.sillHeight + win.height / 2, wz],
+    size: [win.width, win.height, glassThickness],
+    rotationY,
+  };
 }

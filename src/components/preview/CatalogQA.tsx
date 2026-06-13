@@ -18,7 +18,7 @@ const SPACING = 2.8;
 export function CatalogQA() {
   return (
     <div style={{ position: "fixed", inset: 0, background: "#11141b" }}>
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+      <Canvas flat dpr={[1, 2]} gl={{ antialias: true }}>
         <color attach="background" args={["#11141b"]} />
         <OrthographicCamera
           makeDefault
@@ -27,8 +27,8 @@ export function CatalogQA() {
           near={0.1}
           far={500}
         />
-        <ambientLight intensity={0.8} />
-        <directionalLight position={[10, 20, 8]} intensity={0.9} />
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[10, 20, 8]} intensity={0.5} />
         <Grid
           args={[60, 60]}
           cellSize={1}

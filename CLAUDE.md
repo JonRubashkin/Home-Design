@@ -139,7 +139,9 @@ in code under `src/catalog/`:
 - Each `CatalogEntry` declares `id`, `name`, `category`
   (`living | bedroom | kitchen | bathroom`), `footprint` (width × depth, meters),
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
-  furniture), a `scaling` policy (see below), ordered named material `slots`
+  furniture), optional `surfaceTop` (local meters — marks a support surface) and
+  `stackable` (small item that auto-climbs onto a surface), a `scaling` policy
+  (see below), ordered named material `slots`
   (slot[0] is the primary slot the Paint tool recolors), a pure `build()` that
   returns `Part[]` (composed from shared `box` / `roundedBox` / `cylinder`
   primitives in local space, y up from the floor, +z = front), and a `glyph(w,d)`
@@ -222,10 +224,17 @@ in code under `src/catalog/`:
   exact world Y or they z-fight as the camera orbits. Ground plane < floor
   regions < flat items (rugs) < regular furniture each sit on their own layer,
   defined as named constants in `src/components/preview/stacking.ts` (no scattered
-  magic numbers). These are fixed per-category base lifts only — do **not** add
-  auto-stacking that raises an item to the height of whatever it's placed on.
-  Transparent materials (ghost cutaway) use `depthWrite: false`; keep furniture
-  materials opaque (rugs included) so they don't occlude what's behind them.
+  magic numbers). Transparent materials (ghost cutaway) use `depthWrite: false`;
+  keep furniture materials opaque (rugs included) so they don't occlude what's
+  behind them.
+- **Automatic surface stacking.** A `stackable` catalog item (microwave, lamp)
+  whose footprint CENTER lies within a `surfaceTop` item's footprint (counter,
+  table, dresser…) automatically rests on that surface's top instead of being
+  buried inside it; surfaces can rest on surfaces (transitive). This is a pure
+  render-side computation (`computeStackBaseLifts` in `geometry/furniture.ts`,
+  tested) keyed off plan positions — elevation is invisible top-down, so it
+  needs **no schema field or persistence**. It resolves live as items move; it is
+  NOT a manual elevation control.
 
 ## 2D plan editor rules
 

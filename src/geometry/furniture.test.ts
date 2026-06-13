@@ -4,7 +4,9 @@ import {
   pointInFootprint,
   footprintCorners,
   wallHuggerSnap,
+  computeStackBaseLifts,
   type Footprint,
+  type StackItem,
 } from "./furniture";
 import { createWall } from "../model/defaults";
 import type { Wall } from "../model/types";
@@ -101,5 +103,88 @@ describe("wallHuggerSnap", () => {
     const frontY = Math.cos(rad);
     expect(close(frontX, nx, 1e-6)).toBe(true);
     expect(close(frontY, ny, 1e-6)).toBe(true);
+  });
+});
+
+describe("computeStackBaseLifts", () => {
+  const lifts = { floor: 0.018, flat: 0.012, stack: 0.002 };
+  const surface = (
+    id: string,
+    center: { x: number; y: number },
+    surfaceTop: number,
+    extra: Partial<StackItem> = {},
+  ): StackItem => ({
+    id,
+    center,
+    rotation: 0,
+    footprint: { width: 1.2, depth: 0.6 },
+    flat: false,
+    stackable: false,
+    surfaceTop,
+    ...extra,
+  });
+  const small = (
+    id: string,
+    center: { x: number; y: number },
+    extra: Partial<StackItem> = {},
+  ): StackItem => ({
+    id,
+    center,
+    rotation: 0,
+    footprint: { width: 0.5, depth: 0.35 },
+    flat: false,
+    stackable: true,
+    surfaceTop: null,
+    ...extra,
+  });
+
+  it("rests a stackable item on a surface it is centered over", () => {
+    const counter = surface("counter", { x: 0, y: 0 }, 0.9);
+    const micro = small("micro", { x: 0.2, y: 0 }); // center inside counter
+    const m = computeStackBaseLifts([counter, micro], lifts);
+    expect(m.get("counter")).toBe(0.018); // counter on the floor
+    // micro base = counter floor lift + surfaceTop + stack lift
+    expect(m.get("micro")).toBeCloseTo(0.018 + 0.9 + 0.002);
+  });
+
+  it("keeps a stackable item on the floor when off the surface", () => {
+    const counter = surface("counter", { x: 0, y: 0 }, 0.9);
+    const micro = small("micro", { x: 5, y: 5 }); // far away
+    const m = computeStackBaseLifts([counter, micro], lifts);
+    expect(m.get("micro")).toBe(0.018);
+  });
+
+  it("does not lift a non-stackable item sitting over a surface", () => {
+    const counter = surface("counter", { x: 0, y: 0 }, 0.9);
+    const chair = small("chair", { x: 0, y: 0 }, { stackable: false });
+    const m = computeStackBaseLifts([counter, chair], lifts);
+    expect(m.get("chair")).toBe(0.018);
+  });
+
+  it("uses the flat lift for rugs resting on the floor", () => {
+    const rug = small("rug", { x: 0, y: 0 }, { stackable: false, flat: true });
+    const m = computeStackBaseLifts([rug], lifts);
+    expect(m.get("rug")).toBe(0.012);
+  });
+
+  it("stacks transitively (item on a surface on a surface)", () => {
+    const counter = surface("counter", { x: 0, y: 0 }, 0.9);
+    // a tray that is both stackable and itself a surface, centered on counter
+    const tray = surface("tray", { x: 0, y: 0 }, 0.05, { stackable: true });
+    const micro = small("micro", { x: 0, y: 0 });
+    const m = computeStackBaseLifts([counter, tray, micro], lifts);
+    expect(m.get("tray")).toBeCloseTo(0.018 + 0.9 + 0.002);
+    // micro sits on the tray's top = tray base + tray surfaceTop + stack lift
+    expect(m.get("micro")).toBeCloseTo(0.018 + 0.9 + 0.002 + 0.05 + 0.002);
+  });
+
+  it("does not loop on a mutual-overlap cycle", () => {
+    // two items that are each stackable surfaces centered on each other
+    const a = surface("a", { x: 0, y: 0 }, 0.3, { stackable: true });
+    const b = surface("b", { x: 0, y: 0 }, 0.3, { stackable: true });
+    const m = computeStackBaseLifts([a, b], lifts);
+    // terminates and yields finite numbers
+    expect(Number.isFinite(m.get("a")!)).toBe(true);
+    expect(Number.isFinite(m.get("b")!)).toBe(true);
   });
 });

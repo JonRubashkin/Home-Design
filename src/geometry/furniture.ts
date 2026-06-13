@@ -97,3 +97,62 @@ export function wallHuggerSnap(
   const rot = Math.atan2(-best.nFace.x, best.nFace.y) / DEG;
   return { position: snappedPos, rotation: rot, snapped: true };
 }
+
+// --- Automatic stacking ----------------------------------------------------
+// A stackable item (microwave, lamp) whose footprint CENTER sits within a
+// surface item's footprint rests on that surface's top instead of the floor.
+// Surfaces can themselves rest on surfaces (transitive), so the resolution is
+// recursive with a visited guard against cycles. Elevation is invisible in the
+// top-down plan, so this is a pure render concern — no schema/persistence.
+
+export interface StackItem {
+  id: string;
+  center: Vec2;
+  rotation: number;
+  footprint: Footprint; // already scaled
+  flat: boolean; // rug-like (uses the flat floor lift)
+  stackable: boolean; // climbs onto a surface it's centered over
+  surfaceTop: number | null; // scaled top height where items rest, or null
+}
+
+// The base lifts (meters above the level floor) used when an item rests on the
+// floor, on the flat layer (rugs), or on top of another item's surface.
+export interface StackLifts {
+  floor: number;
+  flat: number;
+  stack: number;
+}
+
+// Returns id -> world-Y-above-floor of each item's BASE, fully accounting for
+// the per-layer lifts (so the value can be added straight to the level
+// elevation by the renderer).
+export function computeStackBaseLifts(
+  items: StackItem[],
+  lifts: StackLifts,
+): Map<string, number> {
+  const floorLift = (it: StackItem) => (it.flat ? lifts.flat : lifts.floor);
+
+  const baseOf = (it: StackItem, visited: Set<string>): number => {
+    if (!it.stackable || visited.has(it.id)) return floorLift(it);
+    visited.add(it.id);
+    let bestTop = 0;
+    for (const other of items) {
+      if (other.id === it.id || other.surfaceTop === null) continue;
+      if (
+        !pointInFootprint(
+          it.center,
+          other.center,
+          other.rotation,
+          other.footprint,
+        )
+      )
+        continue;
+      const top = baseOf(other, visited) + other.surfaceTop;
+      if (top > bestTop) bestTop = top;
+    }
+    visited.delete(it.id);
+    return bestTop > 0 ? bestTop + lifts.stack : floorLift(it);
+  };
+
+  return new Map(items.map((it) => [it.id, baseOf(it, new Set())]));
+}

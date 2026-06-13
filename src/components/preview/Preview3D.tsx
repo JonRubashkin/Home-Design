@@ -7,6 +7,7 @@ import { Floors3D } from "./Floors3D";
 import { Furniture3D } from "./Furniture3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
+import { GROUND_Y } from "./stacking";
 
 // Guard the sRGB pipeline regardless of R3F/three version quirks: hex colors are
 // interpreted as sRGB and converted to linear for lighting.
@@ -15,7 +16,7 @@ THREE.ColorManagement.enabled = true;
 function Ground() {
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]}>
         <planeGeometry args={[600, 600]} />
         <meshStandardMaterial color="#1a1d27" roughness={1} metalness={0} />
       </mesh>

@@ -69,7 +69,11 @@ export function FurniturePiece({
     item.materials[slot] ?? entry.slots.find((s) => s.name === slot)!.default;
 
   return (
-    <group position={[wx, y, wz]} rotation={[0, -item.rotation * DEG, 0]}>
+    <group
+      position={[wx, y, wz]}
+      rotation={[0, -item.rotation * DEG, 0]}
+      scale={[item.scale.x, item.scale.y, item.scale.z]}
+    >
       {parts.map((part, i) => (
         <PartMesh
           key={i}

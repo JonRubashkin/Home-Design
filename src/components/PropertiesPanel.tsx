@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
 import { wallLength, wallDirection } from "../geometry/wall";
@@ -11,7 +11,10 @@ import {
   CATEGORY_LABELS,
   CATALOG_ITEMS,
   getCatalogEntry,
+  effectiveDimensions,
+  type CatalogEntry,
 } from "../catalog";
+import type { Vec3 } from "../model/types";
 import { MaterialPicker } from "./material/MaterialPicker";
 import { MaterialChip } from "./material/MaterialChip";
 import { FurnitureThumb } from "./FurnitureSymbol";
@@ -190,6 +193,126 @@ function ToggleField<T extends string>({
   );
 }
 
+// A single dimension slider that edits one axis of an item in real-world
+// meters. The slider range is the catalog policy (base dimension × min/max
+// multiplier); dragging it sets the scale multiplier for that axis.
+function DimensionSlider({
+  label,
+  meters,
+  base,
+  range,
+  onChange,
+}: {
+  label: string;
+  meters: number;
+  base: number;
+  range: [number, number];
+  onChange: (multiplier: number) => void;
+}) {
+  return (
+    <label className="field scale-field">
+      <span className="field-label">{label}</span>
+      <span className="field-input scale-input">
+        <input
+          type="range"
+          min={base * range[0]}
+          max={base * range[1]}
+          step={0.01}
+          value={meters}
+          onChange={(e) => onChange(Number(e.target.value) / base)}
+        />
+        <span className="field-unit scale-readout">{meters.toFixed(2)} m</span>
+      </span>
+    </label>
+  );
+}
+
+// Size controls matching the item's scaling policy: a single slider for
+// "uniform", one slider per free axis (Width/Depth/Height) for "axes", or a
+// fixed-size note for "none". A Reset button restores the catalog size.
+function FurnitureScaleControls({
+  entry,
+  scale,
+  onScale,
+  onReset,
+}: {
+  entry: CatalogEntry;
+  scale: Vec3;
+  onScale: (s: Vec3) => void;
+  onReset: () => void;
+}) {
+  const { scaling } = entry;
+  const dims = effectiveDimensions(entry, scale);
+  const atDefault = scale.x === 1 && scale.y === 1 && scale.z === 1;
+
+  let body: ReactNode;
+  if (scaling.mode === "none") {
+    body = <p className="properties-hint">This item is a fixed size.</p>;
+  } else if (scaling.mode === "uniform") {
+    const range = scaling.uniform ?? [1, 1];
+    // Uniform: one control driven by width; all axes scale together.
+    body = (
+      <DimensionSlider
+        label="Size"
+        meters={dims.width}
+        base={entry.footprint.width}
+        range={range}
+        onChange={(m) => onScale({ x: m, y: m, z: m })}
+      />
+    );
+  } else {
+    const ax = scaling.axes ?? {};
+    body = (
+      <>
+        {ax.x && (
+          <DimensionSlider
+            label="Width"
+            meters={dims.width}
+            base={entry.footprint.width}
+            range={ax.x}
+            onChange={(m) => onScale({ ...scale, x: m })}
+          />
+        )}
+        {ax.z && (
+          <DimensionSlider
+            label="Depth"
+            meters={dims.depth}
+            base={entry.footprint.depth}
+            range={ax.z}
+            onChange={(m) => onScale({ ...scale, z: m })}
+          />
+        )}
+        {ax.y && (
+          <DimensionSlider
+            label="Height"
+            meters={dims.height}
+            base={entry.height}
+            range={ax.y}
+            onChange={(m) => onScale({ ...scale, y: m })}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h3 className="properties-subhead">Size</h3>
+      <div className="properties-fields">{body}</div>
+      {scaling.mode !== "none" && (
+        <button
+          type="button"
+          className="link-button reset-link"
+          onClick={onReset}
+          disabled={atDefault}
+        >
+          Reset size
+        </button>
+      )}
+    </>
+  );
+}
+
 export function PropertiesPanel() {
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
@@ -207,6 +330,8 @@ export function PropertiesPanel() {
   const updateFurniture = useStore((s) => s.updateFurniture);
   const setFurnitureMaterial = useStore((s) => s.setFurnitureMaterial);
   const resetFurnitureMaterials = useStore((s) => s.resetFurnitureMaterials);
+  const setFurnitureScale = useStore((s) => s.setFurnitureScale);
+  const resetFurnitureScale = useStore((s) => s.resetFurnitureScale);
   const deleteFurniture = useStore((s) => s.deleteFurniture);
   const setSideHighlight = useStore((s) => s.setSideHighlight);
 
@@ -293,6 +418,12 @@ export function PropertiesPanel() {
             </span>
           </label>
         </div>
+        <FurnitureScaleControls
+          entry={entry}
+          scale={item.scale}
+          onScale={(s) => setFurnitureScale(item.id, s)}
+          onReset={() => resetFurnitureScale(item.id)}
+        />
         <h3 className="properties-subhead">Materials</h3>
         <div className="chip-row chip-wrap">
           {entry.slots.map((s) => (

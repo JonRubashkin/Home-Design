@@ -50,8 +50,9 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 3;         // v1 = Phase 1; v2 = doors; v3 = furniture. Migrations
-                            // in src/model/migrations.ts upgrade older saved designs.
+  schemaVersion: 4;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+                            // v4 = furniture scale. Migrations in
+                            // src/model/migrations.ts upgrade older saved designs.
   name: string;
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
@@ -74,6 +75,8 @@ interface FurnitureItem {   // Phase 2b. References a catalog id — never geome
   catalogId: string;        // e.g. "sofa-3seat"
   position: Vec2;           // plan coords of footprint CENTER
   rotation: number;         // degrees; UI rotates in 15° steps
+  scale: Vec3;              // Phase 2c. per-axis multiplier, default {1,1,1};
+                            // clamped to the catalog entry's `scaling` policy.
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
@@ -114,6 +117,7 @@ interface FloorRegion {
 }
 
 interface Vec2 { x: number; y: number; }
+interface Vec3 { x: number; y: number; z: number; }
 
 // Materials are data, never baked into meshes. Furniture and future features
 // reuse this exact system.
@@ -135,19 +139,32 @@ in code under `src/catalog/`:
 - Each `CatalogEntry` declares `id`, `name`, `category`
   (`living | bedroom | kitchen | bathroom`), `footprint` (width × depth, meters),
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
-  furniture), ordered named material `slots` (slot[0] is the primary slot the
-  Paint tool recolors), a pure `build()` that returns `Part[]` (composed from
-  shared `box` / `roundedBox` / `cylinder` primitives in local space, y up from
-  the floor, +z = front), and a `glyph(w,d)` that returns the distinguishing 2D
-  plan marks.
+  furniture), a `scaling` policy (see below), ordered named material `slots`
+  (slot[0] is the primary slot the Paint tool recolors), a pure `build()` that
+  returns `Part[]` (composed from shared `box` / `roundedBox` / `cylinder`
+  primitives in local space, y up from the floor, +z = front), and a `glyph(w,d)`
+  that returns the distinguishing 2D plan marks.
+- **Scaling (Phase 2c).** `scaling: CatalogScaling` is `{ mode: "none" }`
+  (fixed size), `{ mode: "uniform"; uniform: [min,max] }` (one multiplier on every
+  axis), or `{ mode: "axes"; axes: { x?,y?,z?: [min,max] } }` (per-axis ranges;
+  an omitted axis is locked to 1). A `FurnitureItem.scale: Vec3` holds the chosen
+  multipliers. `clampScale(scaling, requested)` enforces the policy and
+  `effectiveDimensions(entry, scale)` is the single source of truth for an item's
+  real-world size — **every** footprint consumer (3D group `scale`, plan symbol
+  `scale()`, hit-test, wall-hugger snap) reads through it. New items default to
+  `{1,1,1}`; the properties panel exposes mode-appropriate Size sliders in meters
+  plus a Reset-size button. Pick a policy per item: stretch what realistically
+  stretches, scale proportionally what should stay in proportion, lock what would
+  look broken. Both helpers live in `src/catalog/scale.ts` (tested).
 - Builders are pure data (no hooks). The 3D renderer maps each `Part` to a mesh
   whose material comes from `item.materials[slot] ?? entry.slots[..].default`,
   **always through the shared `materialRefToThreeMaterial` helper** — so patterns
   work on furniture for free. Plan symbols reuse the same footprint + glyph.
 - Local→world: a `FurnitureItem` renders as a group at `planToWorld(position)`,
-  rotated about world Y by `-rotation` (plan rotation is SVG-clockwise). Footprint
-  hit-testing and wall-hugger snapping are pure functions in
-  `src/geometry/furniture.ts` (tested).
+  rotated about world Y by `-rotation` (plan rotation is SVG-clockwise) and scaled
+  by `[scale.x, scale.y, scale.z]`. Footprint hit-testing and wall-hugger snapping
+  are pure functions in `src/geometry/furniture.ts` (tested) and operate on the
+  scaled footprint.
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item.
 

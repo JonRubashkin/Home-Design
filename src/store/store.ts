@@ -7,9 +7,11 @@ import type {
   Level,
   MaterialRef,
   Vec2,
+  Vec3,
   Wall,
   WindowOpening,
 } from "../model/types";
+import { clampScale, getCatalogEntry } from "../catalog";
 import {
   createDesign,
   createDoor,
@@ -199,6 +201,8 @@ interface AppState {
     material: MaterialRef,
   ) => void;
   resetFurnitureMaterials: (id: string) => void;
+  setFurnitureScale: (id: string, scale: Vec3) => void;
+  resetFurnitureScale: (id: string) => void;
   deleteFurniture: (id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
@@ -543,6 +547,30 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const item = findFurniture(design, s.currentLevelId, id);
         if (item) item.materials = {};
+        return { design };
+      });
+    },
+
+    setFurnitureScale: (id, scale) => {
+      const existing = findFurniture(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      const entry = getCatalogEntry(existing.catalogId);
+      const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      // Coalesce slider drags into one undo step (like paint/material edits).
+      commitCoalesced(`furn-scale:${id}`, (design) => {
+        const item = findFurniture(design, get().currentLevelId, id);
+        if (item) item.scale = clamped;
+      });
+    },
+
+    resetFurnitureScale: (id) => {
+      const existing = findFurniture(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const item = findFurniture(design, s.currentLevelId, id);
+        if (item) item.scale = { x: 1, y: 1, z: 1 };
         return { design };
       });
     },

@@ -29,8 +29,19 @@ import {
 } from "../geometry/windows";
 import { validateDoor, doorSymbol } from "../geometry/doors";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
-import { pointInFootprint, wallHuggerSnap } from "../geometry/furniture";
-import { getCatalogEntry, primarySlot } from "../catalog";
+import {
+  pointInFootprint,
+  wallHuggerSnap,
+  type Footprint,
+} from "../geometry/furniture";
+import {
+  getCatalogEntry,
+  primarySlot,
+  effectiveDimensions,
+  UNIT_SCALE,
+  type CatalogEntry,
+} from "../catalog";
+import type { Vec3 } from "../model/types";
 import { FurnitureSymbolShape } from "./FurnitureSymbol";
 import { materialKey, materialDomId } from "../materials/key";
 import { patternDataUrl } from "../materials/textures";
@@ -189,13 +200,26 @@ export function PlanEditor() {
   const floors = level.floors;
   const furniture = level.furniture;
 
+  // An item's real-world footprint after its per-instance scale is applied.
+  // Every plan consumer (hit-test, ghost, wall-hugger snap) reads through this
+  // so the plan, 3D, and properties panel all agree on size.
+  const scaledFootprint = (entry: CatalogEntry, scale: Vec3): Footprint => {
+    const d = effectiveDimensions(entry, scale);
+    return { width: d.width, depth: d.depth };
+  };
+
   const furnitureUnderCursor = (world: Vec2) => {
     for (let i = furniture.length - 1; i >= 0; i--) {
       const item = furniture[i]!;
       const entry = getCatalogEntry(item.catalogId);
       if (!entry) continue;
       if (
-        pointInFootprint(world, item.position, item.rotation, entry.footprint)
+        pointInFootprint(
+          world,
+          item.position,
+          item.rotation,
+          scaledFootprint(entry, item.scale),
+        )
       )
         return item;
     }
@@ -203,16 +227,23 @@ export function PlanEditor() {
   };
 
   // Resolve where the placing ghost / a dragged item should sit: grid-snapped,
-  // then wall-hugger soft-snap (flush + aligned) when applicable.
+  // then wall-hugger soft-snap (flush + aligned) when applicable. The snap uses
+  // the item's scaled footprint so the back edge lands flush at any size.
   const resolveFurniturePlacement = (
     catalogId: string,
     raw: Vec2,
     rotation: number,
+    scale: Vec3 = UNIT_SCALE,
   ): { pos: Vec2; rotation: number } => {
     const entry = getCatalogEntry(catalogId);
     const pos = snapToGrid(raw);
     if (entry?.wallHugger) {
-      const snap = wallHuggerSnap(pos, rotation, entry.footprint, walls);
+      const snap = wallHuggerSnap(
+        pos,
+        rotation,
+        scaledFootprint(entry, scale),
+        walls,
+      );
       if (snap.snapped) return { pos: snap.position, rotation: snap.rotation };
     }
     return { pos, rotation };
@@ -748,6 +779,7 @@ export function PlanEditor() {
             item.catalogId,
             raw,
             item.rotation,
+            item.scale,
           );
           store.moveFurniture(d.itemId, placed.pos, placed.rotation);
         }
@@ -904,6 +936,7 @@ export function PlanEditor() {
                 entry={entry!}
                 position={item.position}
                 rotation={item.rotation}
+                scale={item.scale}
                 materials={item.materials}
                 className={`furn${
                   selection?.kind === "furniture" && selection.id === item.id

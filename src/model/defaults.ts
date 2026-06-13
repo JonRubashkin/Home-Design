@@ -2,6 +2,7 @@ import type {
   Design,
   DoorOpening,
   FloorRegion,
+  FurnitureItem,
   Level,
   MaterialRef,
   Vec2,
@@ -98,6 +99,20 @@ export function createFloor(
   };
 }
 
+export function createFurniture(
+  catalogId: string,
+  position: Vec2,
+  opts?: { rotation?: number; materials?: Record<string, MaterialRef> },
+): FurnitureItem {
+  return {
+    id: makeId("furn"),
+    catalogId,
+    position: { ...position },
+    rotation: opts?.rotation ?? 0,
+    materials: { ...(opts?.materials ?? {}) },
+  };
+}
+
 export function createLevel(name = "Ground floor"): Level {
   return {
     id: makeId("level"),
@@ -106,12 +121,13 @@ export function createLevel(name = "Ground floor"): Level {
     wallHeight: DEFAULT_WALL_HEIGHT,
     walls: [],
     floors: [],
+    furniture: [],
   };
 }
 
 export function createDesign(name = "Untitled design"): Design {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     name,
     levels: [createLevel()],
   };

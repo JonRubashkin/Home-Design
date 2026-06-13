@@ -7,3 +7,4 @@ export * from "./cutaway";
 export * from "./windows";
 export * from "./doors";
 export * from "./polygon";
+export * from "./furniture";

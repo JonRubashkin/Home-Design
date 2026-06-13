@@ -82,6 +82,19 @@ function structuralError(obj: Record<string, unknown>): string | null {
       if (!isMaterial(floor.material))
         return "A floor has an invalid material.";
     }
+
+    if (!Array.isArray(level.furniture))
+      return "A level is missing its furniture.";
+    for (const item of level.furniture) {
+      if (
+        !isObj(item) ||
+        !isStr(item.catalogId) ||
+        !isVec2(item.position) ||
+        !isNum(item.rotation) ||
+        !isObj(item.materials)
+      )
+        return "A furniture item is malformed.";
+    }
   }
   return null;
 }

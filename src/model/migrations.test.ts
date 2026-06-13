@@ -44,6 +44,20 @@ describe("migrateToLatest", () => {
     expect(wall.windows).toHaveLength(1);
   });
 
+  it("adds an empty furniture array to every level (-> v3)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.levels[0]!.furniture).toEqual([]);
+  });
+
+  it("migrates a v2 design (doors present) to v3 with furniture", () => {
+    const v2 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v2.schemaVersion = 2;
+    (v2.levels as Record<string, unknown>[])[0]!.walls = [];
+    const out = migrateToLatest(v2);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.furniture).toEqual([]);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

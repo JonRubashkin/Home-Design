@@ -3,6 +3,8 @@ import type { MaterialRef, Wall } from "../../model/types";
 import {
   wallToBoxes,
   windowGlassBox,
+  doorFrameBoxes,
+  doorLeafBox,
   type Box3Spec,
 } from "../../geometry/boxes";
 import { faceTextureTransform } from "../../materials/faceUV";
@@ -11,7 +13,41 @@ import { useThreeMaterial } from "../../materials/threeMaterial";
 
 const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
 const NEUTRAL_END: MaterialRef = { kind: "solid", color: "#c4bfb5" };
+const DOOR_TRIM: MaterialRef = { kind: "solid", color: "#d9d2c6" };
 const GLASS_COLOR = "#bcd4e6";
+
+// A box with a single material on every face (door frame trim and leaf).
+function SolidBoxMesh({
+  box,
+  material,
+  repeat,
+  offset,
+  selected,
+  ghost,
+}: {
+  box: Box3Spec;
+  material: MaterialRef;
+  repeat?: [number, number];
+  offset?: [number, number];
+  selected: boolean;
+  ghost: boolean;
+}) {
+  const mat = useThreeMaterial(
+    material,
+    { repeat, offset },
+    { selected, ghost },
+  );
+  return (
+    <mesh
+      position={box.center}
+      rotation={[0, box.rotationY, 0]}
+      renderOrder={ghost ? 2 : 0}
+    >
+      <boxGeometry args={box.size} />
+      <primitive object={mat} attach="material" />
+    </mesh>
+  );
+}
 
 interface Props {
   wall: Wall;
@@ -160,6 +196,38 @@ export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
                 metalness={0}
               />
             </mesh>
+          );
+        })}
+
+      {/* Door frame (jambs + head) and closed leaf (not in stub mode). */}
+      {!stub &&
+        wall.doors.map((door) => {
+          const leaf = doorLeafBox(wall, door, elevation);
+          const lt = faceTextureTransform(
+            leaf.face,
+            PATTERN_TILE_METERS,
+            false,
+          );
+          return (
+            <group key={door.id}>
+              {doorFrameBoxes(wall, door, elevation).map((b, i) => (
+                <SolidBoxMesh
+                  key={i}
+                  box={b}
+                  material={DOOR_TRIM}
+                  selected={selected}
+                  ghost={ghost}
+                />
+              ))}
+              <SolidBoxMesh
+                box={leaf}
+                material={door.material}
+                repeat={lt.repeat}
+                offset={lt.offset}
+                selected={selected}
+                ghost={ghost}
+              />
+            </group>
           );
         })}
     </group>

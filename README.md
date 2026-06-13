@@ -4,9 +4,9 @@ A browser-based home design tool. Draw walls in a 2D plan editor and see them
 live in a 3D preview; later phases add windows, paint, and floor materials.
 Everything runs client-side — no backend.
 
-**Phase 1 complete (1a + 1b + 1c).** A 2D plan editor with walls, windows, wall
-paint, and floor regions, plus a live 3D preview with three wall view modes —
-all editing in 2D, the 3D view is read-only.
+**Phase 1 complete + Phase 2a (doors).** A 2D plan editor with walls, windows,
+doors, wall paint, and floor regions, plus a live 3D preview with three wall view
+modes — all editing in 2D, the 3D view is read-only.
 
 ## Tech stack
 
@@ -80,6 +80,18 @@ npm run format   # Prettier
   and four procedural patterns (checker, planks, tile, stripes) with two colors
   each; patterns render as textures in both the plan and 3D.
 
+### Doors (phase 2a)
+
+- **Door tool (D)** — hover a wall to preview a door (invalid spots show red),
+  click to place. The plan shows the standard architectural symbol — a gap, the
+  open leaf, and a quarter-circle swing arc. Doors are selectable, drag along
+  their wall, and edit (width / height / position / **hinge** / **swing side** /
+  material) in the panel. In 3D the opening is a real hole with a slim frame and
+  a closed leaf (solid or pattern); doors ghost/suppress with their wall and read
+  as clean gaps in Stubs mode.
+- **Schema v2** — designs now store `doors`; older (v1) designs migrate
+  automatically on load/import (every wall gains an empty `doors` array).
+
 ## Controls & keyboard shortcuts
 
 | Action                    | Control                                     |
@@ -87,6 +99,7 @@ npm run format   # Prettier
 | Select tool               | `V`                                         |
 | Wall tool                 | `W`                                         |
 | Window tool               | `N`                                         |
+| Door tool                 | `D`                                         |
 | Floor tool                | `F`                                         |
 | Paint tool                | `P`                                         |
 | Draw / place point        | Click (Wall / Floor tools)                  |
@@ -97,6 +110,7 @@ npm run format   # Prettier
 | Cancel current draw       | `Esc`                                       |
 | Constrain to 0 / 45 / 90° | Hold `Shift` while drawing                  |
 | Place a window            | Hover a wall, click (Window tool)           |
+| Place a door              | Hover a wall, click (Door tool)             |
 | Paint a wall face         | Hover the near side, click (Paint tool)     |
 | Select wall/window/floor  | Click it (Select tool)                      |
 | Move a wall / window      | Drag its body / drag along the wall         |

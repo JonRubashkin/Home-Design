@@ -44,6 +44,10 @@ export function useGlobalShortcuts(): void {
         case "N":
           s.setActiveTool("window");
           break;
+        case "d":
+        case "D":
+          s.setActiveTool("door");
+          break;
         case "f":
         case "F":
           s.setActiveTool("floor");
@@ -59,6 +63,7 @@ export function useGlobalShortcuts(): void {
             e.preventDefault();
             if (sel.kind === "wall") s.deleteWall(sel.id);
             else if (sel.kind === "window") s.deleteWindow(sel.wallId, sel.id);
+            else if (sel.kind === "door") s.deleteDoor(sel.wallId, sel.id);
             else s.deleteFloor(sel.id);
           }
           break;

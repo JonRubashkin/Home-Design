@@ -248,3 +248,64 @@ describe("currentMaterial", () => {
     });
   });
 });
+
+describe("doors", () => {
+  const door = {
+    t: 0.5,
+    width: 0.9,
+    height: 2.0,
+    hinge: "start" as const,
+    swing: "A" as const,
+    material: { kind: "solid" as const, color: "#9a6b4f" },
+  };
+
+  it("adds, selects, and undoes a door", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addDoor(id, door);
+    expect(walls()[0]!.doors).toHaveLength(1);
+    expect(state().selection).toEqual({
+      kind: "door",
+      wallId: id,
+      id: walls()[0]!.doors[0]!.id,
+    });
+    state().undo();
+    expect(walls()[0]!.doors).toHaveLength(0);
+  });
+
+  it("updates hinge/swing and moves as a single drag step", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addDoor(id, door);
+    const doorId = walls()[0]!.doors[0]!.id;
+    state().updateDoor(id, doorId, { hinge: "end", swing: "B" });
+    expect(walls()[0]!.doors[0]!.hinge).toBe("end");
+    expect(walls()[0]!.doors[0]!.swing).toBe("B");
+
+    const pastBefore = state().past.length;
+    state().beginDrag();
+    state().moveDoor(id, doorId, 0.4);
+    state().moveDoor(id, doorId, 0.3);
+    state().endDrag();
+    expect(state().past.length).toBe(pastBefore + 1);
+    expect(walls()[0]!.doors[0]!.t).toBeCloseTo(0.3);
+  });
+
+  it("coalesces door material edits and deletes the door", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const id = firstWallId();
+    state().addDoor(id, door);
+    const doorId = walls()[0]!.doors[0]!.id;
+    const pastBefore = state().past.length;
+    state().setDoorMaterial(id, doorId, { kind: "solid", color: "#111111" });
+    state().setDoorMaterial(id, doorId, { kind: "solid", color: "#222222" });
+    expect(state().past.length).toBe(pastBefore + 1); // coalesced
+    expect(walls()[0]!.doors[0]!.material).toEqual({
+      kind: "solid",
+      color: "#222222",
+    });
+    state().deleteDoor(id, doorId);
+    expect(walls()[0]!.doors).toHaveLength(0);
+    expect(state().selection).toBeNull();
+  });
+});

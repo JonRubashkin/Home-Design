@@ -672,3 +672,45 @@ button:focus-visible,
   padding: 0;
   cursor: pointer;
 }
+
+/* --- door symbol (plan) --- */
+.door-symbol line,
+.door-symbol path {
+  stroke: #374151;
+  stroke-width: 1.2;
+  fill: none;
+}
+.door-symbol .door-arc {
+  fill: none;
+}
+.door-symbol.selected line,
+.door-symbol.selected path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.door-symbol.ghost-valid line,
+.door-symbol.ghost-valid path {
+  stroke: #16a34a;
+  stroke-width: 1.5;
+  fill: none;
+}
+.door-symbol.ghost-invalid line,
+.door-symbol.ghost-invalid path {
+  stroke: #dc2626;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  fill: none;
+}
+
+/* --- toggle buttons (door hinge / swing) --- */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.toggle-row .field-label {
+  color: var(--text-dim);
+  font-size: 13px;
+}

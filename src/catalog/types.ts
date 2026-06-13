@@ -27,6 +27,22 @@ export interface Slot {
   default: MaterialRef;
 }
 
+export type ScaleMode = "none" | "uniform" | "axes";
+
+// Multiplier ranges per axis (x = width, y = height, z = depth). Omit an axis
+// to lock it at 1.
+export interface ScaleAxes {
+  x?: [number, number];
+  y?: [number, number];
+  z?: [number, number];
+}
+
+export interface CatalogScaling {
+  mode: ScaleMode;
+  uniform?: [number, number]; // for "uniform"
+  axes?: ScaleAxes; // for "axes"
+}
+
 export interface CatalogEntry {
   id: string;
   name: string;
@@ -35,7 +51,9 @@ export interface CatalogEntry {
   height: number;
   wallHugger: boolean;
   flat?: boolean; // rug-like: above floors, below other furniture
+  scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
   build: () => Part[]; // 3D parts in local space (y up from floor)
   glyph: (w: number, d: number) => ReactNode; // distinguishing 2D plan marks
 }
+

@@ -16,6 +16,8 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 const isNum = (v: unknown): v is number => typeof v === "number" && isFinite(v);
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isVec2 = (v: unknown): boolean => isObj(v) && isNum(v.x) && isNum(v.y);
+const isVec3 = (v: unknown): boolean =>
+  isObj(v) && isNum(v.x) && isNum(v.y) && isNum(v.z);
 
 function isMaterial(v: unknown): boolean {
   if (!isObj(v)) return false;
@@ -91,6 +93,7 @@ function structuralError(obj: Record<string, unknown>): string | null {
         !isStr(item.catalogId) ||
         !isVec2(item.position) ||
         !isNum(item.rotation) ||
+        !isVec3(item.scale) ||
         !isObj(item.materials)
       )
         return "A furniture item is malformed.";

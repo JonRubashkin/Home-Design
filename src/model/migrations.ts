@@ -28,6 +28,24 @@ const migrations: Migration[] = [
     design.schemaVersion = 3;
     return design;
   },
+  // v3 -> v4: per-item furniture scaling. Every item gains a unit scale.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const furniture = (level.furniture as RawDesign[] | undefined) ?? [];
+      for (const item of furniture) {
+        if (
+          typeof item.scale !== "object" ||
+          item.scale === null ||
+          Array.isArray(item.scale)
+        ) {
+          item.scale = { x: 1, y: 1, z: 1 };
+        }
+      }
+    }
+    design.schemaVersion = 4;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

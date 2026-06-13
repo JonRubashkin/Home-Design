@@ -6,6 +6,7 @@ import {
   isValidFloorPolygon,
   pointInPolygon,
   polygonsOverlap,
+  polygonContains,
 } from "./polygon";
 import type { Vec2 } from "../model/types";
 
@@ -140,5 +141,31 @@ describe("polygonsOverlap", () => {
 
   it("is false for squares that only share an edge", () => {
     expect(polygonsOverlap(sq(0, 0, 2), sq(2, 0, 2))).toBe(false);
+  });
+});
+
+describe("polygonContains", () => {
+  const sq = (x: number, y: number, s: number): { x: number; y: number }[] => [
+    { x, y },
+    { x: x + s, y },
+    { x: x + s, y: y + s },
+    { x, y: y + s },
+  ];
+
+  it("is true when outer fully covers inner", () => {
+    expect(polygonContains(sq(0, 0, 6), sq(1, 1, 2))).toBe(true);
+  });
+
+  it("is true for an identical polygon (redraw same region)", () => {
+    expect(polygonContains(sq(0, 0, 4), sq(0, 0, 4))).toBe(true);
+  });
+
+  it("is false for a partial overlap", () => {
+    expect(polygonContains(sq(0, 0, 4), sq(2, 2, 4))).toBe(false);
+  });
+
+  it("is false when inner is bigger / disjoint", () => {
+    expect(polygonContains(sq(1, 1, 2), sq(0, 0, 6))).toBe(false);
+    expect(polygonContains(sq(0, 0, 2), sq(5, 5, 2))).toBe(false);
   });
 });

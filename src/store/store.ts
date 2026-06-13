@@ -25,7 +25,7 @@ import {
   type Layout,
   type ViewMode,
 } from "../persistence/viewPrefs";
-import { polygonsOverlap } from "../geometry/polygon";
+import { polygonContains } from "../geometry/polygon";
 
 export type Tool =
   | "select"
@@ -447,10 +447,12 @@ export const useStore = create<AppState>((set, get) => {
       set((s) => {
         const design = clone(s.design);
         const level = levelOf(design, s.currentLevelId);
-        // Drop any existing floor the new one covers, so a redraw replaces it
-        // instead of stacking coplanar regions that z-fight in 3D.
+        // Remove only floors the new one FULLY covers (e.g. redrawing the same
+        // region to recolor). Partially-overlapped floors are kept and layered
+        // (the new floor renders on top of the covered area only). z-fighting is
+        // handled by per-floor depth bias in Floors3D.
         level.floors = level.floors.filter(
-          (f) => !polygonsOverlap(f.polygon, polygon),
+          (f) => !polygonContains(polygon, f.polygon),
         );
         level.floors.push(floor);
         return { design, selection: { kind: "floor", id: floor.id } };

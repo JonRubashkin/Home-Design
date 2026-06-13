@@ -216,20 +216,36 @@ describe("floors", () => {
     expect(floors()).toHaveLength(0);
   });
 
-  it("a new overlapping floor replaces the floors it covers", () => {
+  it("a new floor that fully covers an old one replaces it", () => {
     state().addFloor(square, { kind: "solid", color: "#111111" });
-    // a region overlapping the first replaces it (no coplanar stack)
+    // A bigger region that fully contains the first replaces it.
     state().addFloor(
       [
-        { x: 1, y: 1 },
-        { x: 5, y: 1 },
+        { x: -1, y: -1 },
+        { x: 5, y: -1 },
         { x: 5, y: 5 },
-        { x: 1, y: 5 },
+        { x: -1, y: 5 },
       ],
       { kind: "solid", color: "#222222" },
     );
     expect(floors()).toHaveLength(1);
     expect(floors()[0]!.material).toEqual({ kind: "solid", color: "#222222" });
+  });
+
+  it("a partially overlapping floor keeps both (layered, newest on top)", () => {
+    state().addFloor(square, { kind: "solid", color: "#111111" });
+    state().addFloor(
+      [
+        { x: 1, y: 1 },
+        { x: 6, y: 1 },
+        { x: 6, y: 6 },
+        { x: 1, y: 6 },
+      ],
+      { kind: "solid", color: "#222222" },
+    );
+    expect(floors()).toHaveLength(2);
+    // newest is last (renders on top of the covered area)
+    expect(floors()[1]!.material).toEqual({ kind: "solid", color: "#222222" });
   });
 
   it("keeps a disjoint floor when adding another", () => {

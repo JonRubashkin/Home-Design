@@ -12,6 +12,7 @@ import {
   CATALOG_ITEMS,
   getCatalogEntry,
   effectiveDimensions,
+  dimensionToMultiplier,
   type CatalogEntry,
 } from "../catalog";
 import type { Vec3 } from "../model/types";
@@ -193,9 +194,13 @@ function ToggleField<T extends string>({
   );
 }
 
-// A single dimension slider that edits one axis of an item in real-world
-// meters. The slider range is the catalog policy (base dimension × min/max
-// multiplier); dragging it sets the scale multiplier for that axis.
+// A single dimension control that edits one axis of an item in real-world
+// meters: a slider plus an editable number field, kept in sync. Both report
+// the resulting size in meters (not the raw multiplier). The slider range is
+// the catalog policy (base dimension × min/max multiplier). Typed values are
+// converted back to a multiplier and pushed through onChange (which clamps via
+// the store's clampScale); the field then snaps to the clamped result because
+// it is driven by the live `meters` prop whenever it isn't being edited.
 function DimensionSlider({
   label,
   meters,
@@ -209,19 +214,44 @@ function DimensionSlider({
   range: [number, number];
   onChange: (multiplier: number) => void;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const min = base * range[0];
+  const max = base * range[1];
+  const commit = (raw: string) => {
+    const v = Number(raw);
+    if (Number.isFinite(v)) onChange(dimensionToMultiplier(v, base));
+    setDraft(null); // fall back to the (clamped) live value
+  };
   return (
     <label className="field scale-field">
       <span className="field-label">{label}</span>
       <span className="field-input scale-input">
         <input
           type="range"
-          min={base * range[0]}
-          max={base * range[1]}
+          min={min}
+          max={max}
           step={0.01}
           value={meters}
-          onChange={(e) => onChange(Number(e.target.value) / base)}
+          onChange={(e) => onChange(dimensionToMultiplier(Number(e.target.value), base))}
         />
-        <span className="field-unit scale-readout">{meters.toFixed(2)} m</span>
+        <span className="scale-number">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={0.05}
+            value={draft ?? meters.toFixed(2)}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                commit((e.target as HTMLInputElement).value);
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+          />
+          <span className="field-unit">m</span>
+        </span>
       </span>
     </label>
   );

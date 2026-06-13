@@ -421,19 +421,19 @@ describe("furniture", () => {
   });
 
   it("clamps scale to the catalog policy and locks omitted axes", () => {
-    // rug is axes { x:[0.5,2.5], z:[0.5,2.5] }, y locked.
+    // rug is axes { x:[0.3,4], z:[0.3,4] }, y locked.
     state().placeFurniture("rug", { x: 0, y: 0 }, 0);
     const id = furniture()[0]!.id;
     state().setFurnitureScale(id, { x: 9, y: 9, z: 0.1 });
-    expect(furniture()[0]!.scale).toEqual({ x: 2.5, y: 1, z: 0.5 });
+    expect(furniture()[0]!.scale).toEqual({ x: 4, y: 1, z: 0.3 });
   });
 
   it("clamps a uniform item equally on every axis", () => {
     state().placeFurniture("armchair", { x: 0, y: 0 }, 0);
     const id = furniture()[0]!.id;
-    state().setFurnitureScale(id, { x: 1.5, y: 1.5, z: 1.5 });
-    // uniform [0.85,1.2] -> clamps to 1.2 on every axis
-    expect(furniture()[0]!.scale).toEqual({ x: 1.2, y: 1.2, z: 1.2 });
+    state().setFurnitureScale(id, { x: 5, y: 5, z: 5 });
+    // uniform [0.6,1.6] -> clamps to 1.6 on every axis
+    expect(furniture()[0]!.scale).toEqual({ x: 1.6, y: 1.6, z: 1.6 });
   });
 
   it("forces unit scale for fixed-size (none) items", () => {

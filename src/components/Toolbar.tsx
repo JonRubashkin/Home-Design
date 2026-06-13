@@ -91,6 +91,19 @@ const PaintIcon = (
   </svg>
 );
 
+const FurnitureIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <path
+      d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+    <rect x="3" y="11" width="18" height="6" rx="1.5" fill="currentColor" />
+    <path d="M5 17v2M19 17v2" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
 const TOOLS: ToolDef[] = [
   { tool: "select", label: "Select", shortcut: "V", icon: SelectIcon },
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
@@ -98,6 +111,7 @@ const TOOLS: ToolDef[] = [
   { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
   { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
   { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
+  { tool: "furniture", label: "Furniture", shortcut: "U", icon: FurnitureIcon },
 ];
 
 export function Toolbar() {

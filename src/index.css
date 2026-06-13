@@ -714,3 +714,107 @@ button:focus-visible,
   color: var(--text-dim);
   font-size: 13px;
 }
+
+/* --- furniture (plan symbols) --- */
+.furn-outline {
+  stroke: #39404d;
+  stroke-width: 1.2;
+  fill-opacity: 0.5;
+}
+.furn-glyph line,
+.furn-glyph rect,
+.furn-glyph circle,
+.furn-glyph path {
+  stroke: #2c3340;
+  stroke-width: 1;
+  fill: none;
+}
+.furn.selected .furn-outline {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.furn.selected .furn-glyph line,
+.furn.selected .furn-glyph rect,
+.furn.selected .furn-glyph circle,
+.furn.selected .furn-glyph path {
+  stroke: var(--accent-strong);
+}
+.furn-ghost {
+  opacity: 0.6;
+}
+.furn-ghost .furn-outline {
+  stroke: #16a34a;
+  stroke-width: 1.5;
+}
+
+/* --- furniture catalog palette --- */
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.palette-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.palette-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: var(--chrome-bg-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+.palette-item:hover {
+  border-color: var(--accent);
+}
+.palette-item.active {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.16);
+}
+.palette-item .furn-thumb {
+  width: 46px;
+  height: 46px;
+  background: var(--plan-bg);
+  border-radius: 5px;
+}
+.palette-item .furn-thumb .furn-outline {
+  stroke: #39404d;
+  stroke-width: 1;
+  fill-opacity: 0.6;
+}
+.palette-item .furn-thumb .furn-glyph line,
+.palette-item .furn-thumb .furn-glyph rect,
+.palette-item .furn-thumb .furn-glyph circle,
+.palette-item .furn-thumb .furn-glyph path {
+  stroke: #2c3340;
+  stroke-width: 1;
+  fill: none;
+}
+.palette-name {
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--text-dim);
+}
+
+/* --- furniture properties extras --- */
+.chip-wrap {
+  flex-wrap: wrap;
+}
+.reset-link {
+  display: block;
+  margin: 0 0 12px;
+}

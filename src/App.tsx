@@ -3,6 +3,7 @@ import { Toolbar } from "./components/Toolbar";
 import { PlanEditor } from "./components/PlanEditor";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Preview3D } from "./components/preview/Preview3D";
+import { CatalogQA } from "./components/preview/CatalogQA";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { useAutosave } from "./hooks/useAutosave";
 import { useStore } from "./store/store";
@@ -17,6 +18,11 @@ export default function App() {
   // The 2D editing chrome (toolbar + properties) is only useful when the plan
   // is visible.
   const showEditingChrome = showPlan;
+
+  // Dev-only catalog QA view, opened with #catalog in the URL.
+  if (typeof window !== "undefined" && window.location.hash === "#catalog") {
+    return <CatalogQA />;
+  }
 
   return (
     <div className="app">

@@ -56,6 +56,10 @@ export function useGlobalShortcuts(): void {
         case "P":
           s.setActiveTool("paint");
           break;
+        case "u":
+        case "U":
+          s.setActiveTool("furniture");
+          break;
         case "Delete":
         case "Backspace": {
           const sel = s.selection;
@@ -64,6 +68,7 @@ export function useGlobalShortcuts(): void {
             if (sel.kind === "wall") s.deleteWall(sel.id);
             else if (sel.kind === "window") s.deleteWindow(sel.wallId, sel.id);
             else if (sel.kind === "door") s.deleteDoor(sel.wallId, sel.id);
+            else if (sel.kind === "furniture") s.deleteFurniture(sel.id);
             else s.deleteFloor(sel.id);
           }
           break;

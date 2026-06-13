@@ -309,3 +309,64 @@ describe("doors", () => {
     expect(state().selection).toBeNull();
   });
 });
+
+const furniture = () => selectCurrentLevel(useStore.getState()).furniture;
+
+describe("furniture", () => {
+  it("places, selects, and undoes an item", () => {
+    state().placeFurniture("sofa-3seat", { x: 2, y: 3 }, 0);
+    expect(furniture()).toHaveLength(1);
+    expect(state().selection).toEqual({
+      kind: "furniture",
+      id: furniture()[0]!.id,
+    });
+    state().undo();
+    expect(furniture()).toHaveLength(0);
+  });
+
+  it("moves as a single drag step and rotates in snapped 15° steps", () => {
+    state().placeFurniture("armchair", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    const pastBefore = state().past.length;
+    state().beginDrag();
+    state().moveFurniture(id, { x: 1, y: 0 });
+    state().moveFurniture(id, { x: 1, y: 1 });
+    state().endDrag();
+    expect(state().past.length).toBe(pastBefore + 1);
+    expect(furniture()[0]!.position).toEqual({ x: 1, y: 1 });
+
+    state().rotateFurniture(id, 15);
+    expect(furniture()[0]!.rotation).toBe(15);
+    state().rotateFurniture(id, -30);
+    expect(furniture()[0]!.rotation).toBe(345);
+  });
+
+  it("sets and resets per-slot materials (material edits coalesce)", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    const pastBefore = state().past.length;
+    state().setFurnitureMaterial(id, "legs", {
+      kind: "solid",
+      color: "#111111",
+    });
+    state().setFurnitureMaterial(id, "legs", {
+      kind: "solid",
+      color: "#222222",
+    });
+    expect(state().past.length).toBe(pastBefore + 1); // coalesced
+    expect(furniture()[0]!.materials.legs).toEqual({
+      kind: "solid",
+      color: "#222222",
+    });
+    state().resetFurnitureMaterials(id);
+    expect(furniture()[0]!.materials).toEqual({});
+  });
+
+  it("deletes an item and clears its selection", () => {
+    state().placeFurniture("rug", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    state().deleteFurniture(id);
+    expect(furniture()).toHaveLength(0);
+    expect(state().selection).toBeNull();
+  });
+});

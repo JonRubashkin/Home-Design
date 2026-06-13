@@ -29,6 +29,9 @@ import {
 } from "../geometry/windows";
 import { validateDoor, doorSymbol } from "../geometry/doors";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
+import { pointInFootprint, wallHuggerSnap } from "../geometry/furniture";
+import { getCatalogEntry, primarySlot } from "../catalog";
+import { FurnitureSymbolShape } from "./FurnitureSymbol";
 import { materialKey, materialDomId } from "../materials/key";
 import { patternDataUrl } from "../materials/textures";
 import { PATTERN_TILE_METERS } from "../materials/patterns";
@@ -83,6 +86,15 @@ type DragState =
       wallId: string;
       doorId: string;
       startScreen: Vec2;
+      started: boolean;
+    }
+  | {
+      kind: "furniture";
+      pointerId: number;
+      itemId: string;
+      startScreen: Vec2;
+      startWorld: Vec2;
+      basePos: Vec2;
       started: boolean;
     };
 
@@ -159,6 +171,14 @@ export function PlanEditor() {
   // Floor drawing.
   const [floorPts, setFloorPts] = useState<Vec2[]>([]);
   const [floorCursor, setFloorCursor] = useState<Vec2 | null>(null);
+  // Furniture placement ghost.
+  const placingCatalogId = useStore((s) => s.placingCatalogId);
+  const [ghostRotation, setGhostRotation] = useState(0);
+  const [furnGhost, setFurnGhost] = useState<{
+    pos: Vec2;
+    rotation: number;
+  } | null>(null);
+  const lastWorldRef = useRef<Vec2>({ x: 0, y: 0 });
 
   const dragRef = useRef<DragState>({ kind: "none" });
   const shiftRef = useRef(false);
@@ -167,6 +187,36 @@ export function PlanEditor() {
 
   const walls = level.walls;
   const floors = level.floors;
+  const furniture = level.furniture;
+
+  const furnitureUnderCursor = (world: Vec2) => {
+    for (let i = furniture.length - 1; i >= 0; i--) {
+      const item = furniture[i]!;
+      const entry = getCatalogEntry(item.catalogId);
+      if (!entry) continue;
+      if (
+        pointInFootprint(world, item.position, item.rotation, entry.footprint)
+      )
+        return item;
+    }
+    return undefined;
+  };
+
+  // Resolve where the placing ghost / a dragged item should sit: grid-snapped,
+  // then wall-hugger soft-snap (flush + aligned) when applicable.
+  const resolveFurniturePlacement = (
+    catalogId: string,
+    raw: Vec2,
+    rotation: number,
+  ): { pos: Vec2; rotation: number } => {
+    const entry = getCatalogEntry(catalogId);
+    const pos = snapToGrid(raw);
+    if (entry?.wallHugger) {
+      const snap = wallHuggerSnap(pos, rotation, entry.footprint, walls);
+      if (snap.snapped) return { pos: snap.position, rotation: snap.rotation };
+    }
+    return { pos, rotation };
+  };
   const selectedWall =
     selection?.kind === "wall"
       ? walls.find((w) => w.id === selection.id)
@@ -308,7 +358,11 @@ export function PlanEditor() {
     setDoorGhost(null);
     setFloorPts([]);
     setFloorCursor(null);
+    setFurnGhost(null);
+    setGhostRotation(0);
     useStore.getState().setSideHighlight(null);
+    if (activeTool !== "furniture")
+      useStore.getState().setPlacingCatalogId(null);
   }, [activeTool]);
 
   const closeFloor = () => {
@@ -341,6 +395,8 @@ export function PlanEditor() {
         setPreview(null);
         setFloorPts([]);
         setFloorCursor(null);
+        setFurnGhost(null);
+        useStore.getState().setPlacingCatalogId(null);
       } else if (e.key === "Enter") {
         setChainStart(null);
         if (activeTool === "floor") closeFloor();
@@ -351,6 +407,23 @@ export function PlanEditor() {
       ) {
         e.preventDefault();
         setFloorPts((pts) => pts.slice(0, -1));
+      } else if (e.key === "r" || e.key === "R") {
+        const delta = e.shiftKey ? -15 : 15;
+        const sel = useStore.getState().selection;
+        if (activeTool === "furniture" && placingCatalogId) {
+          setGhostRotation((r) => {
+            const next = (((r + delta) % 360) + 360) % 360;
+            const placed = resolveFurniturePlacement(
+              placingCatalogId,
+              lastWorldRef.current,
+              next,
+            );
+            setFurnGhost(placed);
+            return next;
+          });
+        } else if (sel?.kind === "furniture") {
+          useStore.getState().rotateFurniture(sel.id, delta);
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -435,7 +508,31 @@ export function PlanEditor() {
       return;
     }
 
+    if (activeTool === "furniture") {
+      if (placingCatalogId) {
+        const placed = resolveFurniturePlacement(
+          placingCatalogId,
+          world,
+          ghostRotation,
+        );
+        store.placeFurniture(placingCatalogId, placed.pos, placed.rotation);
+        // tool stays active for repeat placement
+      }
+      return;
+    }
+
     if (activeTool === "paint") {
+      const item = furnitureUnderCursor(world);
+      if (item) {
+        const entry = getCatalogEntry(item.catalogId);
+        if (entry)
+          store.setFurnitureMaterial(
+            item.id,
+            primarySlot(entry),
+            currentMaterial,
+          );
+        return;
+      }
       const wall = wallUnderCursor(world);
       if (wall)
         store.paintWallSide(wall.id, sideOf(wall, world), currentMaterial);
@@ -524,6 +621,22 @@ export function PlanEditor() {
       return;
     }
 
+    const furnHit = furnitureUnderCursor(world);
+    if (furnHit) {
+      store.setSelection({ kind: "furniture", id: furnHit.id });
+      dragRef.current = {
+        kind: "furniture",
+        pointerId: e.pointerId,
+        itemId: furnHit.id,
+        startScreen: screen,
+        startWorld: world,
+        basePos: { ...furnHit.position },
+        started: false,
+      };
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     const hitWall = wallUnderCursor(world);
     if (hitWall) {
       store.setSelection({ kind: "wall", id: hitWall.id });
@@ -571,7 +684,12 @@ export function PlanEditor() {
 
     if (d.kind === "none") {
       const world = clientToWorld(e.clientX, e.clientY);
-      if (activeTool === "wall") {
+      lastWorldRef.current = world;
+      if (activeTool === "furniture" && placingCatalogId) {
+        setFurnGhost(
+          resolveFurniturePlacement(placingCatalogId, world, ghostRotation),
+        );
+      } else if (activeTool === "wall") {
         setPreview(resolveDrawPoint(world, chainStart));
       } else if (activeTool === "floor") {
         setFloorCursor(resolveDrawPoint(world, null, undefined, floorPts).pt);
@@ -611,7 +729,8 @@ export function PlanEditor() {
       d.kind === "body" ||
       d.kind === "endpoint" ||
       d.kind === "window" ||
-      d.kind === "door"
+      d.kind === "door" ||
+      d.kind === "furniture"
     ) {
       const screen = clientToScreen(e.clientX, e.clientY);
       if (!d.started && distance(screen, d.startScreen) < DRAG_THRESHOLD_PX)
@@ -621,7 +740,18 @@ export function PlanEditor() {
         d.started = true;
       }
       const world = clientToWorld(e.clientX, e.clientY);
-      if (d.kind === "body") {
+      if (d.kind === "furniture") {
+        const item = furniture.find((f) => f.id === d.itemId);
+        if (item) {
+          const raw = add(d.basePos, sub(world, d.startWorld));
+          const placed = resolveFurniturePlacement(
+            item.catalogId,
+            raw,
+            item.rotation,
+          );
+          store.moveFurniture(d.itemId, placed.pos, placed.rotation);
+        }
+      } else if (d.kind === "body") {
         const delta = snapToGrid({
           x: world.x - d.startWorld.x,
           y: world.y - d.startWorld.y,
@@ -671,7 +801,8 @@ export function PlanEditor() {
       (d.kind === "body" ||
         d.kind === "endpoint" ||
         d.kind === "window" ||
-        d.kind === "door") &&
+        d.kind === "door" ||
+        d.kind === "furniture") &&
       d.started
     ) {
       useStore.getState().endDrag();
@@ -759,6 +890,29 @@ export function PlanEditor() {
             />
           ))}
 
+          {/* Furniture: rugs (flat) first, then everything else, above floors. */}
+          {[...furniture]
+            .map((item) => ({ item, entry: getCatalogEntry(item.catalogId) }))
+            .filter((x) => x.entry)
+            .sort(
+              (a, b) =>
+                Number(b.entry!.flat ?? false) - Number(a.entry!.flat ?? false),
+            )
+            .map(({ item, entry }) => (
+              <FurnitureSymbolShape
+                key={item.id}
+                entry={entry!}
+                position={item.position}
+                rotation={item.rotation}
+                materials={item.materials}
+                className={`furn${
+                  selection?.kind === "furniture" && selection.id === item.id
+                    ? " selected"
+                    : ""
+                }`}
+              />
+            ))}
+
           {/* Walls, broken at window openings. */}
           {walls.map((w) => {
             const isSel = selection?.kind === "wall" && selection.id === w.id;
@@ -832,6 +986,23 @@ export function PlanEditor() {
             />
           )}
 
+          {/* Furniture placement ghost. */}
+          {activeTool === "furniture" &&
+            placingCatalogId &&
+            furnGhost &&
+            (() => {
+              const entry = getCatalogEntry(placingCatalogId);
+              return entry ? (
+                <FurnitureSymbolShape
+                  entry={entry}
+                  position={furnGhost.pos}
+                  rotation={furnGhost.rotation}
+                  materials={{}}
+                  className="furn furn-ghost"
+                />
+              ) : null;
+            })()}
+
           {/* Wall drawing preview. */}
           {activeTool === "wall" && chainStart && preview && (
             <line
@@ -877,8 +1048,10 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
       return "Hover a wall and click to place a window · invalid spots show red";
     case "door":
       return "Hover a wall and click to place a door · edit hinge & swing in the panel";
+    case "furniture":
+      return "Pick an item from the palette · click to place · R / Shift+R rotates · Esc cancels";
     case "paint":
-      return "Hover a wall to highlight the near side · click to paint it";
+      return "Hover a wall or furniture to paint · click to apply the material";
     case "floor":
       return floorCount
         ? "Click to add points · click the first point or Enter to close · Backspace removes the last · Esc cancels"

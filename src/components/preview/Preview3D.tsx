@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Walls3D } from "./Walls3D";
 import { Floors3D } from "./Floors3D";
+import { Furniture3D } from "./Furniture3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
 
@@ -50,6 +51,7 @@ export function Preview3D() {
         <Ground />
         <Floors3D />
         <Walls3D />
+        <Furniture3D />
         <CameraController fitNonce={fitNonce} />
         <OrbitControls
           makeDefault

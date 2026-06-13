@@ -25,6 +25,7 @@ import {
   type Layout,
   type ViewMode,
 } from "../persistence/viewPrefs";
+import { polygonsOverlap } from "../geometry/polygon";
 
 export type Tool =
   | "select"
@@ -445,7 +446,13 @@ export const useStore = create<AppState>((set, get) => {
       const floor = createFloor(polygon, material);
       set((s) => {
         const design = clone(s.design);
-        levelOf(design, s.currentLevelId).floors.push(floor);
+        const level = levelOf(design, s.currentLevelId);
+        // Drop any existing floor the new one covers, so a redraw replaces it
+        // instead of stacking coplanar regions that z-fight in 3D.
+        level.floors = level.floors.filter(
+          (f) => !polygonsOverlap(f.polygon, polygon),
+        );
+        level.floors.push(floor);
         return { design, selection: { kind: "floor", id: floor.id } };
       });
     },

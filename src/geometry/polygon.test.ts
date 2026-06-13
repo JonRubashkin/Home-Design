@@ -5,6 +5,7 @@ import {
   isPolygonSelfIntersecting,
   isValidFloorPolygon,
   pointInPolygon,
+  polygonsOverlap,
 } from "./polygon";
 import type { Vec2 } from "../model/types";
 
@@ -113,5 +114,31 @@ describe("pointInPolygon", () => {
   });
   it("is false for an exterior point", () => {
     expect(pointInPolygon({ x: 6, y: 2 }, square)).toBe(false);
+  });
+});
+
+describe("polygonsOverlap", () => {
+  const sq = (x: number, y: number, s: number): Vec2[] => [
+    { x, y },
+    { x: x + s, y },
+    { x: x + s, y: y + s },
+    { x, y: y + s },
+  ];
+
+  it("is true for partially overlapping squares", () => {
+    expect(polygonsOverlap(sq(0, 0, 4), sq(2, 2, 4))).toBe(true);
+  });
+
+  it("is true when one polygon fully contains the other", () => {
+    expect(polygonsOverlap(sq(0, 0, 6), sq(2, 2, 1))).toBe(true);
+    expect(polygonsOverlap(sq(2, 2, 1), sq(0, 0, 6))).toBe(true);
+  });
+
+  it("is false for disjoint squares", () => {
+    expect(polygonsOverlap(sq(0, 0, 2), sq(5, 5, 2))).toBe(false);
+  });
+
+  it("is false for squares that only share an edge", () => {
+    expect(polygonsOverlap(sq(0, 0, 2), sq(2, 0, 2))).toBe(false);
   });
 });

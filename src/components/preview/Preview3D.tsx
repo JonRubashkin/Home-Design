@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Walls3D } from "./Walls3D";
@@ -6,6 +7,10 @@ import { Floors3D } from "./Floors3D";
 import { Furniture3D } from "./Furniture3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
+
+// Guard the sRGB pipeline regardless of R3F/three version quirks: hex colors are
+// interpreted as sRGB and converted to linear for lighting.
+THREE.ColorManagement.enabled = true;
 
 function Ground() {
   return (
@@ -37,7 +42,17 @@ export function Preview3D() {
   return (
     <div className="preview">
       <ViewModeBar onFit={() => setFitNonce((n) => n + 1)} />
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+      <Canvas
+        flat
+        dpr={[1, 2]}
+        gl={{ antialias: true }}
+        onCreated={({ gl }) => {
+          // `flat` disables R3F's default ACES tone mapping so flat material
+          // colors render colorimetrically and match their swatch + the 2D plan
+          // fill. Keep sRGB output explicit (R3F sets the removed `outputEncoding`).
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+        }}
+      >
         <color attach="background" args={["#0f1117"]} />
         <OrthographicCamera
           makeDefault
@@ -46,8 +61,10 @@ export function Preview3D() {
           near={0.1}
           far={5000}
         />
-        <ambientLight intensity={0.75} />
-        <directionalLight position={[18, 30, 12]} intensity={0.9} />
+        {/* Lighting kept near unit irradiance on up-facing surfaces (no tone
+            mapping) so albedos read at their swatch value. */}
+        <ambientLight intensity={0.7} />
+        <directionalLight position={[18, 30, 12]} intensity={0.45} />
         <Ground />
         <Floors3D />
         <Walls3D />

@@ -73,3 +73,43 @@ export function pointInPolygon(p: Vec2, poly: Vec2[]): boolean {
   }
   return inside;
 }
+
+function vertexCentroid(poly: Vec2[]): Vec2 {
+  let x = 0;
+  let y = 0;
+  for (const p of poly) {
+    x += p.x;
+    y += p.y;
+  }
+  return { x: x / poly.length, y: y / poly.length };
+}
+
+// Does polygon `poly` have a vertex whose interior side lies inside `other`?
+// Each vertex is nudged slightly toward its own centroid so a vertex merely
+// shared on a boundary isn't counted (that's adjacency, not overlap).
+function hasInteriorVertexInside(poly: Vec2[], other: Vec2[]): boolean {
+  const c = vertexCentroid(poly);
+  for (const v of poly) {
+    const p = { x: v.x + (c.x - v.x) * 1e-3, y: v.y + (c.y - v.y) * 1e-3 };
+    if (pointInPolygon(p, other)) return true;
+  }
+  return false;
+}
+
+// Do two polygons share any interior area? Edge-only touching (shared boundary,
+// no overlap) does not count. Used so a newly drawn floor replaces the floors it
+// covers instead of stacking coplanar meshes that z-fight in 3D.
+export function polygonsOverlap(a: Vec2[], b: Vec2[]): boolean {
+  if (hasInteriorVertexInside(a, b) || hasInteriorVertexInside(b, a))
+    return true;
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i]!;
+    const a2 = a[(i + 1) % a.length]!;
+    for (let j = 0; j < b.length; j++) {
+      const b1 = b[j]!;
+      const b2 = b[(j + 1) % b.length]!;
+      if (segmentsProperlyIntersect(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}

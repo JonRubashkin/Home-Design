@@ -216,6 +216,35 @@ describe("floors", () => {
     expect(floors()).toHaveLength(0);
   });
 
+  it("a new overlapping floor replaces the floors it covers", () => {
+    state().addFloor(square, { kind: "solid", color: "#111111" });
+    // a region overlapping the first replaces it (no coplanar stack)
+    state().addFloor(
+      [
+        { x: 1, y: 1 },
+        { x: 5, y: 1 },
+        { x: 5, y: 5 },
+        { x: 1, y: 5 },
+      ],
+      { kind: "solid", color: "#222222" },
+    );
+    expect(floors()).toHaveLength(1);
+    expect(floors()[0]!.material).toEqual({ kind: "solid", color: "#222222" });
+  });
+
+  it("keeps a disjoint floor when adding another", () => {
+    state().addFloor(square, { kind: "solid", color: "#111111" });
+    state().addFloor(
+      [
+        { x: 10, y: 10 },
+        { x: 12, y: 10 },
+        { x: 12, y: 12 },
+      ],
+      { kind: "solid", color: "#222222" },
+    );
+    expect(floors()).toHaveLength(2);
+  });
+
   it("updates a floor material and deletes it", () => {
     state().addFloor(square, { kind: "solid", color: "#abcdef" });
     const id = floors()[0]!.id;

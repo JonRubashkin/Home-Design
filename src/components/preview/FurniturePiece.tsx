@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 import type { FurnitureItem, MaterialRef } from "../../model/types";
 import { getCatalogEntry, type CatalogEntry, type Part } from "../../catalog";
@@ -12,12 +13,14 @@ function PartMesh({
   part,
   material,
   selected,
+  hovered,
 }: {
   part: Part;
   material: MaterialRef;
   selected: boolean;
+  hovered: boolean;
 }) {
-  const mat = useThreeMaterial(material, {}, { selected });
+  const mat = useThreeMaterial(material, {}, { selected, hovered });
   const p = part.primitive;
   const common = {
     position: part.position,
@@ -54,7 +57,11 @@ export function FurniturePiece({
   elevation,
   baseLift,
   selected,
+  hovered = false,
   entryOverride,
+  onPointerOver,
+  onPointerOut,
+  onClick,
 }: {
   item: FurnitureItem;
   elevation: number;
@@ -63,7 +70,12 @@ export function FurniturePiece({
   // back to the plain per-layer lift.
   baseLift?: number;
   selected: boolean;
+  hovered?: boolean;
   entryOverride?: CatalogEntry;
+  // Picking handlers (3D selection). Omitted by the catalog QA view.
+  onPointerOver?: (e: ThreeEvent<PointerEvent>) => void;
+  onPointerOut?: (e: ThreeEvent<PointerEvent>) => void;
+  onClick?: (e: ThreeEvent<MouseEvent>) => void;
 }) {
   const entry = entryOverride ?? getCatalogEntry(item.catalogId);
   const parts = useMemo(() => entry?.build() ?? [], [entry]);
@@ -80,9 +92,13 @@ export function FurniturePiece({
 
   return (
     <group
+      userData={{ itemId: item.id }}
       position={[wx, y, wz]}
       rotation={[0, -item.rotation * DEG, 0]}
       scale={[item.scale.x, item.scale.y, item.scale.z]}
+      onPointerOver={onPointerOver}
+      onPointerOut={onPointerOut}
+      onClick={onClick}
     >
       {parts.map((part, i) => (
         <PartMesh
@@ -90,6 +106,7 @@ export function FurniturePiece({
           part={part}
           material={resolve(part.slot)}
           selected={selected}
+          hovered={hovered}
         />
       ))}
     </group>

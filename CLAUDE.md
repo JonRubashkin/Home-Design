@@ -218,8 +218,16 @@ in code under `src/catalog/`:
   3. `stubs` — every wall renders at 10% of its height. Windows are simply not
      rendered in this mode (they sit above the stub height); that is expected
      behavior, do not special-case them.
-- The preview is **read-only** in Phase 1: no clicking/editing in 3D. All editing
-  happens in the 2D plan.
+- The preview is **read-only except for furniture selection.** Phase 3a adds 3D
+  picking: hovering a furniture item highlights it (subtle emissive echo of the
+  selection tint) with a pointer cursor, and a clean click (not an orbit drag)
+  selects it through the SAME `selection` state and store action the plan uses —
+  highlighting in both views and the properties panel. Clicking empty space
+  deselects. **Only furniture is pickable** (walls/doors/windows/floors are not);
+  raycasting hits the real furniture meshes and resolves up to the owning item id
+  via `userData.itemId` (`resolveItemId` in `preview/picking.ts`, tested). There
+  is still **no moving/rotating/scaling/editing in 3D** — all editing stays in the
+  2D plan and properties panel.
 - **Stacking offsets.** Surfaces meant to read as separate must never share an
   exact world Y or they z-fight as the camera orbits. Ground plane < floor
   regions < flat items (rugs) < regular furniture each sit on their own layer,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
@@ -8,6 +8,8 @@ import { Furniture3D } from "./Furniture3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
 import { GROUND_Y } from "./stacking";
+import { isClick } from "./picking";
+import { useStore } from "../../store/store";
 
 // Guard the sRGB pipeline regardless of R3F/three version quirks: hex colors are
 // interpreted as sRGB and converted to linear for lighting.
@@ -39,14 +41,29 @@ function Ground() {
 
 export function Preview3D() {
   const [fitNonce, setFitNonce] = useState(0);
+  const setSelection = useStore((s) => s.setSelection);
+  // Pointer-down position (CSS px) so picking can tell a click from an orbit
+  // drag; shared with Furniture3D for select, used here for deselect-on-empty.
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
 
   return (
-    <div className="preview">
+    <div
+      className="preview"
+      onPointerDownCapture={(e) => {
+        pointerDownRef.current = { x: e.clientX, y: e.clientY };
+      }}
+    >
       <ViewModeBar onFit={() => setFitNonce((n) => n + 1)} />
       <Canvas
         flat
         dpr={[1, 2]}
         gl={{ antialias: true }}
+        onPointerMissed={(e) => {
+          // A clean click on empty space / non-furniture clears the selection;
+          // a drag that orbits the camera must not.
+          if (isClick(pointerDownRef.current, { x: e.clientX, y: e.clientY }))
+            setSelection(null);
+        }}
         onCreated={({ gl }) => {
           // `flat` disables R3F's default ACES tone mapping so flat material
           // colors render colorimetrically and match their swatch + the 2D plan
@@ -69,7 +86,7 @@ export function Preview3D() {
         <Ground />
         <Floors3D />
         <Walls3D />
-        <Furniture3D />
+        <Furniture3D pointerDownRef={pointerDownRef} />
         <CameraController fitNonce={fitNonce} />
         <OrbitControls
           makeDefault

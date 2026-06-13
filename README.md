@@ -58,6 +58,12 @@ npm run format   # Prettier
   - **Stubs** — all walls render at 10% height.
 - **Selection echo** — the wall, window, or floor selected in the plan is
   highlighted in 3D.
+- **3D furniture picking** — hover a furniture item in the 3D view to highlight it
+  (pointer cursor); click to select it, which highlights it in the plan and fills
+  the properties panel — the same single selection as clicking it in the plan.
+  Clicking empty space deselects, and an orbit drag never changes the selection.
+  Only furniture is pickable; selection is the only thing you can do in 3D
+  (moving/rotating/editing still happens in the 2D plan).
 - **Stacking offsets** — the ground plane, floor regions, flat items (rugs), and
   regular furniture each sit on their own tiny vertical layer (named constants in
   `preview/stacking.ts`) so overlapping/stacked items never share an exact height

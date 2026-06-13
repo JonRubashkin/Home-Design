@@ -50,8 +50,8 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 2;         // v1 = Phase 1; v2 = Phase 2a (doors). Migrations in
-                            // src/model/migrations.ts upgrade older saved designs.
+  schemaVersion: 3;         // v1 = Phase 1; v2 = doors; v3 = furniture. Migrations
+                            // in src/model/migrations.ts upgrade older saved designs.
   name: string;
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
@@ -66,6 +66,15 @@ interface Level {
   wallHeight: number;       // default height for new walls on this level (2.4)
   walls: Wall[];
   floors: FloorRegion[];
+  furniture: FurnitureItem[]; // Phase 2b
+}
+
+interface FurnitureItem {   // Phase 2b. References a catalog id — never geometry.
+  id: string;
+  catalogId: string;        // e.g. "sofa-3seat"
+  position: Vec2;           // plan coords of footprint CENTER
+  rotation: number;         // degrees; UI rotates in 15° steps
+  materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
 interface Wall {
@@ -117,6 +126,30 @@ type PatternId = "checker" | "planks" | "tile" | "stripes";
 
 Pattern textures are generated procedurally at runtime onto small offscreen
 canvases and used as repeating Three.js textures. No image assets.
+
+## Furniture catalog (Phase 2b)
+
+Furniture instances reference a **catalog id**, never geometry. The catalog lives
+in code under `src/catalog/`:
+
+- Each `CatalogEntry` declares `id`, `name`, `category`
+  (`living | bedroom | kitchen | bathroom`), `footprint` (width × depth, meters),
+  `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
+  furniture), ordered named material `slots` (slot[0] is the primary slot the
+  Paint tool recolors), a pure `build()` that returns `Part[]` (composed from
+  shared `box` / `roundedBox` / `cylinder` primitives in local space, y up from
+  the floor, +z = front), and a `glyph(w,d)` that returns the distinguishing 2D
+  plan marks.
+- Builders are pure data (no hooks). The 3D renderer maps each `Part` to a mesh
+  whose material comes from `item.materials[slot] ?? entry.slots[..].default`,
+  **always through the shared `materialRefToThreeMaterial` helper** — so patterns
+  work on furniture for free. Plan symbols reuse the same footprint + glyph.
+- Local→world: a `FurnitureItem` renders as a group at `planToWorld(position)`,
+  rotated about world Y by `-rotation` (plan rotation is SVG-clockwise). Footprint
+  hit-testing and wall-hugger snapping are pure functions in
+  `src/geometry/furniture.ts` (tested).
+- Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
+  `#catalog` in the URL opens a dev-only 3D QA line-up of every item.
 
 ## State, undo, persistence
 

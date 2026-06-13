@@ -3,6 +3,7 @@ import type {
   Design,
   DoorOpening,
   FloorRegion,
+  FurnitureItem,
   Level,
   MaterialRef,
   Vec2,
@@ -13,6 +14,7 @@ import {
   createDesign,
   createDoor,
   createFloor,
+  createFurniture,
   createWall,
   createWindow,
 } from "../model/defaults";
@@ -24,13 +26,21 @@ import {
   type ViewMode,
 } from "../persistence/viewPrefs";
 
-export type Tool = "select" | "wall" | "window" | "door" | "floor" | "paint";
+export type Tool =
+  | "select"
+  | "wall"
+  | "window"
+  | "door"
+  | "floor"
+  | "paint"
+  | "furniture";
 export type WallSide = "A" | "B";
 export type Selection =
   | { kind: "wall"; id: string }
   | { kind: "window"; wallId: string; id: string }
   | { kind: "door"; wallId: string; id: string }
   | { kind: "floor"; id: string }
+  | { kind: "furniture"; id: string }
   | null;
 
 const HISTORY_CAP = 100;
@@ -84,6 +94,14 @@ function findFloor(
   return levelOf(design, levelId).floors.find((f) => f.id === floorId);
 }
 
+function findFurniture(
+  design: Design,
+  levelId: string,
+  itemId: string,
+): FurnitureItem | undefined {
+  return levelOf(design, levelId).furniture.find((f) => f.id === itemId);
+}
+
 // Does a selection still point at something that exists?
 function selectionExists(
   design: Design,
@@ -96,6 +114,7 @@ function selectionExists(
     return !!findWindow(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "door")
     return !!findDoor(design, levelId, sel.wallId, sel.id);
+  if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
 }
 
@@ -108,6 +127,9 @@ interface AppState {
   // Transient hover hint: which wall side to spotlight in the plan (paint tool
   // hover and the properties-panel side chips). Not persisted, not in history.
   sideHighlight: { wallId: string; side: WallSide } | null;
+  // The catalog item currently being placed by the Furniture tool (a ghost
+  // follows the cursor). Transient UI state.
+  placingCatalogId: string | null;
 
   // 3D view preferences (persisted to localStorage, never in the Design).
   viewMode: ViewMode;
@@ -134,6 +156,7 @@ interface AppState {
   setSideHighlight: (
     highlight: { wallId: string; side: WallSide } | null,
   ) => void;
+  setPlacingCatalogId: (catalogId: string | null) => void;
   setViewMode: (mode: ViewMode) => void;
   setCutawayStyle: (style: CutawayStyle) => void;
   setLayout: (layout: Layout) => void;
@@ -163,6 +186,19 @@ interface AppState {
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
   setFloorMaterial: (id: string, material: MaterialRef) => void;
   deleteFloor: (id: string) => void;
+  placeFurniture: (catalogId: string, position: Vec2, rotation: number) => void;
+  updateFurniture: (
+    id: string,
+    patch: Partial<Omit<FurnitureItem, "id" | "catalogId">>,
+  ) => void;
+  rotateFurniture: (id: string, deltaDeg: number) => void;
+  setFurnitureMaterial: (
+    id: string,
+    slot: string,
+    material: MaterialRef,
+  ) => void;
+  resetFurnitureMaterials: (id: string) => void;
+  deleteFurniture: (id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
 
@@ -172,6 +208,7 @@ interface AppState {
   translateWall: (id: string, start: Vec2, end: Vec2) => void;
   moveWindow: (wallId: string, id: string, t: number) => void;
   moveDoor: (wallId: string, id: string, t: number) => void;
+  moveFurniture: (id: string, position: Vec2, rotation?: number) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -227,6 +264,7 @@ export const useStore = create<AppState>((set, get) => {
     activeTool: "wall",
     selection: null,
     sideHighlight: null,
+    placingCatalogId: null,
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
@@ -240,6 +278,7 @@ export const useStore = create<AppState>((set, get) => {
     setActiveTool: (tool) => set({ activeTool: tool }),
     setSelection: (selection) => set({ selection }),
     setSideHighlight: (sideHighlight) => set({ sideHighlight }),
+    setPlacingCatalogId: (placingCatalogId) => set({ placingCatalogId }),
     setViewMode: (viewMode) => {
       set({ viewMode });
       persistViewPrefs();
@@ -448,6 +487,73 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    placeFurniture: (catalogId, position, rotation) => {
+      pushHistory();
+      const item = createFurniture(catalogId, position, { rotation });
+      set((s) => {
+        const design = clone(s.design);
+        levelOf(design, s.currentLevelId).furniture.push(item);
+        return { design, selection: { kind: "furniture", id: item.id } };
+      });
+    },
+
+    updateFurniture: (id, patch) => {
+      if (!findFurniture(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const item = findFurniture(design, s.currentLevelId, id);
+        if (item) Object.assign(item, patch);
+        return { design };
+      });
+    },
+
+    rotateFurniture: (id, deltaDeg) => {
+      const item = findFurniture(get().design, get().currentLevelId, id);
+      if (!item) return;
+      // Normalize to [0, 360) snapped to 15°.
+      let deg = (item.rotation + deltaDeg) % 360;
+      if (deg < 0) deg += 360;
+      deg = (Math.round(deg / 15) * 15) % 360;
+      get().updateFurniture(id, { rotation: deg });
+    },
+
+    setFurnitureMaterial: (id, slot, material) => {
+      if (!findFurniture(get().design, get().currentLevelId, id)) return;
+      commitCoalesced(`furn-mat:${id}:${slot}`, (design) => {
+        const item = findFurniture(design, get().currentLevelId, id);
+        if (item)
+          item.materials = { ...item.materials, [slot]: clone(material) };
+      });
+    },
+
+    resetFurnitureMaterials: (id) => {
+      if (!findFurniture(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const item = findFurniture(design, s.currentLevelId, id);
+        if (item) item.materials = {};
+        return { design };
+      });
+    },
+
+    deleteFurniture: (id) => {
+      if (!findFurniture(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        level.furniture = level.furniture.filter((f) => f.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     setDesign: (design) => {
       pushHistory();
       const next = clone(design);
@@ -505,6 +611,16 @@ export const useStore = create<AppState>((set, get) => {
         const door = findDoor(design, s.currentLevelId, wallId, id);
         if (!door) return {};
         door.t = t;
+        return { design };
+      }),
+
+    moveFurniture: (id, position, rotation) =>
+      set((s) => {
+        const design = clone(s.design);
+        const item = findFurniture(design, s.currentLevelId, id);
+        if (!item) return {};
+        item.position = position;
+        if (rotation !== undefined) item.rotation = rotation;
         return { design };
       }),
 

@@ -4,9 +4,10 @@ A browser-based home design tool. Draw walls in a 2D plan editor and see them
 live in a 3D preview; later phases add windows, paint, and floor materials.
 Everything runs client-side — no backend.
 
-**Phase 1 complete + Phase 2a (doors).** A 2D plan editor with walls, windows,
-doors, wall paint, and floor regions, plus a live 3D preview with three wall view
-modes — all editing in 2D, the 3D view is read-only.
+**Phase 1 + Phase 2 (doors, furniture).** A 2D plan editor with walls, windows,
+doors, wall paint, floor regions, and a procedural furniture catalog, plus a live
+3D preview with three wall view modes — all editing in 2D, the 3D view is
+read-only.
 
 ## Tech stack
 
@@ -92,6 +93,29 @@ npm run format   # Prettier
 - **Schema v2** — designs now store `doors`; older (v1) designs migrate
   automatically on load/import (every wall gains an empty `doors` array).
 
+### Furniture (phase 2b)
+
+- **Furniture tool (U)** — the right panel becomes a catalog palette grouped by
+  category, each item shown as a rendered plan symbol. Pick an item, then a ghost
+  footprint follows the cursor (grid-snapped); `R` / `Shift+R` rotate in 15°
+  steps, click to place (the tool stays active for repeat placement), `Esc`
+  cancels. **Wall-hugger soft snap:** items like sofas and beds snap their back
+  edge flush to a nearby wall and align to it (works on angled walls too).
+- **Select tool** — furniture is selectable (rotation-aware footprint), draggable,
+  rotates with `R` / `Shift+R`, and deletes. The properties panel shows position,
+  rotation, and one material chip per part slot, with Reset-to-defaults. Overlap
+  is allowed (rugs under beds, chairs under tables).
+- **Paint tool** — clicking a furniture item recolors its primary slot in one
+  click; per-slot chips remain the precise route. Patterns work on furniture.
+- **Catalog instances reference a catalog id, never geometry.** Items are
+  procedural (shared box / rounded-box / cylinder primitives) and render in all
+  three wall view modes. Open `#catalog` in the URL for a 3D QA line-up of every
+  item. **Schema v3** adds `furniture`; v1/v2 designs migrate automatically.
+
+**Starter catalog (16):** 3-seat sofa, armchair, coffee table, TV stand, rug,
+bookshelf · double bed, nightstand, wardrobe · counter unit, fridge, dining
+table, dining chair · toilet, sink vanity, bathtub.
+
 ## Controls & keyboard shortcuts
 
 | Action                    | Control                                     |
@@ -102,6 +126,8 @@ npm run format   # Prettier
 | Door tool                 | `D`                                         |
 | Floor tool                | `F`                                         |
 | Paint tool                | `P`                                         |
+| Furniture tool            | `U`                                         |
+| Rotate furniture / ghost  | `R` (+15°) · `Shift`+`R` (−15°)             |
 | Draw / place point        | Click (Wall / Floor tools)                  |
 | Chain walls               | Keep clicking                               |
 | Finish wall chain         | `Enter` or double-click                     |
@@ -135,6 +161,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
+  catalog/       furniture catalog: primitive helpers + 16 procedural items
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

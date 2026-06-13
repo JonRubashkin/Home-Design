@@ -19,6 +19,15 @@ const migrations: Migration[] = [
     design.schemaVersion = 2;
     return design;
   },
+  // v2 -> v3: furniture. Every level gains an empty `furniture` array.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      if (!Array.isArray(level.furniture)) level.furniture = [];
+    }
+    design.schemaVersion = 3;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

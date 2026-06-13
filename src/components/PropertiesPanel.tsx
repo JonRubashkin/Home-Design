@@ -6,8 +6,15 @@ import { snapToGrid } from "../geometry/snap";
 import { add, scale } from "../geometry/vec";
 import { validateWindow, clampWindowT } from "../geometry/windows";
 import { validateDoor } from "../geometry/doors";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  CATALOG_ITEMS,
+  getCatalogEntry,
+} from "../catalog";
 import { MaterialPicker } from "./material/MaterialPicker";
 import { MaterialChip } from "./material/MaterialChip";
+import { FurnitureThumb } from "./FurnitureSymbol";
 
 // A numeric field that holds a local string while editing and commits on blur
 // or Enter, so each edit is a single undo step (not one per keystroke).
@@ -61,17 +68,19 @@ function NumberField({
   );
 }
 
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 const EMPTY_TIPS = (
   <div className="properties-empty">
     <p>Nothing selected.</p>
     <ul>
       <li>
-        <kbd>W</kbd> draw walls · <kbd>N</kbd> add windows · <kbd>F</kbd> draw
-        floors · <kbd>P</kbd> paint wall sides.
+        <kbd>W</kbd> walls · <kbd>N</kbd> windows · <kbd>D</kbd> doors ·{" "}
+        <kbd>F</kbd> floors · <kbd>P</kbd> paint · <kbd>U</kbd> furniture.
       </li>
       <li>
-        <kbd>V</kbd> to select. Click a wall, window, or floor to edit it; drag
-        walls, their ends, or windows to move them.
+        <kbd>V</kbd> to select anything; drag to move. <kbd>R</kbd> / Shift+
+        <kbd>R</kbd> rotate a selected item in 15° steps.
       </li>
       <li>
         Hold <kbd>Shift</kbd> while drawing to snap to 0/45/90°.
@@ -106,7 +115,48 @@ function ToolMaterialPanel({ tool }: { tool: "paint" | "floor" }) {
 type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
+  | { kind: "furnSlot"; id: string; slot: string }
   | { kind: "floor"; id: string };
+
+// The Furniture tool's right-panel palette: catalog items grouped by category.
+function FurniturePalette() {
+  const placingCatalogId = useStore((s) => s.placingCatalogId);
+  const setPlacingCatalogId = useStore((s) => s.setPlacingCatalogId);
+  return (
+    <aside className="properties" aria-label="Furniture catalog">
+      <h2 className="properties-title">Furniture</h2>
+      <p className="properties-hint">
+        Pick an item, then click in the plan to place it. <kbd>R</kbd> rotates;
+        wall-huggers snap to nearby walls.
+      </p>
+      <div className="palette">
+        {CATEGORIES.map((cat) => (
+          <section key={cat}>
+            <h3 className="palette-group-title">{CATEGORY_LABELS[cat]}</h3>
+            <div className="palette-grid">
+              {CATALOG_ITEMS.filter((e) => e.category === cat).map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={`palette-item${placingCatalogId === entry.id ? " active" : ""}`}
+                  title={entry.name}
+                  onClick={() =>
+                    setPlacingCatalogId(
+                      placingCatalogId === entry.id ? null : entry.id,
+                    )
+                  }
+                >
+                  <FurnitureThumb entry={entry} />
+                  <span className="palette-name">{entry.name}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </aside>
+  );
+}
 
 // A two-option segmented toggle for door hinge / swing.
 function ToggleField<T extends string>({
@@ -154,6 +204,10 @@ export function PropertiesPanel() {
   const paintWallSide = useStore((s) => s.paintWallSide);
   const setFloorMaterial = useStore((s) => s.setFloorMaterial);
   const deleteFloor = useStore((s) => s.deleteFloor);
+  const updateFurniture = useStore((s) => s.updateFurniture);
+  const setFurnitureMaterial = useStore((s) => s.setFurnitureMaterial);
+  const resetFurnitureMaterials = useStore((s) => s.resetFurnitureMaterials);
+  const deleteFurniture = useStore((s) => s.deleteFurniture);
   const setSideHighlight = useStore((s) => s.setSideHighlight);
 
   const [edit, setEdit] = useState<EditTarget | null>(null);
@@ -163,8 +217,111 @@ export function PropertiesPanel() {
     return () => setSideHighlight(null);
   }, [selectionKey, activeTool, setSideHighlight]);
 
+  if (activeTool === "furniture") {
+    return <FurniturePalette />;
+  }
+
   if (activeTool === "paint" || activeTool === "floor") {
     return <ToolMaterialPanel tool={activeTool} />;
+  }
+
+  // --- furniture selected ---
+  if (selection?.kind === "furniture") {
+    const item = level.furniture.find((f) => f.id === selection.id);
+    const entry = item ? getCatalogEntry(item.catalogId) : undefined;
+    if (!item || !entry)
+      return <aside className="properties">{EMPTY_TIPS}</aside>;
+
+    if (edit?.kind === "furnSlot") {
+      const slot = edit.slot;
+      const slotDef = entry.slots.find((s) => s.name === slot)!;
+      const value = item.materials[slot] ?? slotDef.default;
+      return (
+        <aside className="properties" aria-label="Furniture material">
+          <PickerHeader title={titleCase(slot)} onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={value}
+            onChange={(m) => setFurnitureMaterial(item.id, slot, m)}
+          />
+        </aside>
+      );
+    }
+
+    return (
+      <aside className="properties" aria-label="Furniture">
+        <h2 className="properties-title">{entry.name}</h2>
+        <div className="properties-fields">
+          <NumberField
+            label="X"
+            value={item.position.x}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateFurniture(item.id, {
+                position: { x: v, y: item.position.y },
+              })
+            }
+          />
+          <NumberField
+            label="Y"
+            value={item.position.y}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateFurniture(item.id, {
+                position: { x: item.position.x, y: v },
+              })
+            }
+          />
+          <label className="field">
+            <span className="field-label">Rotation</span>
+            <span className="field-input">
+              <input
+                type="number"
+                step={15}
+                value={Math.round(item.rotation)}
+                onChange={(e) => {
+                  const deg = Number(e.target.value);
+                  if (Number.isFinite(deg)) {
+                    const snapped =
+                      (((Math.round(deg / 15) * 15) % 360) + 360) % 360;
+                    updateFurniture(item.id, { rotation: snapped });
+                  }
+                }}
+              />
+              <span className="field-unit">°</span>
+            </span>
+          </label>
+        </div>
+        <h3 className="properties-subhead">Materials</h3>
+        <div className="chip-row chip-wrap">
+          {entry.slots.map((s) => (
+            <MaterialChip
+              key={s.name}
+              material={item.materials[s.name] ?? s.default}
+              label={titleCase(s.name)}
+              onClick={() =>
+                setEdit({ kind: "furnSlot", id: item.id, slot: s.name })
+              }
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="link-button reset-link"
+          onClick={() => resetFurnitureMaterials(item.id)}
+        >
+          Reset to default materials
+        </button>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteFurniture(item.id)}
+        >
+          Delete item
+        </button>
+      </aside>
+    );
   }
 
   // --- wall selected ---

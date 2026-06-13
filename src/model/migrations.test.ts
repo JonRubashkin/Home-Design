@@ -58,6 +58,17 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.furniture).toEqual([]);
   });
 
+  it("adds a unit scale to every furniture item (v3 -> v4)", () => {
+    const v3 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v3.schemaVersion = 3;
+    (v3.levels as Record<string, unknown>[])[0]!.furniture = [
+      { id: "f", catalogId: "sofa-3seat", position: { x: 1, y: 1 }, rotation: 0, materials: {} },
+    ];
+    const out = migrateToLatest(v3);
+    expect(out.schemaVersion).toBe(4);
+    expect(out.levels[0]!.furniture[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

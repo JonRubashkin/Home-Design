@@ -103,18 +103,35 @@ npm run format   # Prettier
   edge flush to a nearby wall and align to it (works on angled walls too).
 - **Select tool** — furniture is selectable (rotation-aware footprint), draggable,
   rotates with `R` / `Shift+R`, and deletes. The properties panel shows position,
-  rotation, and one material chip per part slot, with Reset-to-defaults. Overlap
-  is allowed (rugs under beds, chairs under tables).
+  rotation, **size**, and one material chip per part slot, with Reset buttons.
+  Overlap is allowed (rugs under beds, chairs under tables).
+- **Resizing (phase 2c)** — each item declares a scaling policy and the panel
+  shows matching **Size** controls in real-world meters: a single slider for
+  proportional items (lamps, chairs), one slider per free axis for items that
+  stretch (Width/Depth/Height — e.g. a sofa widens, a rug stretches in both floor
+  axes but never gets taller), or a "fixed size" note for standardised items
+  (e.g. the microwave). Values are clamped to sensible ranges; **Reset size**
+  restores the catalog default. Scaling drives the 3D mesh, the plan symbol, and
+  hit-testing / wall-hugger snapping alike, participates in undo/redo, and
+  round-trips through Export/Import.
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are
   procedural (shared box / rounded-box / cylinder primitives) and render in all
   three wall view modes. Open `#catalog` in the URL for a 3D QA line-up of every
-  item. **Schema v3** adds `furniture`; v1/v2 designs migrate automatically.
+  item. **Schema v4** adds per-item `scale` (v3 adds `furniture`); older designs
+  migrate automatically.
 
-**Starter catalog (16):** 3-seat sofa, armchair, coffee table, TV stand, rug,
-bookshelf · double bed, nightstand, wardrobe · counter unit, fridge, dining
-table, dining chair · toilet, sink vanity, bathtub.
+**Catalog (30):**
+
+- _Living:_ 3-seat sofa, armchair, coffee table, TV stand, rug, bookshelf, floor
+  lamp, side table, console table, potted plant.
+- _Bedroom:_ double bed, nightstand, wardrobe, dresser, bedside lamp, full-length
+  mirror.
+- _Kitchen / dining:_ counter unit, upper cabinet, fridge, microwave, dining
+  table, dining chair, bar stool, bench.
+- _Bathroom:_ toilet, sink vanity, bathtub, shower stall, towel rack, bathroom
+  cabinet.
 
 ## Controls & keyboard shortcuts
 
@@ -161,7 +178,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 16 procedural items
+  catalog/       furniture catalog: primitive helpers + 30 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

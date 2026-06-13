@@ -1,20 +1,25 @@
-import type { MaterialRef } from "../model/types";
+import type { MaterialRef, Vec3 } from "../model/types";
 import type { CatalogEntry } from "../catalog";
+import { UNIT_SCALE } from "../catalog";
 import { representativeColor } from "../materials/textures";
 
 // The 2D plan symbol for a furniture item: footprint outline (filled with the
-// primary slot's color) + the catalog glyph, in local centered coords, placed
-// and rotated. Used both in the plan and (un-transformed) in palette thumbnails.
+// primary slot's color) + the catalog glyph, in local centered coords, placed,
+// rotated, and scaled (x = width, z = depth). The glyph is drawn in unscaled
+// local coords so its strokes stay crisp; the surrounding scale transform sizes
+// it. Used both in the plan and (un-transformed) in palette thumbnails.
 export function FurnitureSymbolShape({
   entry,
   position,
   rotation,
+  scale = UNIT_SCALE,
   materials,
   className,
 }: {
   entry: CatalogEntry;
   position: { x: number; y: number };
   rotation: number;
+  scale?: Vec3;
   materials: Record<string, MaterialRef>;
   className: string;
 }) {
@@ -25,7 +30,7 @@ export function FurnitureSymbolShape({
   return (
     <g
       className={className}
-      transform={`translate(${position.x} ${position.y}) rotate(${rotation})`}
+      transform={`translate(${position.x} ${position.y}) rotate(${rotation}) scale(${scale.x} ${scale.z})`}
     >
       <rect
         className="furn-outline"

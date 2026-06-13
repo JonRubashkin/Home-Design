@@ -12,18 +12,19 @@ import { FurniturePiece } from "./FurniturePiece";
 // Dev-only QA view (open with #catalog in the URL): every catalog item laid out
 // in a grid in 3D with default materials, for checking proportions and that each
 // builder reads correctly.
-const COLS = 4;
+const COLS = 6;
 const SPACING = 2.8;
 
 export function CatalogQA() {
+  const rows = Math.ceil(CATALOG_ITEMS.length / COLS);
   return (
     <div style={{ position: "fixed", inset: 0, background: "#11141b" }}>
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true }}>
         <color attach="background" args={["#11141b"]} />
         <OrthographicCamera
           makeDefault
-          position={[14, 14, 14]}
-          zoom={48}
+          position={[20, 20, 20]}
+          zoom={34}
           near={0.1}
           far={500}
         />
@@ -42,7 +43,7 @@ export function CatalogQA() {
           const col = i % COLS;
           const row = Math.floor(i / COLS);
           const x = (col - (COLS - 1) / 2) * SPACING;
-          const z = (row - 1.5) * SPACING;
+          const z = (row - (rows - 1) / 2) * SPACING;
           const item = createFurniture(entry.id, { x, y: z });
           return (
             <group key={entry.id}>

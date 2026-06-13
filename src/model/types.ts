@@ -56,11 +56,18 @@ export interface FloorRegion {
 
 // A placed furniture instance. References a catalog id — never geometry. Slot
 // material overrides are keyed by the catalog entry's part-slot names.
+export interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface FurnitureItem {
   id: string;
   catalogId: string;
   position: Vec2; // plan coords of footprint CENTER
   rotation: number; // degrees; UI rotates in 15° steps
+  scale: Vec3; // per-axis multipliers (x=width, y=height, z=depth), default 1
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
@@ -75,7 +82,7 @@ export interface Level {
 }
 
 export interface Design {
-  schemaVersion: 3;
+  schemaVersion: 4;
   name: string;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can
   // be added without migration. Never hardcode levels[0] outside the current-level

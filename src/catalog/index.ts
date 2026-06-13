@@ -1,7 +1,17 @@
 import { CATALOG_ITEMS } from "./items";
 import type { CatalogEntry, Category } from "./types";
 
-export type { CatalogEntry, Category, Part, Primitive, Slot } from "./types";
+export type {
+  CatalogEntry,
+  Category,
+  Part,
+  Primitive,
+  Slot,
+  ScaleMode,
+  ScaleAxes,
+  CatalogScaling,
+} from "./types";
+export { clampScale, effectiveDimensions, UNIT_SCALE } from "./scale";
 export { CATALOG_ITEMS };
 
 const byId = new Map(CATALOG_ITEMS.map((e) => [e.id, e]));

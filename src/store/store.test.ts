@@ -414,4 +414,46 @@ describe("furniture", () => {
     expect(furniture()).toHaveLength(0);
     expect(state().selection).toBeNull();
   });
+
+  it("places new items at unit scale", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it("clamps scale to the catalog policy and locks omitted axes", () => {
+    // rug is axes { x:[0.5,2.5], z:[0.5,2.5] }, y locked.
+    state().placeFurniture("rug", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    state().setFurnitureScale(id, { x: 9, y: 9, z: 0.1 });
+    expect(furniture()[0]!.scale).toEqual({ x: 2.5, y: 1, z: 0.5 });
+  });
+
+  it("clamps a uniform item equally on every axis", () => {
+    state().placeFurniture("armchair", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    state().setFurnitureScale(id, { x: 1.5, y: 1.5, z: 1.5 });
+    // uniform [0.85,1.2] -> clamps to 1.2 on every axis
+    expect(furniture()[0]!.scale).toEqual({ x: 1.2, y: 1.2, z: 1.2 });
+  });
+
+  it("forces unit scale for fixed-size (none) items", () => {
+    state().placeFurniture("microwave", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    state().setFurnitureScale(id, { x: 1.5, y: 0.5, z: 2 });
+    expect(furniture()[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it("coalesces scale-slider edits into one undo step and resets size", () => {
+    state().placeFurniture("rug", { x: 0, y: 0 }, 0);
+    const id = furniture()[0]!.id;
+    const pastBefore = state().past.length;
+    state().setFurnitureScale(id, { x: 1.5, y: 1, z: 1 });
+    state().setFurnitureScale(id, { x: 2.0, y: 1, z: 1 });
+    expect(state().past.length).toBe(pastBefore + 1); // coalesced
+    expect(furniture()[0]!.scale.x).toBe(2.0);
+    state().resetFurnitureScale(id);
+    expect(furniture()[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
+    state().undo();
+    expect(furniture()[0]!.scale.x).toBe(2.0);
+  });
 });

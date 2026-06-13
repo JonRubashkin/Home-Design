@@ -38,3 +38,11 @@ export function effectiveDimensions(
     height: entry.height * scale.y,
   };
 }
+
+// Inverse of one axis of effectiveDimensions: turn a desired real-world
+// dimension (meters) into the scale multiplier for that axis, given the base
+// (unscaled) dimension. Lets the properties panel accept typed meters; the
+// result still passes through clampScale so out-of-range entries are clamped.
+export function dimensionToMultiplier(meters: number, base: number): number {
+  return base > 0 && isFinite(meters) ? meters / base : 1;
+}

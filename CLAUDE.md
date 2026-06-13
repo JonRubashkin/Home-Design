@@ -148,14 +148,19 @@ in code under `src/catalog/`:
   (fixed size), `{ mode: "uniform"; uniform: [min,max] }` (one multiplier on every
   axis), or `{ mode: "axes"; axes: { x?,y?,z?: [min,max] } }` (per-axis ranges;
   an omitted axis is locked to 1). A `FurnitureItem.scale: Vec3` holds the chosen
-  multipliers. `clampScale(scaling, requested)` enforces the policy and
+  multipliers. `clampScale(scaling, requested)` enforces the policy,
   `effectiveDimensions(entry, scale)` is the single source of truth for an item's
   real-world size — **every** footprint consumer (3D group `scale`, plan symbol
-  `scale()`, hit-test, wall-hugger snap) reads through it. New items default to
-  `{1,1,1}`; the properties panel exposes mode-appropriate Size sliders in meters
-  plus a Reset-size button. Pick a policy per item: stretch what realistically
-  stretches, scale proportionally what should stay in proportion, lock what would
-  look broken. Both helpers live in `src/catalog/scale.ts` (tested).
+  `scale()`, hit-test, wall-hugger snap) reads through it — and
+  `dimensionToMultiplier(meters, base)` is its inverse for one axis. New items
+  default to `{1,1,1}`; the properties panel exposes mode-appropriate Size
+  controls, each a **slider + editable number field in meters** (typed values go
+  through `dimensionToMultiplier` then `clampScale`, so out-of-range input snaps
+  to the boundary), plus a Reset-size button. Keep ranges generous so users have
+  real freedom, but never allow zero/negative sizes. Pick a policy per item:
+  stretch what realistically stretches, scale proportionally what should stay in
+  proportion, lock what would look broken. All three helpers live in
+  `src/catalog/scale.ts` (tested).
 - Builders are pure data (no hooks). The 3D renderer maps each `Part` to a mesh
   whose material comes from `item.materials[slot] ?? entry.slots[..].default`,
   **always through the shared `materialRefToThreeMaterial` helper** — so patterns
@@ -213,6 +218,14 @@ in code under `src/catalog/`:
      behavior, do not special-case them.
 - The preview is **read-only** in Phase 1: no clicking/editing in 3D. All editing
   happens in the 2D plan.
+- **Stacking offsets.** Surfaces meant to read as separate must never share an
+  exact world Y or they z-fight as the camera orbits. Ground plane < floor
+  regions < flat items (rugs) < regular furniture each sit on their own layer,
+  defined as named constants in `src/components/preview/stacking.ts` (no scattered
+  magic numbers). These are fixed per-category base lifts only — do **not** add
+  auto-stacking that raises an item to the height of whatever it's placed on.
+  Transparent materials (ghost cutaway) use `depthWrite: false`; keep furniture
+  materials opaque (rugs included) so they don't occlude what's behind them.
 
 ## 2D plan editor rules
 

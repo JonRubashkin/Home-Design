@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { clampScale, effectiveDimensions } from "./scale";
+import {
+  clampScale,
+  effectiveDimensions,
+  dimensionToMultiplier,
+} from "./scale";
 import { getCatalogEntry } from "./index";
 import type { CatalogScaling } from "./types";
 
@@ -49,5 +53,32 @@ describe("effectiveDimensions", () => {
     expect(d.width).toBeCloseTo(rug.footprint.width * 2);
     expect(d.depth).toBeCloseTo(rug.footprint.depth * 0.5);
     expect(d.height).toBeCloseTo(rug.height * 1);
+  });
+});
+
+describe("dimensionToMultiplier", () => {
+  it("round-trips meters <-> multiplier through effectiveDimensions", () => {
+    const rug = getCatalogEntry("rug")!;
+    const meters = 3.0;
+    const mult = dimensionToMultiplier(meters, rug.footprint.width);
+    const dims = effectiveDimensions(rug, { x: mult, y: 1, z: 1 });
+    expect(dims.width).toBeCloseTo(meters);
+  });
+
+  it("guards against a zero/invalid base", () => {
+    expect(dimensionToMultiplier(2, 0)).toBe(1);
+    expect(dimensionToMultiplier(NaN, 1)).toBe(1);
+  });
+
+  it("a typed dimension beyond range clamps to the policy boundary", () => {
+    const rug = getCatalogEntry("rug")!; // axes x:[0.3,4], z:[0.3,4]
+    // Type a width far above the max, then clamp like the panel does.
+    const tooWide = dimensionToMultiplier(99, rug.footprint.width);
+    const clampedHi = clampScale(rug.scaling, { x: tooWide, y: 1, z: 1 });
+    expect(clampedHi.x).toBe(4);
+    // ...and far below the min clamps to the lower bound.
+    const tooNarrow = dimensionToMultiplier(0.01, rug.footprint.width);
+    const clampedLo = clampScale(rug.scaling, { x: tooNarrow, y: 1, z: 1 });
+    expect(clampedLo.x).toBe(0.3);
   });
 });

@@ -58,6 +58,11 @@ npm run format   # Prettier
   - **Stubs** — all walls render at 10% height.
 - **Selection echo** — the wall, window, or floor selected in the plan is
   highlighted in 3D.
+- **Stacking offsets** — the ground plane, floor regions, flat items (rugs), and
+  regular furniture each sit on their own tiny vertical layer (named constants in
+  `preview/stacking.ts`) so overlapping/stacked items never share an exact height
+  and z-fight. (Items are not auto-raised to a surface they're placed on — that's
+  out of scope; the offsets just keep manual overlap rendering cleanly.)
 - **Layout:** **Plan / Split / 3D** (Split is the default). The view mode,
   cutaway style, layout, and current material persist across reloads (separate
   from the design).
@@ -106,14 +111,17 @@ npm run format   # Prettier
   rotation, **size**, and one material chip per part slot, with Reset buttons.
   Overlap is allowed (rugs under beds, chairs under tables).
 - **Resizing (phase 2c)** — each item declares a scaling policy and the panel
-  shows matching **Size** controls in real-world meters: a single slider for
-  proportional items (lamps, chairs), one slider per free axis for items that
-  stretch (Width/Depth/Height — e.g. a sofa widens, a rug stretches in both floor
-  axes but never gets taller), or a "fixed size" note for standardised items
-  (e.g. the microwave). Values are clamped to sensible ranges; **Reset size**
-  restores the catalog default. Scaling drives the 3D mesh, the plan symbol, and
-  hit-testing / wall-hugger snapping alike, participates in undo/redo, and
-  round-trips through Export/Import.
+  shows matching **Size** controls in real-world meters: a single control for
+  proportional items (lamps, chairs), one per free axis for items that stretch
+  (Width/Depth/Height — e.g. a sofa widens, a rug stretches in both floor axes
+  but never gets taller), or a "fixed size" note for standardised items (e.g. the
+  microwave). Each control is a **slider plus an editable number field** showing
+  the resulting dimension in metres — type "1.80" straight into a Width field.
+  Ranges are deliberately generous (proportional items roughly ½×–2½×, free axes
+  up to ~4×); out-of-range entries clamp to the boundary and the field snaps to
+  the clamped value. **Reset size** restores the catalog default. Scaling drives
+  the 3D mesh, the plan symbol, and hit-testing / wall-hugger snapping alike,
+  participates in undo/redo, and round-trips through Export/Import.
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are
@@ -122,12 +130,12 @@ npm run format   # Prettier
   item. **Schema v4** adds per-item `scale` (v3 adds `furniture`); older designs
   migrate automatically.
 
-**Catalog (30):**
+**Catalog (31):**
 
 - _Living:_ 3-seat sofa, armchair, coffee table, TV stand, rug, bookshelf, floor
   lamp, side table, console table, potted plant.
-- _Bedroom:_ double bed, nightstand, wardrobe, dresser, bedside lamp, full-length
-  mirror.
+- _Bedroom:_ double bed, single bed, nightstand, wardrobe, dresser, bedside lamp,
+  full-length mirror.
 - _Kitchen / dining:_ counter unit, upper cabinet, fridge, microwave, dining
   table, dining chair, bar stool, bench.
 - _Bathroom:_ toilet, sink vanity, bathtub, shower stall, towel rack, bathroom
@@ -178,7 +186,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 30 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 31 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

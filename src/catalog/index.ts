@@ -11,7 +11,12 @@ export type {
   ScaleAxes,
   CatalogScaling,
 } from "./types";
-export { clampScale, effectiveDimensions, UNIT_SCALE } from "./scale";
+export {
+  clampScale,
+  effectiveDimensions,
+  dimensionToMultiplier,
+  UNIT_SCALE,
+} from "./scale";
 export { CATALOG_ITEMS };
 
 const byId = new Map(CATALOG_ITEMS.map((e) => [e.id, e]));

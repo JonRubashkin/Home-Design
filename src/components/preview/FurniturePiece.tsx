@@ -4,6 +4,7 @@ import type { FurnitureItem, MaterialRef } from "../../model/types";
 import { getCatalogEntry, type CatalogEntry, type Part } from "../../catalog";
 import { planToWorld } from "../../geometry/mapping";
 import { useThreeMaterial } from "../../materials/threeMaterial";
+import { FLAT_ITEM_LIFT, ITEM_LIFT } from "./stacking";
 
 const DEG = Math.PI / 180;
 
@@ -64,7 +65,9 @@ export function FurniturePiece({
   if (!entry) return null;
 
   const [wx, , wz] = planToWorld(item.position, 0);
-  const y = elevation + (entry.flat ? 0.007 : 0.01);
+  // Flat items (rugs) sit just above floor regions; everything else sits just
+  // above the flat layer, so stacked/overlapping items never share a Y.
+  const y = elevation + (entry.flat ? FLAT_ITEM_LIFT : ITEM_LIFT);
   const resolve = (slot: string): MaterialRef =>
     item.materials[slot] ?? entry.slots.find((s) => s.name === slot)!.default;
 

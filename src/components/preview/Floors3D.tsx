@@ -4,6 +4,7 @@ import type { FloorRegion } from "../../model/types";
 import { selectCurrentLevel, useStore } from "../../store/store";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
+import { FLOOR_LIFT } from "./stacking";
 
 // Triangulate a plan polygon into a flat, upward-facing mesh at world height y.
 // UVs are in meters so pattern textures tile one cell per meter (matching 2D).
@@ -60,7 +61,7 @@ function Floor3D({
 export function Floors3D() {
   const level = useStore(selectCurrentLevel);
   const selection = useStore((s) => s.selection);
-  const y = level.elevation + 0.005;
+  const y = level.elevation + FLOOR_LIFT;
   return (
     <group>
       {level.floors.map((f, i) => (

@@ -41,6 +41,37 @@ export interface WindowCandidate {
   sillHeight: number;
 }
 
+// Along-wall spans of every window and door on the wall (optionally excluding
+// one of each — the opening being edited). Doors and windows can't overlap.
+export function openingSpans(
+  wall: Wall,
+  excludeWindowId?: string,
+  excludeDoorId?: string,
+): { a: number; b: number }[] {
+  const L = wallLength(wall);
+  const spans: { a: number; b: number }[] = [];
+  for (const w of wall.windows) {
+    if (w.id === excludeWindowId) continue;
+    spans.push(windowSpan(L, w.t, w.width));
+  }
+  for (const d of wall.doors ?? []) {
+    if (d.id === excludeDoorId) continue;
+    spans.push(windowSpan(L, d.t, d.width));
+  }
+  return spans;
+}
+
+export function spanOverlapsAny(
+  a: number,
+  b: number,
+  spans: { a: number; b: number }[],
+): boolean {
+  for (const o of spans) {
+    if (a < o.b - 1e-9 && b > o.a + 1e-9) return true;
+  }
+  return false;
+}
+
 // Validate a window against its wall: fits within the length (with end margins),
 // doesn't overlap other windows, and doesn't exceed the wall height.
 export function validateWindow(
@@ -61,12 +92,8 @@ export function validateWindow(
   if (b > L - WINDOW_END_MARGIN + 1e-9)
     return { ok: false, reason: "Too close to the wall end" };
 
-  for (const other of wall.windows) {
-    if (excludeId && other.id === excludeId) continue;
-    const o = windowSpan(L, other.t, other.width);
-    if (a < o.b - 1e-9 && b > o.a + 1e-9)
-      return { ok: false, reason: "Overlaps another window" };
-  }
+  if (spanOverlapsAny(a, b, openingSpans(wall, excludeId, undefined)))
+    return { ok: false, reason: "Overlaps another opening" };
   return { ok: true };
 }
 
@@ -82,11 +109,10 @@ export function clampWindowT(wall: Wall, width: number, t: number): number {
 }
 
 // Solid spans (piers) along the wall in meters, i.e. the wall with its window
-// openings removed. Used to draw the broken wall outline in the 2D plan.
+// and door openings removed. Used to draw the broken wall outline in the 2D plan.
 export function wallPlanSegments(wall: Wall): { a: number; b: number }[] {
   const L = wallLength(wall);
-  const openings = wall.windows
-    .map((w) => windowSpan(L, w.t, w.width))
+  const openings = openingSpans(wall)
     .map((s) => ({ a: clamp(s.a, 0, L), b: clamp(s.b, 0, L) }))
     .filter((s) => s.b - s.a > 1e-6)
     .sort((p, q) => p.a - q.a);

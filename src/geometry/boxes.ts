@@ -55,34 +55,102 @@ export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
     };
   };
 
-  // Normalize windows to along-wall spans, clamp to the wall, drop degenerate
-  // ones, and process left-to-right.
-  const wins = wall.windows
-    .map((w) => {
-      const center = w.t * L;
-      const half = w.width / 2;
-      return {
-        a: clamp(center - half, 0, L),
-        b: clamp(center + half, 0, L),
-        sill: clamp(w.sillHeight, 0, H),
-        head: clamp(w.sillHeight + w.height, 0, H),
-      };
-    })
-    .filter((w) => w.b - w.a > 1e-6)
+  // Unified opening list: windows carry their sill, doors sit on the floor
+  // (sill 0, so no box under them — just the header above). Clamp to the wall,
+  // drop degenerate ones, and process left-to-right.
+  const openings = [
+    ...wall.windows.map((w) => ({
+      t: w.t,
+      width: w.width,
+      sill: w.sillHeight,
+      top: w.sillHeight + w.height,
+    })),
+    ...(wall.doors ?? []).map((d) => ({
+      t: d.t,
+      width: d.width,
+      sill: 0,
+      top: d.height,
+    })),
+  ]
+    .map((o) => ({
+      a: clamp(o.t * L - o.width / 2, 0, L),
+      b: clamp(o.t * L + o.width / 2, 0, L),
+      sill: clamp(o.sill, 0, H),
+      head: clamp(o.top, 0, H),
+    }))
+    .filter((o) => o.b - o.a > 1e-6)
     .sort((p, q) => p.a - q.a);
 
   const boxes: Box3Spec[] = [];
   let cursor = 0;
 
-  for (const w of wins) {
-    if (w.a > cursor + 1e-9) boxes.push(makeBox(cursor, w.a, 0, H)); // pier
-    if (w.sill > 1e-9) boxes.push(makeBox(w.a, w.b, 0, w.sill)); // under sill
-    if (w.head < H - 1e-9) boxes.push(makeBox(w.a, w.b, w.head, H)); // over head
-    cursor = Math.max(cursor, w.b);
+  for (const o of openings) {
+    if (o.a > cursor + 1e-9) boxes.push(makeBox(cursor, o.a, 0, H)); // pier
+    if (o.sill > 1e-9) boxes.push(makeBox(o.a, o.b, 0, o.sill)); // under sill
+    if (o.head < H - 1e-9) boxes.push(makeBox(o.a, o.b, o.head, H)); // over head
+    cursor = Math.max(cursor, o.b);
   }
   if (cursor < L - 1e-9) boxes.push(makeBox(cursor, L, 0, H)); // final pier
 
   return boxes;
+}
+
+// Build an oriented sub-box from along-wall span [a,b], vertical [y0,y1], and a
+// custom thickness (centered on the wall centerline).
+function orientedBox(
+  wall: Wall,
+  a: number,
+  b: number,
+  y0: number,
+  y1: number,
+  thickness: number,
+  elevation: number,
+): Box3Spec {
+  const dir = wallDirection(wall);
+  const rotationY = Math.atan2(-dir.y, dir.x);
+  const alongCenter = (a + b) / 2;
+  const px = wall.start.x + dir.x * alongCenter;
+  const py = wall.start.y + dir.y * alongCenter;
+  const [wx, , wz] = planToWorld({ x: px, y: py }, elevation);
+  return {
+    center: [wx, elevation + (y0 + y1) / 2, wz],
+    size: [b - a, y1 - y0, thickness],
+    rotationY,
+    face: { u0: a, v0: y0, w: b - a, h: y1 - y0 },
+  };
+}
+
+export const DOOR_FRAME_W = 0.06;
+
+// Slim trim boxes around a door opening: two jambs + a head.
+export function doorFrameBoxes(
+  wall: Wall,
+  door: { t: number; width: number; height: number },
+  elevation = 0,
+): Box3Spec[] {
+  const L = wallLength(wall);
+  const { a, b } = windowSpan(L, door.t, door.width);
+  const h = door.height;
+  const t = wall.thickness * 0.98;
+  const fw = Math.min(DOOR_FRAME_W, (b - a) / 3);
+  return [
+    orientedBox(wall, a, a + fw, 0, h, t, elevation), // left jamb
+    orientedBox(wall, b - fw, b, 0, h, t, elevation), // right jamb
+    orientedBox(wall, a, b, h - fw, h, t, elevation), // head
+  ];
+}
+
+// The closed door leaf filling the opening (inside the frame).
+export function doorLeafBox(
+  wall: Wall,
+  door: { t: number; width: number; height: number },
+  elevation = 0,
+): Box3Spec {
+  const L = wallLength(wall);
+  const { a, b } = windowSpan(L, door.t, door.width);
+  const fw = Math.min(DOOR_FRAME_W, (b - a) / 3);
+  const t = Math.min(0.045, wall.thickness * 0.5);
+  return orientedBox(wall, a + fw, b - fw, 0, door.height - fw, t, elevation);
 }
 
 // A thin oriented box filling one window opening, for the translucent glass pane.

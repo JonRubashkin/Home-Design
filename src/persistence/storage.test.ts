@@ -20,7 +20,7 @@ describe("validateDesign", () => {
   });
 
   it("refuses a newer schema version with a helpful message", () => {
-    const r = validateDesign({ schemaVersion: 2, name: "x", levels: [{}] });
+    const r = validateDesign({ schemaVersion: 99, name: "x", levels: [{}] });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/newer version/i);
   });
@@ -57,6 +57,7 @@ describe("validateDesign — windows, floors, materials", () => {
       windows: [
         { id: "win", t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 },
       ],
+      doors: [],
     });
     d.levels[0]!.floors.push({
       id: "f1",
@@ -87,6 +88,7 @@ describe("validateDesign — windows, floors, materials", () => {
       paintB: { kind: "solid", color: "#fff" },
       // missing sillHeight
       windows: [{ id: "x", t: 0.5, width: 1, height: 1 } as never],
+      doors: [],
     });
     expect(validateDesign(d).ok).toBe(false);
   });
@@ -116,5 +118,41 @@ describe("validateDesign — windows, floors, materials", () => {
       material: { kind: "gradient" } as never,
     });
     expect(validateDesign(d).ok).toBe(false);
+  });
+});
+
+describe("validateDesign — v1 migration on import", () => {
+  it("imports a pre-doors v1 design and adds empty doors arrays", () => {
+    const v1 = {
+      schemaVersion: 1,
+      name: "Legacy",
+      levels: [
+        {
+          id: "l",
+          name: "Ground floor",
+          elevation: 0,
+          wallHeight: 2.4,
+          walls: [
+            {
+              id: "w",
+              start: { x: 0, y: 0 },
+              end: { x: 3, y: 0 },
+              height: 2.4,
+              thickness: 0.15,
+              paintA: { kind: "solid", color: "#fff" },
+              paintB: { kind: "solid", color: "#fff" },
+              windows: [],
+            },
+          ],
+          floors: [],
+        },
+      ],
+    };
+    const r = validateDesign(v1);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.design.schemaVersion).toBe(2);
+      expect(r.design.levels[0]!.walls[0]!.doors).toEqual([]);
+    }
   });
 });

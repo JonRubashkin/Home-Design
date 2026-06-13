@@ -50,7 +50,8 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 1;
+  schemaVersion: 2;         // v1 = Phase 1; v2 = Phase 2a (doors). Migrations in
+                            // src/model/migrations.ts upgrade older saved designs.
   name: string;
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
@@ -76,6 +77,7 @@ interface Wall {
   paintA: MaterialRef;      // side A = left of start→end direction
   paintB: MaterialRef;      // side B = right of start→end direction
   windows: WindowOpening[];
+  doors: DoorOpening[];     // Phase 2a
 }
 
 interface WindowOpening {
@@ -84,6 +86,16 @@ interface WindowOpening {
   width: number;            // meters
   height: number;           // meters
   sillHeight: number;       // meters from floor to bottom of window
+}
+
+interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.
+  id: string;
+  t: number;                // center along wall, 0..1
+  width: number;            // meters (default 0.9)
+  height: number;           // meters (default 2.0)
+  hinge: "start" | "end";   // hinge side relative to wall start→end direction
+  swing: "A" | "B";         // which wall side the door opens toward
+  material: MaterialRef;    // leaf material (default solid #9a6b4f)
 }
 
 interface FloorRegion {

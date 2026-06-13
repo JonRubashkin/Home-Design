@@ -52,11 +52,16 @@ function PartMesh({
 export function FurniturePiece({
   item,
   elevation,
+  baseLift,
   selected,
   entryOverride,
 }: {
   item: FurnitureItem;
   elevation: number;
+  // World-Y above the floor at which this item's base rests (from the stacking
+  // resolver). Omitted by direct callers (e.g. the catalog QA view), which fall
+  // back to the plain per-layer lift.
+  baseLift?: number;
   selected: boolean;
   entryOverride?: CatalogEntry;
 }) {
@@ -66,8 +71,10 @@ export function FurniturePiece({
 
   const [wx, , wz] = planToWorld(item.position, 0);
   // Flat items (rugs) sit just above floor regions; everything else sits just
-  // above the flat layer, so stacked/overlapping items never share a Y.
-  const y = elevation + (entry.flat ? FLAT_ITEM_LIFT : ITEM_LIFT);
+  // above the flat layer, so stacked/overlapping items never share a Y. A
+  // resolved baseLift (item resting on a surface) overrides the default.
+  const lift = baseLift ?? (entry.flat ? FLAT_ITEM_LIFT : ITEM_LIFT);
+  const y = elevation + lift;
   const resolve = (slot: string): MaterialRef =>
     item.materials[slot] ?? entry.slots.find((s) => s.name === slot)!.default;
 

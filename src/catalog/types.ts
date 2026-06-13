@@ -51,6 +51,12 @@ export interface CatalogEntry {
   height: number;
   wallHugger: boolean;
   flat?: boolean; // rug-like: above floors, below other furniture
+  // Stacking (Phase 2c+): `surfaceTop` (local meters, scaled by y at runtime) is
+  // the flat top where small items rest — set it to make the item a support
+  // surface (counter, table, dresser…). `stackable` marks a small item that
+  // automatically climbs onto a surface it's centered over (microwave, lamp…).
+  surfaceTop?: number;
+  stackable?: boolean;
   scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
   build: () => Part[]; // 3D parts in local space (y up from floor)

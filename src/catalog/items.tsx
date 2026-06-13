@@ -108,6 +108,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.1, depth: 0.6 },
     height: 0.4,
     wallHugger: false,
+    surfaceTop: 0.4,
     scaling: axesScale({ x: [0.5, 2.2], z: [0.5, 2.0] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -226,6 +227,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 0.5, depth: 0.5 },
     height: 0.55,
     wallHugger: false,
+    surfaceTop: 0.55,
     scaling: axesScale({ x: [0.5, 2.0], z: [0.5, 2.0] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -246,6 +248,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.1, depth: 0.35 },
     height: 0.8,
     wallHugger: true,
+    surfaceTop: 0.8,
     scaling: axesScale({ x: [0.5, 2.5] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -355,6 +358,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 0.45, depth: 0.4 },
     height: 0.5,
     wallHugger: false,
+    surfaceTop: 0.48,
     scaling: uniformScale(0.6, 1.6),
     slots: [{ name: "body", default: WOOD }],
     build: () => {
@@ -401,6 +405,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.1, depth: 0.5 },
     height: 0.8,
     wallHugger: true,
+    surfaceTop: 0.8,
     scaling: axesScale({ x: [0.5, 2.2], y: [0.7, 1.4] }),
     slots: [{ name: "body", default: WOOD }],
     build: () => {
@@ -427,6 +432,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 0.25, depth: 0.25 },
     height: 0.5,
     wallHugger: false,
+    stackable: true,
     scaling: uniformScale(0.7, 1.5),
     slots: [
       { name: "shade", default: SHADE },
@@ -472,6 +478,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.2, depth: 0.6 },
     height: 0.9,
     wallHugger: true,
+    surfaceTop: 0.9,
     scaling: axesScale({ x: [0.4, 4], y: [0.85, 1.2] }),
     slots: [
       { name: "body", default: solid("#d7d2c8") },
@@ -541,6 +548,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 0.5, depth: 0.35 },
     height: 0.3,
     wallHugger: false,
+    stackable: true,
     scaling: noScale, // standard appliance — fixed size
     slots: [
       { name: "body", default: solid("#c9ccd1") },
@@ -566,6 +574,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.4, depth: 0.8 },
     height: 0.75,
     wallHugger: false,
+    surfaceTop: 0.75,
     scaling: axesScale({ x: [0.5, 2.5], z: [0.6, 1.8] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -636,6 +645,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     footprint: { width: 1.2, depth: 0.4 },
     height: 0.45,
     wallHugger: false,
+    surfaceTop: 0.45,
     scaling: axesScale({ x: [0.5, 2.8] }),
     slots: [
       { name: "seat", default: WOOD_LIGHT },

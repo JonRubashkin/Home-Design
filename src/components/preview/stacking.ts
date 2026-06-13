@@ -15,3 +15,4 @@ export const GROUND_Y = -0.02; // infinite ground plane, below everything
 export const FLOOR_LIFT = 0.006; // floor regions, above the ground plane
 export const FLAT_ITEM_LIFT = 0.012; // rugs/mats, clearly above floor regions
 export const ITEM_LIFT = 0.018; // regular furniture, above the flat-item layer
+export const STACK_LIFT = 0.002; // an item resting on another item's surface top

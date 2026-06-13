@@ -61,8 +61,12 @@ npm run format   # Prettier
 - **Stacking offsets** — the ground plane, floor regions, flat items (rugs), and
   regular furniture each sit on their own tiny vertical layer (named constants in
   `preview/stacking.ts`) so overlapping/stacked items never share an exact height
-  and z-fight. (Items are not auto-raised to a surface they're placed on — that's
-  out of scope; the offsets just keep manual overlap rendering cleanly.)
+  and z-fight.
+- **Automatic surface stacking** — small items (microwave, bedside lamp) placed
+  with their centre over a surface item (counter, table, dresser, nightstand…)
+  automatically rest on that surface's top instead of being buried inside it;
+  surfaces can stack on surfaces. It resolves live from the plan positions as you
+  drag — move an item off the surface and it drops back to the floor.
 - **Layout:** **Plan / Split / 3D** (Split is the default). The view mode,
   cutaway style, layout, and current material persist across reloads (separate
   from the design).

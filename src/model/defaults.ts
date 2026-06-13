@@ -1,5 +1,6 @@
 import type {
   Design,
+  DoorOpening,
   FloorRegion,
   Level,
   MaterialRef,
@@ -14,6 +15,14 @@ export const DEFAULT_WALL_THICKNESS = 0.15;
 export const DEFAULT_WINDOW_WIDTH = 1.2;
 export const DEFAULT_WINDOW_HEIGHT = 1.2;
 export const DEFAULT_WINDOW_SILL_HEIGHT = 0.9;
+export const DEFAULT_DOOR_WIDTH = 0.9;
+export const DEFAULT_DOOR_HEIGHT = 2.0;
+
+// Default door leaf material (a warm wood tone).
+export const DEFAULT_DOOR_MATERIAL: MaterialRef = {
+  kind: "solid",
+  color: "#9a6b4f",
+};
 
 export const GRID_SNAP = 0.1; // meters
 export const ENDPOINT_SNAP_RADIUS = 0.15; // meters; endpoint snap takes priority
@@ -46,6 +55,23 @@ export function createWall(
     paintA: { ...DEFAULT_PAINT },
     paintB: { ...DEFAULT_PAINT },
     windows: [],
+    doors: [],
+  };
+}
+
+export function createDoor(
+  opts?: Partial<Omit<DoorOpening, "id">>,
+): DoorOpening {
+  return {
+    id: makeId("door"),
+    t: opts?.t ?? 0.5,
+    width: opts?.width ?? DEFAULT_DOOR_WIDTH,
+    height: opts?.height ?? DEFAULT_DOOR_HEIGHT,
+    hinge: opts?.hinge ?? "start",
+    swing: opts?.swing ?? "A",
+    material: opts?.material
+      ? { ...opts.material }
+      : { ...DEFAULT_DOOR_MATERIAL },
   };
 }
 
@@ -85,7 +111,7 @@ export function createLevel(name = "Ground floor"): Level {
 
 export function createDesign(name = "Untitled design"): Design {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     name,
     levels: [createLevel()],
   };

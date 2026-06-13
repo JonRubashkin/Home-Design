@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   Design,
+  DoorOpening,
   FloorRegion,
   Level,
   MaterialRef,
@@ -10,6 +11,7 @@ import type {
 } from "../model/types";
 import {
   createDesign,
+  createDoor,
   createFloor,
   createWall,
   createWindow,
@@ -22,11 +24,12 @@ import {
   type ViewMode,
 } from "../persistence/viewPrefs";
 
-export type Tool = "select" | "wall" | "window" | "floor" | "paint";
+export type Tool = "select" | "wall" | "window" | "door" | "floor" | "paint";
 export type WallSide = "A" | "B";
 export type Selection =
   | { kind: "wall"; id: string }
   | { kind: "window"; wallId: string; id: string }
+  | { kind: "door"; wallId: string; id: string }
   | { kind: "floor"; id: string }
   | null;
 
@@ -64,6 +67,15 @@ function findWindow(
   );
 }
 
+function findDoor(
+  design: Design,
+  levelId: string,
+  wallId: string,
+  doorId: string,
+): DoorOpening | undefined {
+  return findWall(design, levelId, wallId)?.doors.find((d) => d.id === doorId);
+}
+
 function findFloor(
   design: Design,
   levelId: string,
@@ -82,6 +94,8 @@ function selectionExists(
   if (sel.kind === "wall") return !!findWall(design, levelId, sel.id);
   if (sel.kind === "window")
     return !!findWindow(design, levelId, sel.wallId, sel.id);
+  if (sel.kind === "door")
+    return !!findDoor(design, levelId, sel.wallId, sel.id);
   return !!findFloor(design, levelId, sel.id);
 }
 
@@ -137,6 +151,14 @@ interface AppState {
     patch: Partial<Omit<WindowOpening, "id">>,
   ) => void;
   deleteWindow: (wallId: string, id: string) => void;
+  addDoor: (wallId: string, door: Omit<DoorOpening, "id">) => void;
+  updateDoor: (
+    wallId: string,
+    id: string,
+    patch: Partial<Omit<DoorOpening, "id">>,
+  ) => void;
+  setDoorMaterial: (wallId: string, id: string, material: MaterialRef) => void;
+  deleteDoor: (wallId: string, id: string) => void;
   addFloor: (polygon: Vec2[], material: MaterialRef) => void;
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
   setFloorMaterial: (id: string, material: MaterialRef) => void;
@@ -149,6 +171,7 @@ interface AppState {
   moveWallEndpoint: (id: string, which: "start" | "end", point: Vec2) => void;
   translateWall: (id: string, start: Vec2, end: Vec2) => void;
   moveWindow: (wallId: string, id: string, t: number) => void;
+  moveDoor: (wallId: string, id: string, t: number) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -330,6 +353,54 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    addDoor: (wallId, door) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      const made = createDoor(door);
+      set((s) => {
+        const design = clone(s.design);
+        findWall(design, s.currentLevelId, wallId)?.doors.push(made);
+        return { design, selection: { kind: "door", wallId, id: made.id } };
+      });
+    },
+
+    updateDoor: (wallId, id, patch) => {
+      if (!findDoor(get().design, get().currentLevelId, wallId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const door = findDoor(design, s.currentLevelId, wallId, id);
+        if (door) Object.assign(door, patch);
+        return { design };
+      });
+    },
+
+    setDoorMaterial: (wallId, id, material) => {
+      if (!findDoor(get().design, get().currentLevelId, wallId, id)) return;
+      commitCoalesced(`door-mat:${wallId}:${id}`, (design) => {
+        const door = findDoor(design, get().currentLevelId, wallId, id);
+        if (door) door.material = clone(material);
+      });
+    },
+
+    deleteDoor: (wallId, id) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const w = findWall(design, s.currentLevelId, wallId);
+        if (w) w.doors = w.doors.filter((d) => d.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     addFloor: (polygon, material) => {
       pushHistory();
       const floor = createFloor(polygon, material);
@@ -425,6 +496,15 @@ export const useStore = create<AppState>((set, get) => {
         const win = findWindow(design, s.currentLevelId, wallId, id);
         if (!win) return {};
         win.t = t;
+        return { design };
+      }),
+
+    moveDoor: (wallId, id, t) =>
+      set((s) => {
+        const design = clone(s.design);
+        const door = findDoor(design, s.currentLevelId, wallId, id);
+        if (!door) return {};
+        door.t = t;
         return { design };
       }),
 

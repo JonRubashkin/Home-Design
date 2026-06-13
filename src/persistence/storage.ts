@@ -1,8 +1,9 @@
 import type { Design } from "../model/types";
+import { LATEST_SCHEMA_VERSION, migrateToLatest } from "../model/migrations";
 
 const STORAGE_KEY = "home-design:design:v1";
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = LATEST_SCHEMA_VERSION;
 
 export type ValidationResult =
   | { ok: true; design: Design }
@@ -58,6 +59,19 @@ function structuralError(obj: Record<string, unknown>): string | null {
         )
           return "A window is malformed.";
       }
+      if (!Array.isArray(wall.doors)) return "A wall is missing its doors.";
+      for (const door of wall.doors) {
+        if (
+          !isObj(door) ||
+          !isNum(door.t) ||
+          !isNum(door.width) ||
+          !isNum(door.height) ||
+          (door.hinge !== "start" && door.hinge !== "end") ||
+          (door.swing !== "A" && door.swing !== "B") ||
+          !isMaterial(door.material)
+        )
+          return "A door is malformed.";
+      }
     }
 
     for (const floor of level.floors) {
@@ -82,7 +96,7 @@ export function validateDesign(data: unknown): ValidationResult {
     };
   }
   const version = data.schemaVersion;
-  if (typeof version !== "number") {
+  if (typeof version !== "number" || version < 1) {
     return { ok: false, error: "Missing or invalid schemaVersion." };
   }
   if (version > CURRENT_SCHEMA_VERSION) {
@@ -91,12 +105,11 @@ export function validateDesign(data: unknown): ValidationResult {
       error: `This design was made with a newer version (schema v${version}). Please update the app to open it.`,
     };
   }
-  if (version !== CURRENT_SCHEMA_VERSION) {
-    return { ok: false, error: `Unsupported schema version v${version}.` };
-  }
-  const err = structuralError(data);
+  // Upgrade older designs to the current schema, then validate the result.
+  const migrated = migrateToLatest(data) as unknown as Record<string, unknown>;
+  const err = structuralError(migrated);
   if (err) return { ok: false, error: err };
-  return { ok: true, design: data as unknown as Design };
+  return { ok: true, design: migrated as unknown as Design };
 }
 
 export function saveDesign(design: Design): void {

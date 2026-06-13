@@ -42,6 +42,29 @@ const WindowIcon = (
   </svg>
 );
 
+const DoorIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <rect
+      x="5"
+      y="3"
+      width="11"
+      height="18"
+      rx="1"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <path
+      d="M16 3a10 10 0 0 1 4 8"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeDasharray="2 2"
+    />
+    <circle cx="12.5" cy="12" r="1.1" fill="currentColor" />
+  </svg>
+);
+
 const FloorIcon = (
   <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
     <path d="M3 8l9-4 9 4-9 4z" fill="currentColor" opacity="0.55" />
@@ -72,6 +95,7 @@ const TOOLS: ToolDef[] = [
   { tool: "select", label: "Select", shortcut: "V", icon: SelectIcon },
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
   { tool: "window", label: "Window", shortcut: "N", icon: WindowIcon },
+  { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
   { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
   { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
 ];

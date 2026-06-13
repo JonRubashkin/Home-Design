@@ -26,6 +26,16 @@ export interface WindowOpening {
   sillHeight: number; // meters from floor to bottom of window
 }
 
+export interface DoorOpening {
+  id: string;
+  t: number; // center along wall, 0..1
+  width: number; // meters
+  height: number; // meters
+  hinge: "start" | "end"; // hinge side relative to wall start->end direction
+  swing: "A" | "B"; // which wall side the door opens toward
+  material: MaterialRef;
+}
+
 export interface Wall {
   id: string;
   start: Vec2; // plan coords, grid-snapped
@@ -35,6 +45,7 @@ export interface Wall {
   paintA: MaterialRef; // side A = left of start->end direction
   paintB: MaterialRef; // side B = right of start->end direction
   windows: WindowOpening[];
+  doors: DoorOpening[];
 }
 
 export interface FloorRegion {
@@ -53,7 +64,7 @@ export interface Level {
 }
 
 export interface Design {
-  schemaVersion: 1;
+  schemaVersion: 2;
   name: string;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can
   // be added without migration. Never hardcode levels[0] outside the current-level

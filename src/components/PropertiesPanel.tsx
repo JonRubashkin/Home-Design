@@ -5,6 +5,7 @@ import { wallLength, wallDirection } from "../geometry/wall";
 import { snapToGrid } from "../geometry/snap";
 import { add, scale } from "../geometry/vec";
 import { validateWindow, clampWindowT } from "../geometry/windows";
+import { validateDoor } from "../geometry/doors";
 import { MaterialPicker } from "./material/MaterialPicker";
 import { MaterialChip } from "./material/MaterialChip";
 
@@ -104,7 +105,40 @@ function ToolMaterialPanel({ tool }: { tool: "paint" | "floor" }) {
 
 type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
+  | { kind: "doorMat"; wallId: string; id: string }
   | { kind: "floor"; id: string };
+
+// A two-option segmented toggle for door hinge / swing.
+function ToggleField<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="toggle-row">
+      <span className="field-label">{label}</span>
+      <div className="seg" role="group" aria-label={label}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            className={`seg-button${value === o.value ? " active" : ""}`}
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function PropertiesPanel() {
   const activeTool = useStore((s) => s.activeTool);
@@ -114,6 +148,9 @@ export function PropertiesPanel() {
   const deleteWall = useStore((s) => s.deleteWall);
   const updateWindow = useStore((s) => s.updateWindow);
   const deleteWindow = useStore((s) => s.deleteWindow);
+  const updateDoor = useStore((s) => s.updateDoor);
+  const deleteDoor = useStore((s) => s.deleteDoor);
+  const setDoorMaterial = useStore((s) => s.setDoorMaterial);
   const paintWallSide = useStore((s) => s.paintWallSide);
   const setFloorMaterial = useStore((s) => s.setFloorMaterial);
   const deleteFloor = useStore((s) => s.deleteFloor);
@@ -277,6 +314,98 @@ export function PropertiesPanel() {
           onClick={() => deleteWindow(wall.id, win.id)}
         >
           Delete window
+        </button>
+      </aside>
+    );
+  }
+
+  // --- door selected ---
+  if (selection?.kind === "door") {
+    const wall = level.walls.find((w) => w.id === selection.wallId);
+    const door = wall?.doors.find((x) => x.id === selection.id);
+    if (!wall || !door)
+      return <aside className="properties">{EMPTY_TIPS}</aside>;
+    const L = wallLength(wall);
+
+    const tryUpdate = (patch: Partial<typeof door>) => {
+      if (validateDoor(wall, { ...door, ...patch }, door.id).ok)
+        updateDoor(wall.id, door.id, patch);
+    };
+
+    if (edit?.kind === "doorMat") {
+      return (
+        <aside className="properties" aria-label="Door material">
+          <PickerHeader title="Door material" onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={door.material}
+            onChange={(m) => setDoorMaterial(wall.id, door.id, m)}
+          />
+        </aside>
+      );
+    }
+
+    return (
+      <aside className="properties" aria-label="Door">
+        <h2 className="properties-title">Door</h2>
+        <div className="properties-fields">
+          <NumberField
+            label="Width"
+            value={door.width}
+            min={0.1}
+            step={0.1}
+            onCommit={(v) => tryUpdate({ width: v })}
+          />
+          <NumberField
+            label="Height"
+            value={door.height}
+            min={0.1}
+            step={0.1}
+            onCommit={(v) => tryUpdate({ height: v })}
+          />
+          <NumberField
+            label="Position"
+            value={door.t * L}
+            min={0}
+            step={0.1}
+            onCommit={(meters) =>
+              tryUpdate({ t: clampWindowT(wall, door.width, meters / L) })
+            }
+          />
+        </div>
+        <ToggleField
+          label="Hinge"
+          value={door.hinge}
+          options={[
+            { value: "start", label: "Start" },
+            { value: "end", label: "End" },
+          ]}
+          onChange={(v) => updateDoor(wall.id, door.id, { hinge: v })}
+        />
+        <ToggleField
+          label="Opens toward"
+          value={door.swing}
+          options={[
+            { value: "A", label: "Side A" },
+            { value: "B", label: "Side B" },
+          ]}
+          onChange={(v) => updateDoor(wall.id, door.id, { swing: v })}
+        />
+        <h3 className="properties-subhead">Material</h3>
+        <div className="chip-row">
+          <MaterialChip
+            material={door.material}
+            label="Door"
+            onClick={() =>
+              setEdit({ kind: "doorMat", wallId: wall.id, id: door.id })
+            }
+          />
+        </div>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteDoor(wall.id, door.id)}
+        >
+          Delete door
         </button>
       </aside>
     );

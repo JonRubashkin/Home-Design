@@ -3,6 +3,9 @@ import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
 import type { MaterialRef, Vec2, Wall } from "../model/types";
 import {
+  DEFAULT_DOOR_HEIGHT,
+  DEFAULT_DOOR_MATERIAL,
+  DEFAULT_DOOR_WIDTH,
   DEFAULT_WINDOW_HEIGHT,
   DEFAULT_WINDOW_SILL_HEIGHT,
   DEFAULT_WINDOW_WIDTH,
@@ -24,6 +27,7 @@ import {
   clampWindowT,
   wallPlanSegments,
 } from "../geometry/windows";
+import { validateDoor, doorSymbol } from "../geometry/doors";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
 import { materialKey, materialDomId } from "../materials/key";
 import { patternDataUrl } from "../materials/textures";
@@ -70,6 +74,14 @@ type DragState =
       pointerId: number;
       wallId: string;
       windowId: string;
+      startScreen: Vec2;
+      started: boolean;
+    }
+  | {
+      kind: "door";
+      pointerId: number;
+      wallId: string;
+      doorId: string;
       startScreen: Vec2;
       started: boolean;
     };
@@ -134,6 +146,12 @@ export function PlanEditor() {
   );
   // Window tool ghost.
   const [winGhost, setWinGhost] = useState<{
+    wall: Wall;
+    t: number;
+    valid: boolean;
+  } | null>(null);
+  // Door tool ghost.
+  const [doorGhost, setDoorGhost] = useState<{
     wall: Wall;
     t: number;
     valid: boolean;
@@ -235,6 +253,27 @@ export function PlanEditor() {
     return undefined;
   };
 
+  const doorUnderCursor = (
+    world: Vec2,
+  ): { wall: Wall; doorId: string } | undefined => {
+    const tol = WALL_HIT_TOL_PX / view.scale;
+    for (let i = walls.length - 1; i >= 0; i--) {
+      const wall = walls[i]!;
+      const L = wallLength(wall);
+      if (L === 0) continue;
+      const rel = sub(world, wall.start);
+      const along = dot(rel, wallDirection(wall));
+      const perp = dot(rel, wallNormal(wall));
+      if (Math.abs(perp) > wall.thickness / 2 + tol) continue;
+      for (const door of wall.doors) {
+        const { a, b } = windowSpan(L, door.t, door.width);
+        if (along >= a - tol && along <= b + tol)
+          return { wall, doorId: door.id };
+      }
+    }
+    return undefined;
+  };
+
   // --- wheel zoom centered on cursor ---
   useEffect(() => {
     const svg = svgRef.current;
@@ -266,6 +305,7 @@ export function PlanEditor() {
     setChainStart(null);
     setPreview(null);
     setWinGhost(null);
+    setDoorGhost(null);
     setFloorPts([]);
     setFloorCursor(null);
     useStore.getState().setSideHighlight(null);
@@ -374,6 +414,27 @@ export function PlanEditor() {
       return;
     }
 
+    if (activeTool === "door") {
+      const wall = wallUnderCursor(world);
+      if (wall) {
+        const t = projectPointToWallT(wall, world);
+        const candidate = {
+          t,
+          width: DEFAULT_DOOR_WIDTH,
+          height: DEFAULT_DOOR_HEIGHT,
+        };
+        if (validateDoor(wall, candidate).ok)
+          store.addDoor(wall.id, {
+            ...candidate,
+            // Hinge defaults to the nearer wall end; swing to side A.
+            hinge: t < 0.5 ? "start" : "end",
+            swing: "A",
+            material: { ...DEFAULT_DOOR_MATERIAL },
+          });
+      }
+      return;
+    }
+
     if (activeTool === "paint") {
       const wall = wallUnderCursor(world);
       if (wall)
@@ -444,6 +505,25 @@ export function PlanEditor() {
       return;
     }
 
+    const doorHit = doorUnderCursor(world);
+    if (doorHit) {
+      store.setSelection({
+        kind: "door",
+        wallId: doorHit.wall.id,
+        id: doorHit.doorId,
+      });
+      dragRef.current = {
+        kind: "door",
+        pointerId: e.pointerId,
+        wallId: doorHit.wall.id,
+        doorId: doorHit.doorId,
+        startScreen: screen,
+        started: false,
+      };
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     const hitWall = wallUnderCursor(world);
     if (hitWall) {
       store.setSelection({ kind: "wall", id: hitWall.id });
@@ -507,6 +587,17 @@ export function PlanEditor() {
           }).ok;
           setWinGhost({ wall, t, valid });
         } else setWinGhost(null);
+      } else if (activeTool === "door") {
+        const wall = wallUnderCursor(world);
+        if (wall) {
+          const t = projectPointToWallT(wall, world);
+          const valid = validateDoor(wall, {
+            t,
+            width: DEFAULT_DOOR_WIDTH,
+            height: DEFAULT_DOOR_HEIGHT,
+          }).ok;
+          setDoorGhost({ wall, t, valid });
+        } else setDoorGhost(null);
       } else if (activeTool === "paint") {
         const wall = wallUnderCursor(world);
         store.setSideHighlight(
@@ -516,7 +607,12 @@ export function PlanEditor() {
       return;
     }
 
-    if (d.kind === "body" || d.kind === "endpoint" || d.kind === "window") {
+    if (
+      d.kind === "body" ||
+      d.kind === "endpoint" ||
+      d.kind === "window" ||
+      d.kind === "door"
+    ) {
       const screen = clientToScreen(e.clientX, e.clientY);
       if (!d.started && distance(screen, d.startScreen) < DRAG_THRESHOLD_PX)
         return;
@@ -541,7 +637,7 @@ export function PlanEditor() {
           d.which,
           resolveDrawPoint(world, null, d.wallId).pt,
         );
-      } else {
+      } else if (d.kind === "window") {
         const wall = walls.find((w) => w.id === d.wallId);
         const win = wall?.windows.find((x) => x.id === d.windowId);
         if (wall && win) {
@@ -553,6 +649,18 @@ export function PlanEditor() {
           if (validateWindow(wall, { ...win, t }, win.id).ok)
             store.moveWindow(d.wallId, d.windowId, t);
         }
+      } else {
+        const wall = walls.find((w) => w.id === d.wallId);
+        const door = wall?.doors.find((x) => x.id === d.doorId);
+        if (wall && door) {
+          const t = clampWindowT(
+            wall,
+            door.width,
+            projectPointToWallT(wall, world),
+          );
+          if (validateDoor(wall, { ...door, t }, door.id).ok)
+            store.moveDoor(d.wallId, d.doorId, t);
+        }
       }
     }
   };
@@ -560,7 +668,10 @@ export function PlanEditor() {
   const endDrag = (e: React.PointerEvent<SVGSVGElement>) => {
     const d = dragRef.current;
     if (
-      (d.kind === "body" || d.kind === "endpoint" || d.kind === "window") &&
+      (d.kind === "body" ||
+        d.kind === "endpoint" ||
+        d.kind === "window" ||
+        d.kind === "door") &&
       d.started
     ) {
       useStore.getState().endDrag();
@@ -673,6 +784,16 @@ export function PlanEditor() {
                     }
                   />
                 ))}
+                {w.doors.map((door) => (
+                  <DoorSymbolShape
+                    key={door.id}
+                    wall={w}
+                    door={door}
+                    selected={
+                      selection?.kind === "door" && selection.id === door.id
+                    }
+                  />
+                ))}
               </g>
             );
           })}
@@ -694,6 +815,20 @@ export function PlanEditor() {
               t={winGhost.t}
               width={DEFAULT_WINDOW_WIDTH}
               ghost={winGhost.valid ? "valid" : "invalid"}
+            />
+          )}
+
+          {/* Door ghost (placement preview). */}
+          {activeTool === "door" && doorGhost && (
+            <DoorSymbolShape
+              wall={doorGhost.wall}
+              door={{
+                t: doorGhost.t,
+                width: DEFAULT_DOOR_WIDTH,
+                hinge: doorGhost.t < 0.5 ? "start" : "end",
+                swing: "A",
+              }}
+              ghost={doorGhost.valid ? "valid" : "invalid"}
             />
           )}
 
@@ -740,6 +875,8 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
         : "Click to start a wall · hold Shift for 0/45/90°";
     case "window":
       return "Hover a wall and click to place a window · invalid spots show red";
+    case "door":
+      return "Hover a wall and click to place a door · edit hinge & swing in the panel";
     case "paint":
       return "Hover a wall to highlight the near side · click to paint it";
     case "floor":
@@ -747,7 +884,7 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
         ? "Click to add points · click the first point or Enter to close · Backspace removes the last · Esc cancels"
         : "Click to start a floor outline";
     default:
-      return "Click a wall, window, or floor to select · Space-drag to pan · scroll to zoom";
+      return "Click a wall, window, door, or floor to select · Space-drag to pan · scroll to zoom";
   }
 }
 
@@ -792,6 +929,62 @@ function WindowSymbol({
       {seg(A, B, "c")}
       {seg(add(A, o), sub(A, o), "ja")}
       {seg(add(B, o), sub(B, o), "jb")}
+    </g>
+  );
+}
+
+// Standard architectural door symbol: jamb ticks across the opening, the leaf
+// drawn open (perpendicular from the hinge), and a quarter-circle swing arc.
+function DoorSymbolShape({
+  wall,
+  door,
+  selected,
+  ghost,
+}: {
+  wall: Wall;
+  door: { t: number; width: number; hinge: "start" | "end"; swing: "A" | "B" };
+  selected?: boolean;
+  ghost?: "valid" | "invalid";
+}) {
+  const L = wallLength(wall);
+  if (L === 0) return null;
+  const { hinge, jamb, leafEnd, sweepFlag, radius } = doorSymbol(wall, door);
+  const n = vscale(wallNormal(wall), wall.thickness / 2);
+  const cls = ghost
+    ? `door-symbol ghost-${ghost}`
+    : `door-symbol${selected ? " selected" : ""}`;
+  return (
+    <g className={cls}>
+      {/* jamb ticks across the wall thickness at both opening edges */}
+      <line
+        x1={add(hinge, n).x}
+        y1={add(hinge, n).y}
+        x2={sub(hinge, n).x}
+        y2={sub(hinge, n).y}
+        vectorEffect="non-scaling-stroke"
+      />
+      <line
+        x1={add(jamb, n).x}
+        y1={add(jamb, n).y}
+        x2={sub(jamb, n).x}
+        y2={sub(jamb, n).y}
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* door leaf (open) */}
+      <line
+        className="door-leaf"
+        x1={hinge.x}
+        y1={hinge.y}
+        x2={leafEnd.x}
+        y2={leafEnd.y}
+        vectorEffect="non-scaling-stroke"
+      />
+      {/* swing arc from the closed position to the open leaf */}
+      <path
+        className="door-arc"
+        d={`M ${jamb.x} ${jamb.y} A ${radius} ${radius} 0 0 ${sweepFlag} ${leafEnd.x} ${leafEnd.y}`}
+        vectorEffect="non-scaling-stroke"
+      />
     </g>
   );
 }

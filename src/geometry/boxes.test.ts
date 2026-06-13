@@ -111,3 +111,49 @@ describe("wallToBoxes — orientation", () => {
     expect(b.center[2]).toBeCloseTo(2); // plan y midpoint -> world z
   });
 });
+
+describe("wallToBoxes — doors", () => {
+  const door = (over: Partial<import("../model/types").DoorOpening> = {}) => ({
+    id: "d",
+    t: 0.5,
+    width: 0.9,
+    height: 2.0,
+    hinge: "start" as const,
+    swing: "A" as const,
+    material: { kind: "solid" as const, color: "#9a6b4f" },
+    ...over,
+  });
+
+  it("splits a wall around a door with NO box under it (just a header)", () => {
+    const w: Wall = {
+      ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
+      doors: [door()],
+    };
+    const boxes = wallToBoxes(w);
+    // two full-height piers + one header box over the door (no under-sill box)
+    expect(boxes).toHaveLength(3);
+    const piers = boxes.filter((b) => close(b.size[1], 2.4));
+    expect(piers).toHaveLength(2);
+    const header = boxes.find((b) => b.center[1] > 1.5);
+    expect(header).toBeDefined();
+    expect(header!.size[1]).toBeCloseTo(0.4); // 2.4 - 2.0
+    expect(header!.center[1]).toBeCloseTo(2.2);
+    // nothing sits below the door opening
+    const belowDoor = boxes.find(
+      (b) => close(b.center[0], 2.0) && b.center[1] < 1.0,
+    );
+    expect(belowDoor).toBeUndefined();
+  });
+
+  it("handles a wall with both a window and a door", () => {
+    const win = { id: "w", t: 0.25, width: 1.0, height: 1.2, sillHeight: 0.9 };
+    const w: Wall = {
+      ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
+      windows: [win],
+      doors: [door({ t: 0.75 })],
+    };
+    const boxes = wallToBoxes(w);
+    // pier, window under-sill, window over-head, pier, door header, pier = 6
+    expect(boxes).toHaveLength(6);
+  });
+});

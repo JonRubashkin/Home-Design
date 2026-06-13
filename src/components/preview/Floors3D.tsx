@@ -30,10 +30,12 @@ function Floor3D({
   floor,
   y,
   selected,
+  bias,
 }: {
   floor: FloorRegion;
   y: number;
   selected: boolean;
+  bias: number;
 }) {
   const geometry = useMemo(
     () => floorGeometry(floor.polygon, y),
@@ -45,7 +47,7 @@ function Floor3D({
   const material = useThreeMaterial(
     floor.material,
     { repeat: [r, r], offset: [0, 0], side: THREE.DoubleSide, roughness: 0.95 },
-    { selected },
+    { selected, depthBias: bias },
   );
   return (
     <mesh geometry={geometry}>
@@ -61,11 +63,14 @@ export function Floors3D() {
   const y = level.elevation + 0.005;
   return (
     <group>
-      {level.floors.map((f) => (
+      {level.floors.map((f, i) => (
         <Floor3D
           key={f.id}
           floor={f}
           y={y}
+          // Later floors (drawn over earlier ones) get more depth bias so they
+          // render on top of the area they cover; the rest of the old floor shows.
+          bias={i + 1}
           selected={selection?.kind === "floor" && selection.id === f.id}
         />
       ))}

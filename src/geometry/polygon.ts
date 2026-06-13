@@ -113,3 +113,26 @@ export function polygonsOverlap(a: Vec2[], b: Vec2[]): boolean {
   }
   return false;
 }
+
+// Is `inner` fully covered by `outer`? (Every inner vertex inside outer and no
+// inner edge leaves outer.) Used so a newly drawn floor removes only an old
+// floor it completely covers; partially-overlapped floors are kept (and layered).
+export function polygonContains(outer: Vec2[], inner: Vec2[]): boolean {
+  const c = vertexCentroid(inner);
+  for (const v of inner) {
+    // Nudge toward the inner centroid so a vertex shared on the outer boundary
+    // (e.g. redrawing the exact same region) still counts as inside.
+    const p = { x: v.x + (c.x - v.x) * 1e-3, y: v.y + (c.y - v.y) * 1e-3 };
+    if (!pointInPolygon(p, outer)) return false;
+  }
+  for (let i = 0; i < inner.length; i++) {
+    const a1 = inner[i]!;
+    const a2 = inner[(i + 1) % inner.length]!;
+    for (let j = 0; j < outer.length; j++) {
+      const b1 = outer[j]!;
+      const b2 = outer[(j + 1) % outer.length]!;
+      if (segmentsProperlyIntersect(a1, a2, b1, b2)) return false;
+    }
+  }
+  return true;
+}

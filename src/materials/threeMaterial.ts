@@ -15,6 +15,9 @@ export interface MaterialBuildOptions {
 export interface MaterialStyle {
   selected?: boolean;
   ghost?: boolean;
+  // Depth-bias level for coplanar surfaces (higher = rendered on top). Used to
+  // layer overlapping floor regions without z-fighting.
+  depthBias?: number;
 }
 
 // Shared factory: build a THREE material for a MaterialRef. Solids use a color;
@@ -78,5 +81,12 @@ export function useThreeMaterial(
   material.transparent = ghost;
   material.opacity = ghost ? 0.15 : 1;
   material.depthWrite = !ghost;
+
+  // Bias coplanar surfaces toward the camera by their level so a higher level
+  // (a more recently drawn floor) wins over a lower one without z-fighting.
+  const bias = style.depthBias ?? 0;
+  material.polygonOffset = bias > 0;
+  material.polygonOffsetFactor = -bias;
+  material.polygonOffsetUnits = -bias;
   return material;
 }

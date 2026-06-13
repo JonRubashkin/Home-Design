@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
+import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { selectCurrentLevel, useStore } from "../../store/store";
 import { getCatalogEntry, effectiveDimensions } from "../../catalog";
 import {
@@ -7,14 +8,44 @@ import {
 } from "../../geometry/furniture";
 import { FurniturePiece } from "./FurniturePiece";
 import { FLAT_ITEM_LIFT, ITEM_LIFT, STACK_LIFT } from "./stacking";
+import { resolveItemId, isClick } from "./picking";
 
 // Furniture renders in all three wall view modes (wall modes never hide it).
 // Small "stackable" items centered over a surface item (a counter, table…)
 // automatically rest on that surface's top instead of being buried inside it.
-export function Furniture3D() {
+//
+// Phase 3a: furniture is the only pickable geometry in 3D. Hovering highlights
+// an item and shows a pointer cursor; a clean click (not an orbit drag) selects
+// it through the SAME selection state the plan uses. `pointerDownRef` carries
+// the pointer-down position so we can tell a click from a drag (deselect on
+// empty space is handled by the Canvas's onPointerMissed in Preview3D).
+export function Furniture3D({
+  pointerDownRef,
+}: {
+  pointerDownRef: RefObject<{ x: number; y: number } | null>;
+}) {
   const level = useStore(selectCurrentLevel);
   const selection = useStore((s) => s.selection);
+  const setSelection = useStore((s) => s.setSelection);
   const furniture = level.furniture;
+
+  const gl = useThree((s) => s.gl);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Drop hover (and its cursor) when the hovered item disappears.
+  useEffect(() => {
+    if (hoveredId && !furniture.some((f) => f.id === hoveredId))
+      setHoveredId(null);
+  }, [furniture, hoveredId]);
+
+  // Pointer cursor while hovering a pickable item.
+  useEffect(() => {
+    const el = gl.domElement;
+    el.style.cursor = hoveredId ? "pointer" : "";
+    return () => {
+      el.style.cursor = "";
+    };
+  }, [gl, hoveredId]);
 
   // Resolve each item's base lift above the floor (floor / flat / on a surface).
   const baseLifts = useMemo(() => {
@@ -42,6 +73,24 @@ export function Furniture3D() {
     });
   }, [furniture]);
 
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (e.buttons !== 0) return; // mid-orbit drag — don't hover
+    setHoveredId(resolveItemId(e.object));
+  };
+  const handlePointerOut = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    const id = resolveItemId(e.object);
+    setHoveredId((h) => (h === id ? null : h));
+  };
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    // Ignore the "click" that ends a camera-orbit drag.
+    if (!isClick(pointerDownRef.current, { x: e.clientX, y: e.clientY })) return;
+    const id = resolveItemId(e.object);
+    if (id) setSelection({ kind: "furniture", id });
+  };
+
   return (
     <group>
       {furniture.map((item) => (
@@ -51,6 +100,10 @@ export function Furniture3D() {
           elevation={level.elevation}
           baseLift={baseLifts.get(item.id)}
           selected={selection?.kind === "furniture" && selection.id === item.id}
+          hovered={hoveredId === item.id}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+          onClick={handleClick}
         />
       ))}
     </group>

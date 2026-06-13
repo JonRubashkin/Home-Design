@@ -14,6 +14,9 @@ export interface MaterialBuildOptions {
 
 export interface MaterialStyle {
   selected?: boolean;
+  // Hover echo (3D furniture picking): a subtler version of the selection tint,
+  // so hovered and selected read as related but distinct.
+  hovered?: boolean;
   ghost?: boolean;
   // Depth-bias level for coplanar surfaces (higher = rendered on top). Used to
   // layer overlapping floor regions without z-fighting.
@@ -75,9 +78,10 @@ export function useThreeMaterial(
   useEffect(() => () => material.dispose(), [material]);
 
   const selected = style.selected ?? false;
+  const hovered = style.hovered ?? false;
   const ghost = style.ghost ?? false;
-  material.emissive.set(selected ? SELECT_EMISSIVE : "#000000");
-  material.emissiveIntensity = selected ? 0.4 : 0;
+  material.emissive.set(selected || hovered ? SELECT_EMISSIVE : "#000000");
+  material.emissiveIntensity = selected ? 0.4 : hovered ? 0.18 : 0;
   material.transparent = ghost;
   material.opacity = ghost ? 0.15 : 1;
   material.depthWrite = !ghost;

@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { CATALOG_ITEMS, getCatalogEntry, primarySlot } from "./index";
 
 describe("catalog", () => {
-  it("has 16 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(16);
+  it("has 30 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(30);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(16);
+    expect(new Set(ids).size).toBe(30);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -14,6 +14,24 @@ describe("catalog", () => {
       expect(e.footprint.depth).toBeGreaterThan(0);
       expect(e.height).toBeGreaterThan(0);
       expect(e.slots.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("every entry declares a valid scaling policy", () => {
+    for (const e of CATALOG_ITEMS) {
+      expect(["none", "uniform", "axes"]).toContain(e.scaling.mode);
+      if (e.scaling.mode === "uniform") {
+        const r = e.scaling.uniform!;
+        expect(r[0]).toBeGreaterThan(0);
+        expect(r[1]).toBeGreaterThanOrEqual(r[0]);
+      }
+      if (e.scaling.mode === "axes") {
+        for (const range of Object.values(e.scaling.axes ?? {})) {
+          if (!range) continue;
+          expect(range[0]).toBeGreaterThan(0);
+          expect(range[1]).toBeGreaterThanOrEqual(range[0]);
+        }
+      }
     }
   });
 
@@ -34,12 +52,19 @@ describe("catalog", () => {
         "sofa-3seat",
         "tv-stand",
         "bookshelf",
+        "console-table",
         "bed-double",
         "wardrobe",
+        "dresser",
+        "mirror",
         "counter",
+        "upper-cabinet",
         "fridge",
         "sink-vanity",
         "bathtub",
+        "shower-stall",
+        "towel-rack",
+        "bathroom-cabinet",
       ].sort(),
     );
   });

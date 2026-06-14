@@ -247,7 +247,10 @@ in code under `src/catalog/`:
   defined as named constants in `src/components/preview/stacking.ts` (no scattered
   magic numbers). Transparent materials (ghost cutaway) use `depthWrite: false`;
   keep furniture materials opaque (rugs included) so they don't occlude what's
-  behind them.
+  behind them. **Flat items (rugs/mats) are thin solid boxes** (not zero-thickness
+  planes) and render **double-sided** (`THREE.DoubleSide`, keyed off `entry.flat`
+  in `FurniturePiece`) so their thin faces never backface-cull and vanish as the
+  camera orbits low/overhead.
 - **Automatic surface stacking.** A `stackable` catalog item (microwave, lamp)
   whose footprint CENTER lies within a `surfaceTop` item's footprint (counter,
   table, dresser…) automatically rests on that surface's top instead of being

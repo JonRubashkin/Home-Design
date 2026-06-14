@@ -85,6 +85,8 @@ npm run format   # Prettier
   regular furniture each sit on their own tiny vertical layer (named constants in
   `preview/stacking.ts`) so overlapping/stacked items never share an exact height
   and z-fight.
+- **Flat items** (rugs/mats) are thin solid boxes rendered double-sided, so they
+  stay fully visible at every orbit angle (no edge-on or overhead vanishing).
 - **Automatic surface stacking** — small items (microwave, bedside lamp) placed
   with their centre over a surface item (counter, table, dresser, nightstand…)
   automatically rest on that surface's top instead of being buried inside it;

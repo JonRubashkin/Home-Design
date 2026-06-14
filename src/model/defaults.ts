@@ -5,11 +5,13 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
+  Site,
   Vec2,
   Vec3,
   Wall,
   WindowOpening,
 } from "./types";
+import { DEFAULT_SITE } from "./site";
 
 // Defaults from CLAUDE.md "Coordinate system & units".
 export const DEFAULT_WALL_HEIGHT = 2.4;
@@ -131,10 +133,14 @@ export function createLevel(name = "Ground floor"): Level {
   };
 }
 
-export function createDesign(name = "Untitled design"): Design {
+export function createDesign(
+  name = "Untitled design",
+  site: Site = DEFAULT_SITE,
+): Design {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     name,
+    site: { width: site.width, depth: site.depth },
     levels: [createLevel()],
   };
 }

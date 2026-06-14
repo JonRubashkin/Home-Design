@@ -1,4 +1,5 @@
 import type { Design } from "./types";
+import { DEFAULT_SITE } from "./site";
 
 // Ordered schema migrations. `migrations[i]` upgrades a design from version
 // (i + 1) to (i + 2). Applied in sequence on import/load so older saved designs
@@ -44,6 +45,19 @@ const migrations: Migration[] = [
       }
     }
     design.schemaVersion = 4;
+    return design;
+  },
+  // v4 -> v5: work area. The design gains a default (large) site so nothing
+  // already drawn falls outside it.
+  (design) => {
+    if (
+      typeof design.site !== "object" ||
+      design.site === null ||
+      Array.isArray(design.site)
+    ) {
+      design.site = { ...DEFAULT_SITE };
+    }
+    design.schemaVersion = 5;
     return design;
   },
 ];

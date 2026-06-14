@@ -65,8 +65,20 @@ describe("migrateToLatest", () => {
       { id: "f", catalogId: "sofa-3seat", position: { x: 1, y: 1 }, rotation: 0, materials: {} },
     ];
     const out = migrateToLatest(v3);
-    expect(out.schemaVersion).toBe(4);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
     expect(out.levels[0]!.furniture[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it("gives an older design a default large site (-> v5)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.site.width).toBeCloseTo(Math.sqrt(1000), 3);
+    expect(out.site.depth).toBeCloseTo(Math.sqrt(1000), 3);
+    // a design already carrying a custom site keeps it
+    const v4 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v4.schemaVersion = 4;
+    v4.site = { width: 12, depth: 8 };
+    const kept = migrateToLatest(v4);
+    expect(kept.site).toEqual({ width: 12, depth: 8 });
   });
 
   it("leaves an already-current design unchanged", () => {

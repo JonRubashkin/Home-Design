@@ -81,9 +81,18 @@ export interface Level {
   furniture: FurnitureItem[];
 }
 
+// The work area ("site"): a soft, buildable rectangle. Never enforced — it frames
+// the work, sizes the grid emphasis, and drives camera framing. Occupies plan
+// coords [0, width] x [0, depth] with the origin at the TOP-LEFT corner.
+export interface Site {
+  width: number; // meters
+  depth: number; // meters
+}
+
 export interface Design {
-  schemaVersion: 4;
+  schemaVersion: 5;
   name: string;
+  site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can
   // be added without migration. Never hardcode levels[0] outside the current-level
   // selector.

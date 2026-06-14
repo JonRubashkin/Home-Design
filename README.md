@@ -30,6 +30,23 @@ npm run format   # Prettier
 
 ## Features
 
+### Welcome screen & work area (phase 3b)
+
+- **Welcome screen** on load: if you have a saved design, **Continue** resumes it
+  untouched, or start a **New design**; first-timers go straight to the size
+  chooser. Pick a work-area size — **Small** (100 m² → 10 × 10 m), **Medium**
+  (300 m² → ≈17.3 × 17.3 m), **Large** (1000 m² → ≈31.6 × 31.6 m), or a custom
+  width × depth — and the editor opens framed on it.
+- **Work area ("site")** — a *soft* buildable rectangle stored in the design
+  (origin at the top-left corner). The 2D plan shades it, labels its dimensions,
+  and de-emphasizes the grid outside it; the 3D ground shows it as a lighter lot.
+  The boundary is never enforced — you can draw and place outside it.
+- **Resize area** (plan button) grows or shrinks the site (preset or custom)
+  without moving or deleting anything — it's a normal undoable action, so items
+  left outside a shrink stay put.
+- **Fit view** in the 2D plan (sibling of the 3D one) frames the site plus
+  everything drawn, with a margin; it frames just the site when empty.
+
 ### 2D plan editor (phase 1a)
 
 - **SVG plan editor** with pan, cursor-centered zoom, and a multi-tier grid

@@ -36,6 +36,8 @@ function structuralError(obj: Record<string, unknown>): string | null {
   if (!Array.isArray(obj.levels) || obj.levels.length === 0)
     return "Design has no levels.";
   if (!isStr(obj.name)) return "Design is missing a name.";
+  if (!isObj(obj.site) || !isNum(obj.site.width) || !isNum(obj.site.depth))
+    return "Design is missing its site.";
 
   for (const level of obj.levels) {
     if (!isObj(level)) return "A level is malformed.";

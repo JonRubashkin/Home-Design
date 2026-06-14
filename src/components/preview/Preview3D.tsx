@@ -16,11 +16,22 @@ import { useStore } from "../../store/store";
 THREE.ColorManagement.enabled = true;
 
 function Ground() {
+  // The work area ("lot") is the site rectangle in plan coords [0,W] x [0,D],
+  // which maps to world x[0,W], z[0,D]. Render it as a slightly lighter surface
+  // sitting just above the surrounding dark ground (and below floor regions).
+  const site = useStore((s) => s.design.site);
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]}>
         <planeGeometry args={[600, 600]} />
         <meshStandardMaterial color="#1a1d27" roughness={1} metalness={0} />
+      </mesh>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[site.width / 2, GROUND_Y + 0.004, site.depth / 2]}
+      >
+        <planeGeometry args={[site.width, site.depth]} />
+        <meshStandardMaterial color="#262c3b" roughness={1} metalness={0} />
       </mesh>
       <Grid
         args={[600, 600]}

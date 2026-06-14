@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
-import type { MaterialRef, Vec2, Wall } from "../model/types";
+import type { MaterialRef, Site, Vec2, Wall } from "../model/types";
 import {
   DEFAULT_DOOR_HEIGHT,
   DEFAULT_DOOR_MATERIAL,
@@ -32,8 +32,17 @@ import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
 import {
   pointInFootprint,
   wallHuggerSnap,
+  footprintCorners,
   type Footprint,
 } from "../geometry/furniture";
+import {
+  boundsOfPoints,
+  unionBounds,
+  siteBounds,
+  fitView,
+  type Bounds,
+} from "../geometry/planview";
+import { ResizeAreaDialog } from "./ResizeAreaDialog";
 import {
   getCatalogEntry,
   primarySlot,
@@ -150,10 +159,12 @@ export function PlanEditor() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   const level = useStore(selectCurrentLevel);
+  const site = useStore((s) => s.design.site);
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
+  const [resizeOpen, setResizeOpen] = useState(false);
 
   const [view, setView] = useState<View>({
     pan: { x: 160, y: 160 },
@@ -207,6 +218,47 @@ export function PlanEditor() {
     const d = effectiveDimensions(entry, scale);
     return { width: d.width, depth: d.depth };
   };
+
+  // Bounds of all drawn geometry (walls, floors, furniture footprints), or null
+  // if the level is empty. Furniture is measured by its scaled, rotated corners.
+  const geometryBounds = (): Bounds | null => {
+    const pts: Vec2[] = [];
+    for (const w of walls) pts.push(w.start, w.end);
+    for (const f of floors) pts.push(...f.polygon);
+    for (const item of furniture) {
+      const entry = getCatalogEntry(item.catalogId);
+      if (!entry) continue;
+      pts.push(
+        ...footprintCorners(
+          item.position,
+          item.rotation,
+          scaledFootprint(entry, item.scale),
+        ),
+      );
+    }
+    return boundsOfPoints(pts);
+  };
+
+  // Fit view: frame the union of the site and all content (or just the site when
+  // empty), mirroring the 3D preview's Fit view.
+  const fitToContent = () => {
+    if (size.width === 0) return;
+    const bounds = unionBounds(siteBounds(site), geometryBounds());
+    if (!bounds) return;
+    setView(
+      fitView(bounds, size, { minScale: MIN_SCALE, maxScale: MAX_SCALE }),
+    );
+  };
+
+  // Frame the site + content once, when the plan first gets a size (mirrors the
+  // 3D preview, which fits on mount). Only on first measure, never on edits.
+  const didInitialFit = useRef(false);
+  useEffect(() => {
+    if (didInitialFit.current || size.width === 0) return;
+    didInitialFit.current = true;
+    fitToContent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size.width, size.height]);
 
   const furnitureUnderCursor = (world: Vec2) => {
     for (let i = furniture.length - 1; i >= 0; i--) {
@@ -911,6 +963,9 @@ export function PlanEditor() {
         <g
           transform={`translate(${view.pan.x} ${view.pan.y}) scale(${view.scale})`}
         >
+          {/* Work-area (site): de-emphasize outside, shade the buildable rect. */}
+          <SiteLayer site={site} view={view} size={size} />
+
           {/* Floors beneath everything. */}
           {floors.map((f) => (
             <polygon
@@ -1062,11 +1117,47 @@ export function PlanEditor() {
           floorPts={floorPts}
           worldToScreen={worldToScreen}
         />
+
+        {/* Site dimension label on the top border (screen space). */}
+        {(() => {
+          const p = worldToScreen({ x: site.width / 2, y: 0 });
+          return (
+            <text
+              className="site-label"
+              x={p.x}
+              y={p.y - 6}
+              textAnchor="middle"
+            >
+              {`${site.width.toFixed(1)} × ${site.depth.toFixed(1)} m`}
+            </text>
+          );
+        })()}
       </svg>
+
+      <div className="plan-controls">
+        <button
+          type="button"
+          className="plan-control-button"
+          title="Resize the work area"
+          onClick={() => setResizeOpen(true)}
+        >
+          Resize area
+        </button>
+        <button
+          type="button"
+          className="plan-control-button"
+          title="Frame the work area and everything drawn"
+          onClick={fitToContent}
+        >
+          Fit view
+        </button>
+      </div>
 
       <div className="plan-hint">
         {hintFor(activeTool, chainStart, floorPts.length)}
       </div>
+
+      {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
     </div>
   );
 }
@@ -1237,6 +1328,44 @@ function FloorPreview({
           vectorEffect="non-scaling-stroke"
         />
       )}
+    </g>
+  );
+}
+
+// The work-area rectangle (plan coords [0,width] x [0,depth]) rendered inside the
+// transformed group: a subtle fill, a dim mask over everything OUTSIDE it (so the
+// grid reads as de-emphasized there), and a crisp border. The boundary is soft —
+// drawing outside is still allowed.
+function SiteLayer({
+  site,
+  view,
+  size,
+}: {
+  site: Site;
+  view: View;
+  size: { width: number; height: number };
+}) {
+  if (size.width === 0) return null;
+  const left = (0 - view.pan.x) / view.scale;
+  const right = (size.width - view.pan.x) / view.scale;
+  const top = (0 - view.pan.y) / view.scale;
+  const bottom = (size.height - view.pan.y) / view.scale;
+  const { width: W, depth: D } = site;
+  // Outer (visible) rect minus the site rect, even-odd → fills only the outside.
+  const dim = `M${left},${top} H${right} V${bottom} H${left} Z M0,0 H${W} V${D} H0 Z`;
+  return (
+    <g className="site-layer">
+      <rect className="site-fill" x={0} y={0} width={W} height={D} />
+      <path className="site-dim" d={dim} fillRule="evenodd" />
+      <rect
+        className="site-border"
+        x={0}
+        y={0}
+        width={W}
+        height={D}
+        fill="none"
+        vectorEffect="non-scaling-stroke"
+      />
     </g>
   );
 }

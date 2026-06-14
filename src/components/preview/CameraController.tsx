@@ -17,16 +17,19 @@ export function CameraController({ fitNonce }: { fitNonce: number }) {
   const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as OrbitLike | null;
   const level = useStore(selectCurrentLevel);
+  const site = useStore((s) => s.design.site);
   const walls = level.walls;
   const elevation = level.elevation;
 
   useEffect(() => {
-    if (!controls || walls.length === 0) return;
+    if (!controls) return;
 
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minZ = Infinity;
-    let maxZ = -Infinity;
+    // Seed the bounds with the site rectangle so an empty design frames the lot,
+    // then expand to include every wall.
+    let minX = 0;
+    let maxX = site.width;
+    let minZ = 0;
+    let maxZ = site.depth;
     let maxY = elevation;
     for (const w of walls) {
       for (const p of [w.start, w.end]) {

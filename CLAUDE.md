@@ -50,15 +50,28 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 4;         // v1 = Phase 1; v2 = doors; v3 = furniture;
-                            // v4 = furniture scale. Migrations in
-                            // src/model/migrations.ts upgrade older saved designs.
+  schemaVersion: 5;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+                            // v4 = furniture scale; v5 = work-area (site).
+                            // Migrations in src/model/migrations.ts upgrade
+                            // older saved designs.
   name: string;
+  site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
                             // migration. Never hardcode levels[0] outside of a
                             // single "current level" selector.
 }
+
+interface Site {            // SOFT work-area boundary — never enforced.
+  width: number;            // meters
+  depth: number;            // meters
+}
+// The site occupies plan coords [0,width] x [0,depth] with the origin at the
+// TOP-LEFT corner. It frames the work, de-emphasizes the grid outside itself,
+// and drives camera framing — but drawing/placing outside it is always allowed.
+// Resizing only changes these numbers; nothing is clamped, moved, or deleted.
+// Presets are squares by area (Small 100 m², Medium 300, Large 1000) via the
+// pure `areaToSquare(m2)` in src/model/site.ts; custom is width × depth meters.
 
 interface Level {
   id: string;
@@ -234,7 +247,10 @@ in code under `src/catalog/`:
   defined as named constants in `src/components/preview/stacking.ts` (no scattered
   magic numbers). Transparent materials (ghost cutaway) use `depthWrite: false`;
   keep furniture materials opaque (rugs included) so they don't occlude what's
-  behind them.
+  behind them. **Flat items (rugs/mats) are thin solid boxes** (not zero-thickness
+  planes) and render **double-sided** (`THREE.DoubleSide`, keyed off `entry.flat`
+  in `FurniturePiece`) so their thin faces never backface-cull and vanish as the
+  camera orbits low/overhead.
 - **Automatic surface stacking.** A `stackable` catalog item (microwave, lamp)
   whose footprint CENTER lies within a `surfaceTop` item's footprint (counter,
   table, dresser…) automatically rests on that surface's top instead of being
@@ -243,6 +259,23 @@ in code under `src/catalog/`:
   tested) keyed off plan positions — elevation is invisible top-down, so it
   needs **no schema field or persistence**. It resolves live as items move; it is
   NOT a manual elevation control.
+
+## Work area, welcome screen & Fit view
+
+- **Welcome screen** (`WelcomeScreen`, shown before the editor when `started` is
+  false): if a save exists, offer **Continue** (resume untouched) and **New
+  design**; otherwise go straight to the size chooser. The chooser (shared
+  `SiteSizeForm`) shows the three presets + a custom width × depth and creates a
+  fresh design with the chosen `site`. Returning users are never re-prompted.
+- **Site rendering:** the 2D plan shades the site rectangle with a border +
+  dimension label and dims the grid outside it (soft — drawing outside still
+  works). The 3D ground shows the site as a lighter "lot" over the dark
+  surroundings. **Resize area** (plan overlay button → `setSite`, undoable) grows
+  or shrinks the site without moving/deleting anything.
+- **Fit view** exists in BOTH the 2D plan and the 3D preview and they're
+  siblings: frame the union of the site and all drawn geometry (or just the site
+  when empty), with a margin. The 2D math is pure in `src/geometry/planview.ts`
+  (tested); the plan also fits once on first mount.
 
 ## 2D plan editor rules
 

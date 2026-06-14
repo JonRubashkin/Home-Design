@@ -6,6 +6,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
+  Site,
   Vec2,
   Vec3,
   Wall,
@@ -127,6 +128,12 @@ interface AppState {
   activeTool: Tool;
   selection: Selection;
 
+  // Welcome flow (not persisted, not in history). `started` is false until the
+  // user picks Continue or creates a new design; `hasSavedDesign` records whether
+  // a saved design was found on load (set by main.tsx).
+  started: boolean;
+  hasSavedDesign: boolean;
+
   // Transient hover hint: which wall side to spotlight in the plan (paint tool
   // hover and the properties-panel side chips). Not persisted, not in history.
   sideHighlight: { wallId: string; side: WallSide } | null;
@@ -204,8 +211,12 @@ interface AppState {
   setFurnitureScale: (id: string, scale: Vec3) => void;
   resetFurnitureScale: (id: string) => void;
   deleteFurniture: (id: string) => void;
+  setSite: (site: Site) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
+  // Welcome actions.
+  continueDesign: () => void;
+  startNewDesign: (site: Site) => void;
 
   // --- drag session (transient until endDrag) ---
   beginDrag: () => void;
@@ -268,6 +279,8 @@ export const useStore = create<AppState>((set, get) => {
     currentLevelId: initialDesign.levels[0]!.id,
     activeTool: "wall",
     selection: null,
+    started: false,
+    hasSavedDesign: false,
     sideHighlight: null,
     placingCatalogId: null,
     viewMode: prefs.viewMode,
@@ -591,6 +604,17 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    setSite: (site) => {
+      // Soft boundary: resizing only changes the numbers — nothing is clamped,
+      // moved, or deleted. Undoable.
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        design.site = { width: site.width, depth: site.depth };
+        return { design };
+      });
+    },
+
     setDesign: (design) => {
       pushHistory();
       const next = clone(design);
@@ -608,6 +632,21 @@ export const useStore = create<AppState>((set, get) => {
         design,
         currentLevelId: design.levels[0]!.id,
         selection: null,
+      });
+    },
+
+    continueDesign: () => set({ started: true }),
+
+    startNewDesign: (site) => {
+      // Fresh design with the chosen site and a clean history.
+      const design = createDesign(undefined, site);
+      set({
+        design,
+        currentLevelId: design.levels[0]!.id,
+        selection: null,
+        past: [],
+        future: [],
+        started: true,
       });
     },
 

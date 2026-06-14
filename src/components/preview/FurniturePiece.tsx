@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import * as THREE from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 import type { FurnitureItem, MaterialRef } from "../../model/types";
@@ -14,13 +15,21 @@ function PartMesh({
   material,
   selected,
   hovered,
+  doubleSided,
 }: {
   part: Part;
   material: MaterialRef;
   selected: boolean;
   hovered: boolean;
+  // Flat items (rugs/mats) render double-sided so their thin faces never get
+  // backface-culled and vanish when the camera orbits to a low / overhead angle.
+  doubleSided: boolean;
 }) {
-  const mat = useThreeMaterial(material, {}, { selected, hovered });
+  const mat = useThreeMaterial(
+    material,
+    doubleSided ? { side: THREE.DoubleSide } : {},
+    { selected, hovered },
+  );
   const p = part.primitive;
   const common = {
     position: part.position,
@@ -107,6 +116,7 @@ export function FurniturePiece({
           material={resolve(part.slot)}
           selected={selected}
           hovered={hovered}
+          doubleSided={entry.flat ?? false}
         />
       ))}
     </group>

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { selectCurrentLevel, useStore } from "../../store/store";
+import { useStore } from "../../store/store";
 
 // The subset of OrbitControls we drive imperatively.
 interface OrbitLike {
@@ -16,37 +16,38 @@ export function CameraController({ fitNonce }: { fitNonce: number }) {
   const camera = useThree((s) => s.camera) as THREE.OrthographicCamera;
   const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as OrbitLike | null;
-  const level = useStore(selectCurrentLevel);
+  const levels = useStore((s) => s.design.levels);
   const site = useStore((s) => s.design.site);
-  const walls = level.walls;
-  const elevation = level.elevation;
 
   useEffect(() => {
     if (!controls) return;
 
     // Seed the bounds with the site rectangle so an empty design frames the lot,
-    // then expand to include every wall.
+    // then expand to include every wall on every level (the whole building).
     let minX = 0;
     let maxX = site.width;
     let minZ = 0;
     let maxZ = site.depth;
-    let maxY = elevation;
-    for (const w of walls) {
-      for (const p of [w.start, w.end]) {
-        minX = Math.min(minX, p.x);
-        maxX = Math.max(maxX, p.x);
-        minZ = Math.min(minZ, p.y);
-        maxZ = Math.max(maxZ, p.y);
+    const minY = 0;
+    let maxY = 0;
+    for (const level of levels) {
+      for (const w of level.walls) {
+        for (const p of [w.start, w.end]) {
+          minX = Math.min(minX, p.x);
+          maxX = Math.max(maxX, p.x);
+          minZ = Math.min(minZ, p.y);
+          maxZ = Math.max(maxZ, p.y);
+        }
+        maxY = Math.max(maxY, level.elevation + w.height);
       }
-      maxY = Math.max(maxY, elevation + w.height);
     }
 
     const width = maxX - minX;
     const depth = maxZ - minZ;
-    const tall = maxY - elevation;
+    const tall = Math.max(maxY - minY, 1);
     const center = new THREE.Vector3(
       (minX + maxX) / 2,
-      (elevation + maxY) / 2,
+      (minY + maxY) / 2,
       (minZ + maxZ) / 2,
     );
     const radius = Math.max(Math.hypot(width, depth, tall) / 2, 1);

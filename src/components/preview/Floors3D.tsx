@@ -1,77 +1,89 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import type { FloorRegion } from "../../model/types";
-import { selectCurrentLevel, useStore } from "../../store/store";
+import type { FloorRegion, Level } from "../../model/types";
+import { useStore } from "../../store/store";
+import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
-import { FLOOR_LIFT } from "./stacking";
 
-// Triangulate a plan polygon into a flat, upward-facing mesh at world height y.
-// UVs are in meters so pattern textures tile one cell per meter (matching 2D).
-function floorGeometry(polygon: { x: number; y: number }[], y: number) {
-  const contour = polygon.map((p) => new THREE.Vector2(p.x, p.y));
-  const tris = THREE.ShapeUtils.triangulateShape(contour, []);
-  const position: number[] = [];
-  const uv: number[] = [];
-  for (const tri of tris) {
-    for (const idx of tri) {
-      const v = contour[idx]!;
-      position.push(v.x, y, v.y);
-      uv.push(v.x, v.y);
-    }
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(position, 3));
-  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  geo.computeVertexNormals();
-  return geo;
+// A user-drawn floor region as a real slab: the polygon extruded down by
+// FLOOR_SLAB_THICKNESS so the walking surface (top) sits at the level's
+// elevation. The slab doubles as the ceiling of the level below.
+function slabGeometry(polygon: { x: number; y: number }[]) {
+  const shape = new THREE.Shape(
+    polygon.map((p) => new THREE.Vector2(p.x, p.y)),
+  );
+  // Extrude along +Z; rotating the mesh +90° about X lays it flat with the top
+  // cap (z=0) facing up and the body hanging below (world Y [-t, 0]).
+  return new THREE.ExtrudeGeometry(shape, {
+    depth: FLOOR_SLAB_THICKNESS,
+    bevelEnabled: false,
+  });
 }
 
-function Floor3D({
+function FloorSlab({
   floor,
-  y,
+  elevation,
   selected,
   bias,
+  ghost,
 }: {
   floor: FloorRegion;
-  y: number;
+  elevation: number;
   selected: boolean;
   bias: number;
+  ghost: boolean;
 }) {
-  const geometry = useMemo(
-    () => floorGeometry(floor.polygon, y),
-    [floor.polygon, y],
-  );
-  // UVs are in metres; repeat so one tile spans PATTERN_TILE_METERS (same density
-  // as walls). Built via the shared factory so floors and walls branch identically.
+  const geometry = useMemo(() => slabGeometry(floor.polygon), [floor.polygon]);
   const r = 1 / PATTERN_TILE_METERS;
   const material = useThreeMaterial(
     floor.material,
-    { repeat: [r, r], offset: [0, 0], side: THREE.DoubleSide, roughness: 0.95 },
-    { selected, depthBias: bias },
+    { repeat: [r, r], offset: [0, 0], roughness: 0.95 },
+    { selected, depthBias: bias, ghost },
   );
   return (
-    <mesh geometry={geometry}>
+    <mesh
+      geometry={geometry}
+      rotation={[Math.PI / 2, 0, 0]}
+      position={[0, elevation, 0]}
+      renderOrder={ghost ? 2 : 0}
+    >
       <primitive object={material} attach="material" />
     </mesh>
   );
 }
 
-// Floor regions sit just above the ground plane and render in all view modes.
-export function Floors3D() {
-  const level = useStore(selectCurrentLevel);
+// One level's floor slabs. Upper levels' slabs would hide the storey beneath from
+// the top-down camera, so in Cutaway/Stubs they get the same Invisible/Ghost
+// suppression as walls (`isUpperSlab`); the ground slab always stays solid.
+export function Floors3D({
+  level,
+  elevation,
+  isUpperSlab,
+}: {
+  level: Level;
+  elevation: number;
+  isUpperSlab: boolean;
+}) {
   const selection = useStore((s) => s.selection);
-  const y = level.elevation + FLOOR_LIFT;
+  const viewMode = useStore((s) => s.viewMode);
+  const cutawayStyle = useStore((s) => s.cutawayStyle);
+
+  const suppress = isUpperSlab && (viewMode === "cutaway" || viewMode === "stubs");
+  if (suppress && cutawayStyle === "invisible") return null;
+  const ghost = suppress && cutawayStyle === "ghost";
+
   return (
     <group>
       {level.floors.map((f, i) => (
-        <Floor3D
+        <FloorSlab
           key={f.id}
           floor={f}
-          y={y}
+          elevation={elevation}
           // Later floors (drawn over earlier ones) get more depth bias so they
           // render on top of the area they cover; the rest of the old floor shows.
           bias={i + 1}
+          ghost={ghost}
           selected={selection?.kind === "floor" && selection.id === f.id}
         />
       ))}

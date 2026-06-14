@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import { useStore } from "./store/store";
 import { loadDesign } from "./persistence/storage";
+import { loadViewPrefs } from "./persistence/viewPrefs";
 
 // Restore the autosaved design (if any) before the first render. Done directly
 // on the store — restoring is not an undoable action. The welcome screen reads
@@ -12,9 +13,13 @@ import { loadDesign } from "./persistence/storage";
 const saved = loadDesign();
 useStore.setState({ hasSavedDesign: !!saved });
 if (saved) {
+  // Restore the persisted active level if it still exists, else the ground floor.
+  const activeId = saved.levels.find(
+    (l) => l.id === loadViewPrefs().activeLevelId,
+  )?.id;
   useStore.setState({
     design: saved,
-    currentLevelId: saved.levels[0]!.id,
+    currentLevelId: activeId ?? saved.levels[0]!.id,
     selection: null,
     past: [],
     future: [],

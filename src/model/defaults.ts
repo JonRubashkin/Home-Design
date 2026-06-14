@@ -22,6 +22,11 @@ export const DEFAULT_WINDOW_SILL_HEIGHT = 0.9;
 export const DEFAULT_DOOR_WIDTH = 0.9;
 export const DEFAULT_DOOR_HEIGHT = 2.0;
 
+// Thickness of a level's floor slab (meters). A level's walking surface is at its
+// elevation; the slab occupies [elevation - thickness, elevation] and doubles as
+// the ceiling of the level below.
+export const FLOOR_SLAB_THICKNESS = 0.2;
+
 // Default door leaf material (a warm wood tone).
 export const DEFAULT_DOOR_MATERIAL: MaterialRef = {
   kind: "solid",

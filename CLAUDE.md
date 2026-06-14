@@ -277,6 +277,35 @@ in code under `src/catalog/`:
   when empty), with a margin. The 2D math is pure in `src/geometry/planview.ts`
   (tested); the plan also fits once on first mount.
 
+## Levels / storeys (Phase 3c — no staircases yet)
+
+- The `levels` array is ordered **ground-first**. Editing always acts on the
+  **active level** (`currentLevelId`, a persisted UI pref — not part of the
+  Design). Anywhere that needs the active level uses `selectCurrentLevel`; never
+  hardcode `levels[0]`.
+- **Elevation is derived, never hand-edited.** `computeElevations(levels)` (pure,
+  tested, in `src/model/levels.ts`): ground = 0; each level above sits at the
+  previous `elevation + wallHeight + FLOOR_SLAB_THICKNESS` (0.2 m, in
+  `model/defaults.ts`). `restackElevations` writes it back after any add/remove,
+  so `level.elevation` always matches. No schema change (levels/elevation already
+  existed); existing single-level designs open as the ground floor.
+- **Level management** (`LevelsPanel`): a vertical list, **ground at the bottom**,
+  upper floors above. Add floor above (empty, default-named "First floor"…),
+  rename inline, delete (confirm; never the last level), click to set active. All
+  structural changes are undoable store actions (`addLevelAbove`, `deleteLevel`,
+  `renameLevel`, `setCurrentLevel`).
+- **2D underlay:** the level directly below the active one renders as a faint,
+  **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
+  from the plan controls (only when not on the ground floor).
+- **3D:** `Building3D` stacks every level at its elevation; an "Active level only"
+  toggle isolates the active one. Floor regions render as **real slabs**
+  (`Floors3D`, extruded `FLOOR_SLAB_THICKNESS`, walking surface at the elevation).
+  In **Cutaway/Stubs**, upper-level slabs get the SAME Invisible/Ghost suppression
+  as walls (`isUpperSlab`); the ground slab stays solid — so you can see into
+  every storey. Reuses the existing cutaway/ghost machinery and shared material
+  helper. **Fit view frames the whole building.** Picking an item on a non-active
+  level switches the active level to it (so the plan/panel act on it).
+
 ## 2D plan editor rules
 
 - SVG with pan (space-drag or middle-drag) and zoom (wheel, cursor-centered).
@@ -310,8 +339,9 @@ in code under `src/catalog/`:
 ## Scope guards
 
 - **Desktop, mouse + keyboard only.** Do not write touch handling.
-- Single visible level in the UI (data model is multi-level).
-- No doors yet. No furniture yet. No roof, no ceilings, no lighting design, no
+- Multiple levels are supported (Phase 3c). Editing acts on the **active level**
+  only; staircases are NOT built yet (a later session).
+- No roof, no ceilings beyond floor slabs, no lighting design, no
   measurements/dimension annotations beyond live length labels while drawing.
 - Accessibility basics only: focus styles, button labels, no exotic ARIA work.
 

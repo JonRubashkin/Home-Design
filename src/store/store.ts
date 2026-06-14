@@ -18,9 +18,11 @@ import {
   createDoor,
   createFloor,
   createFurniture,
+  createLevel,
   createWall,
   createWindow,
 } from "../model/defaults";
+import { defaultLevelName, restackElevations } from "../model/levels";
 import {
   loadViewPrefs,
   saveViewPrefs,
@@ -145,6 +147,9 @@ interface AppState {
   viewMode: ViewMode;
   cutawayStyle: CutawayStyle;
   layout: Layout;
+  // Multi-level UI prefs (persisted, never in the Design).
+  activeLevelOnly: boolean; // 3D: render only the active level
+  showUnderlay: boolean; // 2D: ghost the level below the active one
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -171,6 +176,14 @@ interface AppState {
   setCutawayStyle: (style: CutawayStyle) => void;
   setLayout: (layout: Layout) => void;
   setCurrentMaterial: (material: MaterialRef) => void;
+  setActiveLevelOnly: (only: boolean) => void;
+  setShowUnderlay: (show: boolean) => void;
+
+  // --- levels (active level is UI state; structural changes are undoable) ---
+  setCurrentLevel: (id: string) => void;
+  addLevelAbove: () => void;
+  deleteLevel: (id: string) => void;
+  renameLevel: (id: string, name: string) => void;
 
   // --- committed mutations (each = one undo step) ---
   addWall: (start: Vec2, end: Vec2) => void;
@@ -270,8 +283,24 @@ export const useStore = create<AppState>((set, get) => {
 
   // Write the current view prefs through to localStorage after a change.
   const persistViewPrefs = () => {
-    const { viewMode, cutawayStyle, layout, currentMaterial } = get();
-    saveViewPrefs({ viewMode, cutawayStyle, layout, currentMaterial });
+    const {
+      viewMode,
+      cutawayStyle,
+      layout,
+      currentMaterial,
+      activeLevelOnly,
+      showUnderlay,
+      currentLevelId,
+    } = get();
+    saveViewPrefs({
+      viewMode,
+      cutawayStyle,
+      layout,
+      currentMaterial,
+      activeLevelOnly,
+      showUnderlay,
+      activeLevelId: currentLevelId,
+    });
   };
 
   return {
@@ -287,6 +316,8 @@ export const useStore = create<AppState>((set, get) => {
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
     currentMaterial: prefs.currentMaterial,
+    activeLevelOnly: prefs.activeLevelOnly,
+    showUnderlay: prefs.showUnderlay,
     past: [],
     future: [],
     dragBaseline: null,
@@ -312,6 +343,61 @@ export const useStore = create<AppState>((set, get) => {
     setCurrentMaterial: (currentMaterial) => {
       set({ currentMaterial });
       persistViewPrefs();
+    },
+    setActiveLevelOnly: (activeLevelOnly) => {
+      set({ activeLevelOnly });
+      persistViewPrefs();
+    },
+    setShowUnderlay: (showUnderlay) => {
+      set({ showUnderlay });
+      persistViewPrefs();
+    },
+
+    setCurrentLevel: (id) => {
+      if (!get().design.levels.some((l) => l.id === id)) return;
+      set({ currentLevelId: id });
+      persistViewPrefs();
+    },
+
+    addLevelAbove: () => {
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = createLevel(defaultLevelName(design.levels.length));
+        design.levels.push(level);
+        restackElevations(design.levels);
+        return { design, currentLevelId: level.id, selection: null };
+      });
+      persistViewPrefs();
+    },
+
+    deleteLevel: (id) => {
+      const { design } = get();
+      if (design.levels.length <= 1) return; // keep at least one level
+      pushHistory();
+      set((s) => {
+        const next = clone(s.design);
+        next.levels = next.levels.filter((l) => l.id !== id);
+        restackElevations(next.levels);
+        const currentLevelId = next.levels.some((l) => l.id === s.currentLevelId)
+          ? s.currentLevelId
+          : next.levels[0]!.id;
+        const selection = sanitizeSelection(next, currentLevelId, s.selection);
+        return { design: next, currentLevelId, selection };
+      });
+      persistViewPrefs();
+    },
+
+    renameLevel: (id, name) => {
+      const level = get().design.levels.find((l) => l.id === id);
+      if (!level) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const target = design.levels.find((l) => l.id === id);
+        if (target) target.name = name;
+        return { design };
+      });
     },
 
     addWall: (start, end) => {

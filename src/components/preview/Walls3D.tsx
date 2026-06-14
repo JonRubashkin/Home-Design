@@ -1,14 +1,21 @@
 import { useMemo, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { selectCurrentLevel, useStore } from "../../store/store";
+import type { Level } from "../../model/types";
+import { useStore } from "../../store/store";
 import { isWallFrontFacing, wallsCentroid } from "../../geometry/cutaway";
 import { Wall3D } from "./Wall3D";
 
-// Derives wall meshes straight from the store (never a copy) and, in cutaway
-// mode, recomputes which walls face the camera each frame — updating React
-// state only when the hidden set actually changes.
-export function Walls3D() {
-  const level = useStore(selectCurrentLevel);
+// Derives wall meshes for one level straight from the store (never a copy) and,
+// in cutaway mode, recomputes which walls face the camera each frame — updating
+// React state only when the hidden set actually changes. Each level computes its
+// own facing set against its own wall centroid.
+export function Walls3D({
+  level,
+  elevation,
+}: {
+  level: Level;
+  elevation: number;
+}) {
   const selection = useStore((s) => s.selection);
   const viewMode = useStore((s) => s.viewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
@@ -46,7 +53,7 @@ export function Walls3D() {
           <Wall3D
             key={w.id}
             wall={w}
-            elevation={level.elevation}
+            elevation={elevation}
             selected={selection?.id === w.id}
             stub={viewMode === "stubs"}
             ghost={isHidden && cutawayStyle === "ghost"}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
-import type { MaterialRef, Site, Vec2, Wall } from "../model/types";
+import type { Level, MaterialRef, Site, Vec2, Wall } from "../model/types";
 import {
   DEFAULT_DOOR_HEIGHT,
   DEFAULT_DOOR_MATERIAL,
@@ -160,11 +160,20 @@ export function PlanEditor() {
 
   const level = useStore(selectCurrentLevel);
   const site = useStore((s) => s.design.site);
+  const levels = useStore((s) => s.design.levels);
+  const currentLevelId = useStore((s) => s.currentLevelId);
+  const showUnderlay = useStore((s) => s.showUnderlay);
+  const setShowUnderlay = useStore((s) => s.setShowUnderlay);
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
   const [resizeOpen, setResizeOpen] = useState(false);
+
+  // The level directly below the active one — drawn as a faint, non-interactive
+  // underlay so the user can align to it (only when not on the ground floor).
+  const activeIndex = levels.findIndex((l) => l.id === currentLevelId);
+  const belowLevel = activeIndex > 0 ? levels[activeIndex - 1] : undefined;
 
   const [view, setView] = useState<View>({
     pan: { x: 160, y: 160 },
@@ -966,6 +975,9 @@ export function PlanEditor() {
           {/* Work-area (site): de-emphasize outside, shade the buildable rect. */}
           <SiteLayer site={site} view={view} size={size} />
 
+          {/* Ghost underlay of the level below (non-interactive reference). */}
+          {showUnderlay && belowLevel && <UnderlayLayer level={belowLevel} />}
+
           {/* Floors beneath everything. */}
           {floors.map((f) => (
             <polygon
@@ -1135,6 +1147,17 @@ export function PlanEditor() {
       </svg>
 
       <div className="plan-controls">
+        {belowLevel && (
+          <button
+            type="button"
+            className={`plan-control-button${showUnderlay ? " active" : ""}`}
+            aria-pressed={showUnderlay}
+            title="Show the level below as a faint reference"
+            onClick={() => setShowUnderlay(!showUnderlay)}
+          >
+            Underlay
+          </button>
+        )}
         <button
           type="button"
           className="plan-control-button"
@@ -1366,6 +1389,35 @@ function SiteLayer({
         fill="none"
         vectorEffect="non-scaling-stroke"
       />
+    </g>
+  );
+}
+
+// Faint, non-interactive reference of the level directly below the active one:
+// floor fills and wall footprints (stroke width = real thickness). Pointer events
+// are disabled so clicks always reach the active level.
+function UnderlayLayer({ level }: { level: Level }) {
+  return (
+    <g className="underlay">
+      {level.floors.map((f) => (
+        <polygon
+          key={f.id}
+          className="underlay-floor"
+          points={toPoints(f.polygon)}
+        />
+      ))}
+      {level.walls.map((w) => (
+        <line
+          key={w.id}
+          className="underlay-wall"
+          x1={w.start.x}
+          y1={w.start.y}
+          x2={w.end.x}
+          y2={w.end.y}
+          strokeWidth={w.thickness}
+          strokeLinecap="round"
+        />
+      ))}
     </g>
   );
 }

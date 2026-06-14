@@ -30,6 +30,23 @@ npm run format   # Prettier
 
 ## Features
 
+### Multiple levels / storeys (phase 3c)
+
+- **Level list** (docked, ground floor at the bottom): add a floor above, rename
+  inline, delete (with confirm; the last level can't be removed), and click a row
+  to make it the **active** (editable) level. All level changes are undoable; the
+  active level persists across reloads.
+- **Auto-stacked elevations:** a level's height is derived — ground sits at 0 and
+  each floor above sits at the previous one's wall height + a 0.2 m floor slab.
+- **Edit one level at a time** — the plan edits the active level; the level
+  directly below shows as a faint, non-interactive **underlay** (toggle in the
+  plan controls) so you can align to it.
+- **3D shows the whole stacked building** by default, with an **Active level only**
+  toggle to focus. Floor regions become real slabs. In **Cutaway** and **Stubs**,
+  upper floor slabs are suppressed (Invisible/Ghost, like walls) so you can see
+  the walls, floors, and furniture of **every** storey while orbiting; the ground
+  slab stays solid. Fit view frames the whole building.
+
 ### Welcome screen & work area (phase 3b)
 
 - **Welcome screen** on load: if you have a saved design, **Continue** resumes it

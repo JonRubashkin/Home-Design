@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type RefObject } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { selectCurrentLevel, useStore } from "../../store/store";
+import type { Level } from "../../model/types";
+import { useStore } from "../../store/store";
 import { getCatalogEntry, effectiveDimensions } from "../../catalog";
 import {
   computeStackBaseLifts,
@@ -20,13 +21,18 @@ import { resolveItemId, isClick } from "./picking";
 // the pointer-down position so we can tell a click from a drag (deselect on
 // empty space is handled by the Canvas's onPointerMissed in Preview3D).
 export function Furniture3D({
+  level,
+  elevation,
   pointerDownRef,
 }: {
+  level: Level;
+  elevation: number;
   pointerDownRef: RefObject<{ x: number; y: number } | null>;
 }) {
-  const level = useStore(selectCurrentLevel);
   const selection = useStore((s) => s.selection);
   const setSelection = useStore((s) => s.setSelection);
+  const setCurrentLevel = useStore((s) => s.setCurrentLevel);
+  const currentLevelId = useStore((s) => s.currentLevelId);
   const furniture = level.furniture;
 
   const gl = useThree((s) => s.gl);
@@ -88,7 +94,11 @@ export function Furniture3D({
     // Ignore the "click" that ends a camera-orbit drag.
     if (!isClick(pointerDownRef.current, { x: e.clientX, y: e.clientY })) return;
     const id = resolveItemId(e.object);
-    if (id) setSelection({ kind: "furniture", id });
+    if (!id) return;
+    // Selecting an item on a non-active level switches editing to that level so
+    // the plan and properties panel act on it (documented behavior).
+    if (level.id !== currentLevelId) setCurrentLevel(level.id);
+    setSelection({ kind: "furniture", id });
   };
 
   return (
@@ -97,7 +107,7 @@ export function Furniture3D({
         <FurniturePiece
           key={item.id}
           item={item}
-          elevation={level.elevation}
+          elevation={elevation}
           baseLift={baseLifts.get(item.id)}
           selected={selection?.kind === "furniture" && selection.id === item.id}
           hovered={hoveredId === item.id}

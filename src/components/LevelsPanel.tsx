@@ -13,6 +13,8 @@ export function LevelsPanel() {
   const deleteLevel = useStore((s) => s.deleteLevel);
   const renameLevel = useStore((s) => s.renameLevel);
   const copyWallsToAbove = useStore((s) => s.copyWallsToAbove);
+  const showUnderlay = useStore((s) => s.showUnderlay);
+  const setShowUnderlay = useStore((s) => s.setShowUnderlay);
   const hasWalls = useStore(
     (s) =>
       (s.design.levels.find((l) => l.id === s.currentLevelId)?.walls.length ??
@@ -20,6 +22,8 @@ export function LevelsPanel() {
   );
 
   const canDelete = levels.length > 1;
+  const activeIndex = levels.findIndex((l) => l.id === currentLevelId);
+  const onGround = activeIndex <= 0;
 
   return (
     <aside className="levels" aria-label="Levels">
@@ -85,6 +89,17 @@ export function LevelsPanel() {
             );
           })}
       </ul>
+
+      {!onGround && (
+        <label className="levels-underlay">
+          <input
+            type="checkbox"
+            checked={showUnderlay}
+            onChange={(e) => setShowUnderlay(e.target.checked)}
+          />
+          Show level below (underlay)
+        </label>
+      )}
     </aside>
   );
 }

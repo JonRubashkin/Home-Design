@@ -151,9 +151,10 @@ describe("validateDesign — v1 migration on import", () => {
     const r = validateDesign(v1);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.design.schemaVersion).toBe(5);
+      expect(r.design.schemaVersion).toBe(6);
       expect(r.design.levels[0]!.walls[0]!.doors).toEqual([]);
       expect(r.design.levels[0]!.furniture).toEqual([]);
+      expect(r.design.levels[0]!.staircases).toEqual([]);
       expect(r.design.site.width).toBeGreaterThan(0);
     }
   });

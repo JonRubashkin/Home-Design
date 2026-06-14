@@ -2,6 +2,19 @@ import { useRef, useState } from "react";
 import { useStore } from "../store/store";
 import { exportDesignToFile, parseImportedDesign } from "../persistence/io";
 import { LayoutToggle } from "./LayoutToggle";
+import { SettingsDialog } from "./SettingsDialog";
+
+const GearIcon = (
+  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 export function TopBar() {
   const design = useStore((s) => s.design);
@@ -14,6 +27,7 @@ export function TopBar() {
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const onImportClick = () => {
     setError(null);
@@ -65,6 +79,15 @@ export function TopBar() {
         >
           Redo
         </button>
+        <button
+          type="button"
+          className="topbar-icon-button"
+          onClick={() => setSettingsOpen(true)}
+          title="Settings"
+          aria-label="Settings"
+        >
+          {GearIcon}
+        </button>
         <span className="topbar-divider" />
         <button type="button" onClick={onNew} title="New design">
           New
@@ -104,6 +127,8 @@ export function TopBar() {
           </button>
         </div>
       )}
+
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </header>
   );
 }

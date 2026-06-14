@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
-import type { Level, MaterialRef, Site, Vec2, Wall } from "../model/types";
+import type {
+  Level,
+  MaterialRef,
+  Site,
+  Staircase,
+  Vec2,
+  Wall,
+} from "../model/types";
 import {
   DEFAULT_DOOR_HEIGHT,
   DEFAULT_DOOR_MATERIAL,
@@ -9,7 +16,10 @@ import {
   DEFAULT_WINDOW_HEIGHT,
   DEFAULT_WINDOW_SILL_HEIGHT,
   DEFAULT_WINDOW_WIDTH,
+  DEFAULT_STAIR_WIDTH,
+  FLOOR_SLAB_THICKNESS,
 } from "../model/defaults";
+import { computeStair } from "../geometry/stair";
 import { add, sub, dot, scale as vscale, distance } from "../geometry/vec";
 import { snapToGrid, constrainAngle } from "../geometry/snap";
 import {
@@ -45,6 +55,7 @@ import {
   type Bounds,
 } from "../geometry/planview";
 import { ResizeAreaDialog } from "./ResizeAreaDialog";
+import { LevelsPanel } from "./LevelsPanel";
 import {
   getCatalogEntry,
   primarySlot,
@@ -119,6 +130,15 @@ type DragState =
       basePos: Vec2;
       started: boolean;
     }
+  | {
+      kind: "staircase";
+      pointerId: number;
+      itemId: string;
+      startScreen: Vec2;
+      startWorld: Vec2;
+      basePos: Vec2;
+      started: boolean;
+    }
   | { kind: "room"; pointerId: number; startScreen: Vec2 };
 
 const GRID_TIERS: { spacing: number; className: string }[] = [
@@ -166,12 +186,12 @@ export function PlanEditor() {
   const levels = useStore((s) => s.design.levels);
   const currentLevelId = useStore((s) => s.currentLevelId);
   const showUnderlay = useStore((s) => s.showUnderlay);
-  const setShowUnderlay = useStore((s) => s.setShowUnderlay);
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
   const [resizeOpen, setResizeOpen] = useState(false);
+  const [floorsOpen, setFloorsOpen] = useState(false);
 
   // The level directly below the active one — drawn as a faint, non-interactive
   // underlay so the user can align to it (only when not on the ground floor).
@@ -217,6 +237,11 @@ export function PlanEditor() {
     pos: Vec2;
     rotation: number;
   } | null>(null);
+  // Staircase placement ghost (shares ghostRotation with furniture).
+  const [stairGhost, setStairGhost] = useState<{
+    pos: Vec2;
+    rotation: number;
+  } | null>(null);
   const lastWorldRef = useRef<Vec2>({ x: 0, y: 0 });
 
   const dragRef = useRef<DragState>({ kind: "none" });
@@ -227,6 +252,22 @@ export function PlanEditor() {
   const walls = level.walls;
   const floors = level.floors;
   const furniture = level.furniture;
+  const staircases = level.staircases;
+  const storeyHeight = level.wallHeight + FLOOR_SLAB_THICKNESS;
+
+  // A staircase's footprint (width × run), and a hit-test for the select tool.
+  const stairFootprint = (stair: Staircase): Footprint => ({
+    width: stair.width,
+    depth: computeStair(stair, storeyHeight).runLength,
+  });
+  const stairUnderCursor = (world: Vec2): Staircase | undefined => {
+    for (let i = staircases.length - 1; i >= 0; i--) {
+      const s = staircases[i]!;
+      if (pointInFootprint(world, s.position, s.rotation, stairFootprint(s)))
+        return s;
+    }
+    return undefined;
+  };
 
   // An item's real-world footprint after its per-instance scale is applied.
   // Every plan consumer (hit-test, ghost, wall-hugger snap) reads through this
@@ -240,57 +281,69 @@ export function PlanEditor() {
   const collisionMode = useStore((s) => s.collisionMode);
   const lastValidFurnRef = useRef<{ pos: Vec2; rotation: number } | null>(null);
 
-  // Ids of collidable items currently overlapping another (for the warning tint).
+  // Every collidable footprint on the active level (collidable furniture + all
+  // staircases) — shared by the warning set and the overlap check.
+  const collidablesOf = (lvl: Level): CollisionItem[] => {
+    const items: CollisionItem[] = [];
+    for (const item of lvl.furniture) {
+      const entry = getCatalogEntry(item.catalogId);
+      if (!entry) continue;
+      items.push({
+        id: item.id,
+        collidable: entry.collidable,
+        footprint: {
+          center: item.position,
+          rotation: item.rotation,
+          footprint: scaledFootprint(entry, item.scale),
+        },
+      });
+    }
+    for (const s of lvl.staircases) {
+      items.push({
+        id: s.id,
+        collidable: true,
+        footprint: {
+          center: s.position,
+          rotation: s.rotation,
+          footprint: stairFootprint(s),
+        },
+      });
+    }
+    return items;
+  };
+
+  // Ids of collidable things currently overlapping another (for the warning tint).
   const collisionSet = useMemo(() => {
     if (collisionMode === "off") return new Set<string>();
-    const items: CollisionItem[] = furniture.flatMap((item) => {
-      const entry = getCatalogEntry(item.catalogId);
-      if (!entry) return [];
-      return [
-        {
-          id: item.id,
-          collidable: entry.collidable,
-          footprint: {
-            center: item.position,
-            rotation: item.rotation,
-            footprint: scaledFootprint(entry, item.scale),
-          },
-        },
-      ];
-    });
-    return collidingIds(items);
-  }, [furniture, collisionMode]);
+    return collidingIds(collidablesOf(level));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [furniture, staircases, collisionMode]);
 
-  // Does a collidable item at (pos, rotation, scale) overlap any OTHER collidable
-  // item on the active level? Reads fresh state so it's valid mid-drag.
+  // Does a candidate footprint overlap any OTHER collidable thing on the active
+  // level? Reads fresh state so it's valid mid-drag.
+  const overlapsCollidable = (
+    candidate: { center: Vec2; rotation: number; footprint: Footprint },
+    excludeId: string,
+  ): boolean => {
+    for (const o of collidablesOf(selectCurrentLevel(useStore.getState()))) {
+      if (o.id === excludeId || !o.collidable) continue;
+      if (footprintsOverlap(candidate, o.footprint)) return true;
+    }
+    return false;
+  };
   const furnitureOverlaps = (
     catalogId: string,
     pos: Vec2,
     rotation: number,
     scale: Vec3,
-    excludeId?: string,
+    excludeId = "",
   ): boolean => {
     const entry = getCatalogEntry(catalogId);
     if (!entry?.collidable) return false;
-    const a = {
-      center: pos,
-      rotation,
-      footprint: scaledFootprint(entry, scale),
-    };
-    for (const o of selectCurrentLevel(useStore.getState()).furniture) {
-      if (o.id === excludeId) continue;
-      const oe = getCatalogEntry(o.catalogId);
-      if (!oe?.collidable) continue;
-      if (
-        footprintsOverlap(a, {
-          center: o.position,
-          rotation: o.rotation,
-          footprint: scaledFootprint(oe, o.scale),
-        })
-      )
-        return true;
-    }
-    return false;
+    return overlapsCollidable(
+      { center: pos, rotation, footprint: scaledFootprint(entry, scale) },
+      excludeId,
+    );
   };
 
   // Bounds of all drawn geometry (walls, floors, furniture footprints), or null
@@ -554,6 +607,7 @@ export function PlanEditor() {
         setFloorPts([]);
         setFloorCursor(null);
         setFurnGhost(null);
+        setStairGhost(null);
         setRoomRect(null);
         setSnapHint(null);
         dragRef.current = { kind: "none" };
@@ -582,8 +636,16 @@ export function PlanEditor() {
             setFurnGhost(placed);
             return next;
           });
+        } else if (activeTool === "stair") {
+          setGhostRotation((r) => {
+            const next = (((r + delta) % 360) + 360) % 360;
+            setStairGhost({ pos: snapToGrid(lastWorldRef.current), rotation: next });
+            return next;
+          });
         } else if (sel?.kind === "furniture") {
           useStore.getState().rotateFurniture(sel.id, delta);
+        } else if (sel?.kind === "staircase") {
+          useStore.getState().rotateStaircase(sel.id, delta);
         }
       }
     };
@@ -691,6 +753,12 @@ export function PlanEditor() {
         store.placeFurniture(placingCatalogId, placed.pos, placed.rotation);
         // tool stays active for repeat placement
       }
+      return;
+    }
+
+    if (activeTool === "stair") {
+      store.placeStaircase(snapToGrid(world), ghostRotation);
+      // tool stays active for repeat placement
       return;
     }
 
@@ -815,6 +883,26 @@ export function PlanEditor() {
       return;
     }
 
+    const stairHit = stairUnderCursor(world);
+    if (stairHit) {
+      store.setSelection({ kind: "staircase", id: stairHit.id });
+      lastValidFurnRef.current = {
+        pos: { ...stairHit.position },
+        rotation: stairHit.rotation,
+      };
+      dragRef.current = {
+        kind: "staircase",
+        pointerId: e.pointerId,
+        itemId: stairHit.id,
+        startScreen: screen,
+        startWorld: world,
+        basePos: { ...stairHit.position },
+        started: false,
+      };
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     const hitWall = wallUnderCursor(world);
     if (hitWall) {
       store.setSelection({ kind: "wall", id: hitWall.id });
@@ -867,6 +955,8 @@ export function PlanEditor() {
         setFurnGhost(
           resolveFurniturePlacement(placingCatalogId, world, ghostRotation),
         );
+      } else if (activeTool === "stair") {
+        setStairGhost({ pos: snapToGrid(world), rotation: ghostRotation });
       } else if (activeTool === "wall") {
         setPreview(resolveDrawPoint(world, chainStart));
       } else if (activeTool === "floor") {
@@ -916,7 +1006,8 @@ export function PlanEditor() {
       d.kind === "endpoint" ||
       d.kind === "window" ||
       d.kind === "door" ||
-      d.kind === "furniture"
+      d.kind === "furniture" ||
+      d.kind === "staircase"
     ) {
       const screen = clientToScreen(e.clientX, e.clientY);
       if (!d.started && distance(screen, d.startScreen) < DRAG_THRESHOLD_PX)
@@ -926,7 +1017,22 @@ export function PlanEditor() {
         d.started = true;
       }
       const world = clientToWorld(e.clientX, e.clientY);
-      if (d.kind === "furniture") {
+      if (d.kind === "staircase") {
+        const stair = staircases.find((x) => x.id === d.itemId);
+        if (stair) {
+          const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
+          store.moveStaircase(d.itemId, pos, stair.rotation);
+          if (
+            collisionMode === "hard" &&
+            !overlapsCollidable(
+              { center: pos, rotation: stair.rotation, footprint: stairFootprint(stair) },
+              d.itemId,
+            )
+          ) {
+            lastValidFurnRef.current = { pos, rotation: stair.rotation };
+          }
+        }
+      } else if (d.kind === "furniture") {
         const item = furniture.find((f) => f.id === d.itemId);
         if (item) {
           const raw = add(d.basePos, sub(world, d.startWorld));
@@ -1021,12 +1127,35 @@ export function PlanEditor() {
         useStore.getState().moveFurniture(d.itemId, target.pos, target.rotation);
       }
     }
+    if (d.kind === "staircase" && d.started && collisionMode === "hard") {
+      const stair = selectCurrentLevel(useStore.getState()).staircases.find(
+        (x) => x.id === d.itemId,
+      );
+      if (
+        stair &&
+        overlapsCollidable(
+          {
+            center: stair.position,
+            rotation: stair.rotation,
+            footprint: stairFootprint(stair),
+          },
+          d.itemId,
+        )
+      ) {
+        const target = lastValidFurnRef.current ?? {
+          pos: d.basePos,
+          rotation: stair.rotation,
+        };
+        useStore.getState().moveStaircase(d.itemId, target.pos, target.rotation);
+      }
+    }
     if (
       (d.kind === "body" ||
         d.kind === "endpoint" ||
         d.kind === "window" ||
         d.kind === "door" ||
-        d.kind === "furniture") &&
+        d.kind === "furniture" ||
+        d.kind === "staircase") &&
       d.started
     ) {
       useStore.getState().endDrag();
@@ -1114,6 +1243,20 @@ export function PlanEditor() {
           {/* Ghost underlay of the level below (non-interactive reference). */}
           {showUnderlay && belowLevel && <UnderlayLayer level={belowLevel} />}
 
+          {/* "Open below" stairwell voids from the level below's staircases. */}
+          {belowLevel?.staircases.map((s) => (
+            <polygon
+              key={s.id}
+              className="stair-void"
+              points={toPoints(
+                computeStair(
+                  s,
+                  belowLevel.wallHeight + FLOOR_SLAB_THICKNESS,
+                ).opening,
+              )}
+            />
+          ))}
+
           {/* Floors beneath everything. */}
           {floors.map((f) => (
             <polygon
@@ -1148,6 +1291,24 @@ export function PlanEditor() {
                 }${collisionSet.has(item.id) ? " warn" : ""}`}
               />
             ))}
+
+          {/* Staircases on the active (lower) level. */}
+          {staircases.map((s) => {
+            const g = computeStair(s, storeyHeight);
+            return (
+              <StairSymbol
+                key={s.id}
+                stair={s}
+                run={g.runLength}
+                steps={g.steps}
+                className={`stair${
+                  selection?.kind === "staircase" && selection.id === s.id
+                    ? " selected"
+                    : ""
+                }${collisionSet.has(s.id) ? " warn" : ""}`}
+              />
+            );
+          })}
 
           {/* Walls, broken at window openings. */}
           {walls.map((w) => {
@@ -1247,6 +1408,38 @@ export function PlanEditor() {
               ) : null;
             })()}
 
+          {/* Staircase placement ghost. */}
+          {activeTool === "stair" &&
+            stairGhost &&
+            (() => {
+              const ghost: Staircase = {
+                id: "ghost",
+                position: stairGhost.pos,
+                rotation: stairGhost.rotation,
+                width: DEFAULT_STAIR_WIDTH,
+                material: { kind: "solid", color: "#8a6d4b" },
+              };
+              const g = computeStair(ghost, storeyHeight);
+              const warn =
+                collisionMode === "hard" &&
+                overlapsCollidable(
+                  {
+                    center: ghost.position,
+                    rotation: ghost.rotation,
+                    footprint: { width: ghost.width, depth: g.runLength },
+                  },
+                  "ghost",
+                );
+              return (
+                <StairSymbol
+                  stair={ghost}
+                  run={g.runLength}
+                  steps={g.steps}
+                  className={`stair stair-ghost${warn ? " warn" : ""}`}
+                />
+              );
+            })()}
+
           {/* Wall drawing preview. */}
           {activeTool === "wall" && chainStart && preview && (
             <line
@@ -1341,17 +1534,22 @@ export function PlanEditor() {
       </svg>
 
       <div className="plan-controls">
-        {belowLevel && (
+        <div className="floors-menu">
           <button
             type="button"
-            className={`plan-control-button${showUnderlay ? " active" : ""}`}
-            aria-pressed={showUnderlay}
-            title="Show the level below as a faint reference"
-            onClick={() => setShowUnderlay(!showUnderlay)}
+            className={`plan-control-button${floorsOpen ? " active" : ""}`}
+            aria-expanded={floorsOpen}
+            title="Manage floors / levels"
+            onClick={() => setFloorsOpen((v) => !v)}
           >
-            Underlay
+            Floors ▾
           </button>
-        )}
+          {floorsOpen && (
+            <div className="floors-dropdown">
+              <LevelsPanel />
+            </div>
+          )}
+        </div>
         <button
           type="button"
           className="plan-control-button"
@@ -1387,6 +1585,8 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
         : "Click to start a wall · hold Shift for 0/45/90°";
     case "room":
       return "Drag a rectangle to make four joined walls · Esc cancels";
+    case "stair":
+      return "Click to place a staircase · R / Shift+R rotates · ascends to the floor above";
     case "window":
       return "Hover a wall and click to place a window · invalid spots show red";
     case "door":
@@ -1627,6 +1827,61 @@ function RoomDimLabel({ x, y, text }: { x: number; y: number; text: string }) {
       <text x={0} y={3} textAnchor="middle">
         {text}
       </text>
+    </g>
+  );
+}
+
+// Plan symbol for a staircase: footprint outline, parallel tread lines across the
+// width, and an arrow pointing in the ascent (up) direction (local +y).
+function StairSymbol({
+  stair,
+  run,
+  steps,
+  className,
+}: {
+  stair: Staircase;
+  run: number;
+  steps: number;
+  className: string;
+}) {
+  const w = stair.width;
+  const half = run / 2;
+  const ns = { vectorEffect: "non-scaling-stroke" as const };
+  const treads = [];
+  for (let k = 1; k < steps; k++) {
+    const y = -half + (k * run) / steps;
+    treads.push(
+      <line key={k} x1={-w / 2} y1={y} x2={w / 2} y2={y} {...ns} />,
+    );
+  }
+  return (
+    <g
+      className={className}
+      transform={`translate(${stair.position.x} ${stair.position.y}) rotate(${stair.rotation})`}
+    >
+      <rect
+        className="stair-outline"
+        x={-w / 2}
+        y={-half}
+        width={w}
+        height={run}
+        {...ns}
+      />
+      <g className="stair-treads">{treads}</g>
+      <line
+        className="stair-arrow"
+        x1={0}
+        y1={-half * 0.6}
+        x2={0}
+        y2={half * 0.6}
+        {...ns}
+      />
+      <polyline
+        className="stair-arrow"
+        points={`${-w * 0.14},${half * 0.4} 0,${half * 0.6} ${w * 0.14},${half * 0.4}`}
+        fill="none"
+        {...ns}
+      />
     </g>
   );
 }

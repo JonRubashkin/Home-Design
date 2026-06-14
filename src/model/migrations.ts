@@ -60,6 +60,15 @@ const migrations: Migration[] = [
     design.schemaVersion = 5;
     return design;
   },
+  // v5 -> v6: staircases. Every level gains an empty `staircases` array.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      if (!Array.isArray(level.staircases)) level.staircases = [];
+    }
+    design.schemaVersion = 6;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

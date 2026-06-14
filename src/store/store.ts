@@ -7,6 +7,7 @@ import type {
   Level,
   MaterialRef,
   Site,
+  Staircase,
   Vec2,
   Vec3,
   Wall,
@@ -22,15 +23,18 @@ import {
   footprintsOverlap,
   type OrientedFootprint,
 } from "../geometry/furniture";
+import { computeStair } from "../geometry/stair";
 import {
   createDesign,
   createDoor,
   createFloor,
   createFurniture,
   createLevel,
+  createStaircase,
   createWall,
   createWindow,
   makeId,
+  FLOOR_SLAB_THICKNESS,
 } from "../model/defaults";
 import { defaultLevelName, restackElevations } from "../model/levels";
 import { snapToGrid } from "../geometry/snap";
@@ -59,19 +63,40 @@ function orientedFootprint(
   };
 }
 
-// Would this (collidable) item overlap any OTHER collidable item on the level?
-// Footprint-only; non-collidable items never collide. Used by Hard mode.
+// Every collidable footprint on a level: collidable furniture + all staircases
+// (stairs are always bulky/collidable). `stairOrientedFootprint` is defined below.
+function levelCollidables(
+  level: Level,
+): { id: string; footprint: OrientedFootprint }[] {
+  const out: { id: string; footprint: OrientedFootprint }[] = [];
+  for (const item of level.furniture) {
+    const entry = getCatalogEntry(item.catalogId);
+    if (entry?.collidable) out.push({ id: item.id, footprint: orientedFootprint(item, entry) });
+  }
+  for (const stair of level.staircases) {
+    out.push({ id: stair.id, footprint: stairOrientedFootprint(stair, level) });
+  }
+  return out;
+}
+
+// Does a candidate footprint overlap any OTHER collidable thing on the level?
+function collidesOnLevel(
+  level: Level,
+  candidateId: string,
+  candidate: OrientedFootprint,
+): boolean {
+  for (const other of levelCollidables(level)) {
+    if (other.id === candidateId) continue;
+    if (footprintsOverlap(candidate, other.footprint)) return true;
+  }
+  return false;
+}
+
+// Would this (collidable) furniture item overlap anything else? Used by Hard mode.
 function itemCollides(level: Level, item: FurnitureItem): boolean {
   const entry = getCatalogEntry(item.catalogId);
   if (!entry?.collidable) return false;
-  const a = orientedFootprint(item, entry);
-  for (const other of level.furniture) {
-    if (other.id === item.id) continue;
-    const oe = getCatalogEntry(other.catalogId);
-    if (!oe?.collidable) continue;
-    if (footprintsOverlap(a, orientedFootprint(other, oe))) return true;
-  }
-  return false;
+  return collidesOnLevel(level, item.id, orientedFootprint(item, entry));
 }
 
 export type Tool =
@@ -82,7 +107,8 @@ export type Tool =
   | "door"
   | "floor"
   | "paint"
-  | "furniture";
+  | "furniture"
+  | "stair";
 export type WallSide = "A" | "B";
 export type Selection =
   | { kind: "wall"; id: string }
@@ -90,6 +116,7 @@ export type Selection =
   | { kind: "door"; wallId: string; id: string }
   | { kind: "floor"; id: string }
   | { kind: "furniture"; id: string }
+  | { kind: "staircase"; id: string }
   | null;
 
 const HISTORY_CAP = 100;
@@ -172,6 +199,32 @@ function findFurniture(
   return levelOf(design, levelId).furniture.find((f) => f.id === itemId);
 }
 
+function findStaircase(
+  design: Design,
+  levelId: string,
+  stairId: string,
+): Staircase | undefined {
+  return levelOf(design, levelId).staircases.find((s) => s.id === stairId);
+}
+
+// Storey height a staircase ascends (its level's wallHeight + slab).
+function storeyHeightOf(level: Level): number {
+  return level.wallHeight + FLOOR_SLAB_THICKNESS;
+}
+
+// Oriented (rotated) footprint of a staircase on its level, for collision.
+function stairOrientedFootprint(
+  stair: Staircase,
+  level: Level,
+): OrientedFootprint {
+  const g = computeStair(stair, storeyHeightOf(level));
+  return {
+    center: stair.position,
+    rotation: stair.rotation,
+    footprint: { width: stair.width, depth: g.runLength },
+  };
+}
+
 // Does a selection still point at something that exists?
 function selectionExists(
   design: Design,
@@ -185,6 +238,7 @@ function selectionExists(
   if (sel.kind === "door")
     return !!findDoor(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
+  if (sel.kind === "staircase") return !!findStaircase(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
 }
 
@@ -293,6 +347,11 @@ interface AppState {
   setFurnitureScale: (id: string, scale: Vec3) => void;
   resetFurnitureScale: (id: string) => void;
   deleteFurniture: (id: string) => void;
+  // Staircases (on the active/lower level; auto-create the level above if absent).
+  placeStaircase: (position: Vec2, rotation: number) => void;
+  updateStaircase: (id: string, patch: Partial<Omit<Staircase, "id">>) => void;
+  rotateStaircase: (id: string, deltaDeg: number) => void;
+  deleteStaircase: (id: string) => void;
   setSite: (site: Site) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
@@ -307,6 +366,7 @@ interface AppState {
   moveWindow: (wallId: string, id: string, t: number) => void;
   moveDoor: (wallId: string, id: string, t: number) => void;
   moveFurniture: (id: string, position: Vec2, rotation?: number) => void;
+  moveStaircase: (id: string, position: Vec2, rotation?: number) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -841,6 +901,73 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    // Place a staircase on the active (lower) level. A staircase needs a level to
+    // ascend to, so if none exists above, one is auto-created (3c naming). The
+    // active level stays the lower one (you keep editing where you placed it).
+    placeStaircase: (position, rotation) => {
+      const stair = createStaircase(snapToGrid(position), { rotation });
+      const level = levelOf(get().design, get().currentLevelId);
+      // Hard mode: refuse to place onto another collidable thing (no-op).
+      if (get().collisionMode === "hard") {
+        if (collidesOnLevel(level, stair.id, stairOrientedFootprint(stair, level)))
+          return;
+      }
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const idx = design.levels.findIndex((l) => l.id === s.currentLevelId);
+        if (!design.levels[idx + 1]) {
+          const above = createLevel(defaultLevelName(design.levels.length));
+          design.levels.push(above);
+          restackElevations(design.levels);
+        }
+        design.levels[idx]!.staircases.push(stair);
+        return { design, selection: { kind: "staircase", id: stair.id } };
+      });
+    },
+
+    updateStaircase: (id, patch) => {
+      if (!findStaircase(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const stair = findStaircase(design, s.currentLevelId, id);
+        if (stair) Object.assign(stair, patch);
+        return { design };
+      });
+    },
+
+    rotateStaircase: (id, deltaDeg) => {
+      const stair = findStaircase(get().design, get().currentLevelId, id);
+      if (!stair) return;
+      let deg = (stair.rotation + deltaDeg) % 360;
+      if (deg < 0) deg += 360;
+      deg = (Math.round(deg / 15) * 15) % 360;
+      if (get().collisionMode === "hard") {
+        const level = levelOf(get().design, get().currentLevelId);
+        const hypo = { ...stair, rotation: deg };
+        if (collidesOnLevel(level, id, stairOrientedFootprint(hypo, level)))
+          return;
+      }
+      get().updateStaircase(id, { rotation: deg });
+    },
+
+    deleteStaircase: (id) => {
+      if (!findStaircase(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        level.staircases = level.staircases.filter((x) => x.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     setSite: (site) => {
       // Soft boundary: resizing only changes the numbers — nothing is clamped,
       // moved, or deleted. Undoable.
@@ -934,6 +1061,16 @@ export const useStore = create<AppState>((set, get) => {
         if (!item) return {};
         item.position = position;
         if (rotation !== undefined) item.rotation = rotation;
+        return { design };
+      }),
+
+    moveStaircase: (id, position, rotation) =>
+      set((s) => {
+        const design = clone(s.design);
+        const stair = findStaircase(design, s.currentLevelId, id);
+        if (!stair) return {};
+        stair.position = position;
+        if (rotation !== undefined) stair.rotation = rotation;
         return { design };
       }),
 

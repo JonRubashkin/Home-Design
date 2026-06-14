@@ -579,3 +579,43 @@ describe("copyWallsToAbove", () => {
     expect(state().design.levels[1]!.walls).toHaveLength(1);
   });
 });
+
+describe("furniture collision (hard mode)", () => {
+  beforeEach(() => state().setCollisionMode("hard"));
+
+  it("blocks placing a collidable item onto another, allows a clear spot", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(1);
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0); // overlaps -> blocked
+    expect(furniture()).toHaveLength(1);
+    state().placeFurniture("sofa-3seat", { x: 6, y: 6 }, 0); // clear -> placed
+    expect(furniture()).toHaveLength(2);
+  });
+
+  it("never blocks non-collidable items (rug over a sofa)", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    state().placeFurniture("rug", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(2);
+  });
+
+  it("reverts a rotation that would overlap a neighbor", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    const aId = furniture()[0]!.id;
+    state().placeFurniture("sofa-3seat", { x: 0, y: 1.3 }, 0); // fits at rot 0
+    expect(furniture()).toHaveLength(2);
+    state().rotateFurniture(aId, 90); // rot 90 would overlap -> revert
+    expect(furniture().find((f) => f.id === aId)!.rotation).toBe(0);
+  });
+});
+
+describe("collision off/soft never block", () => {
+  it("off and soft both allow overlapping placement", () => {
+    state().setCollisionMode("off");
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(2);
+    state().setCollisionMode("soft");
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(3);
+  });
+});

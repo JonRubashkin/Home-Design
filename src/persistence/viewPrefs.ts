@@ -7,6 +7,7 @@ import { DEFAULT_MATERIAL } from "../model/defaults";
 export type ViewMode = "full" | "cutaway" | "stubs";
 export type CutawayStyle = "invisible" | "ghost";
 export type Layout = "plan" | "3d" | "split";
+export type CollisionMode = "off" | "soft" | "hard";
 
 export interface ViewPrefs {
   viewMode: ViewMode;
@@ -17,6 +18,7 @@ export interface ViewPrefs {
   activeLevelOnly: boolean; // 3D: render only the active level
   showUnderlay: boolean; // 2D: ghost the level below the active one
   activeLevelId: string | null; // restore the active level across reloads
+  collisionMode: CollisionMode; // furniture collision prevention
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -27,6 +29,7 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   activeLevelOnly: false,
   showUnderlay: true,
   activeLevelId: null,
+  collisionMode: "soft",
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -34,6 +37,7 @@ const STORAGE_KEY = "home-design:viewprefs:v1";
 const VIEW_MODES: ViewMode[] = ["full", "cutaway", "stubs"];
 const CUTAWAY_STYLES: CutawayStyle[] = ["invisible", "ghost"];
 const LAYOUTS: Layout[] = ["plan", "3d", "split"];
+const COLLISION_MODES: CollisionMode[] = ["off", "soft", "hard"];
 const PATTERNS: PatternId[] = ["checker", "planks", "tile", "stripes"];
 
 // Accept only well-formed material refs (untrusted localStorage input).
@@ -86,6 +90,9 @@ export function loadViewPrefs(): ViewPrefs {
           : DEFAULT_VIEW_PREFS.showUnderlay,
       activeLevelId:
         typeof parsed.activeLevelId === "string" ? parsed.activeLevelId : null,
+      collisionMode: COLLISION_MODES.includes(parsed.collisionMode as CollisionMode)
+        ? (parsed.collisionMode as CollisionMode)
+        : DEFAULT_VIEW_PREFS.collisionMode,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

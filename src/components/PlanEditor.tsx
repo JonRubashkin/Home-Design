@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { selectCurrentLevel, useStore } from "../store/store";
 import type { WallSide } from "../store/store";
 import type { Level, MaterialRef, Site, Vec2, Wall } from "../model/types";
@@ -32,7 +32,10 @@ import {
   pointInFootprint,
   wallHuggerSnap,
   footprintCorners,
+  footprintsOverlap,
+  collidingIds,
   type Footprint,
+  type CollisionItem,
 } from "../geometry/furniture";
 import {
   boundsOfPoints,
@@ -231,6 +234,63 @@ export function PlanEditor() {
   const scaledFootprint = (entry: CatalogEntry, scale: Vec3): Footprint => {
     const d = effectiveDimensions(entry, scale);
     return { width: d.width, depth: d.depth };
+  };
+
+  // --- furniture collision (Soft = warn, Hard = revert) ---
+  const collisionMode = useStore((s) => s.collisionMode);
+  const lastValidFurnRef = useRef<{ pos: Vec2; rotation: number } | null>(null);
+
+  // Ids of collidable items currently overlapping another (for the warning tint).
+  const collisionSet = useMemo(() => {
+    if (collisionMode === "off") return new Set<string>();
+    const items: CollisionItem[] = furniture.flatMap((item) => {
+      const entry = getCatalogEntry(item.catalogId);
+      if (!entry) return [];
+      return [
+        {
+          id: item.id,
+          collidable: entry.collidable,
+          footprint: {
+            center: item.position,
+            rotation: item.rotation,
+            footprint: scaledFootprint(entry, item.scale),
+          },
+        },
+      ];
+    });
+    return collidingIds(items);
+  }, [furniture, collisionMode]);
+
+  // Does a collidable item at (pos, rotation, scale) overlap any OTHER collidable
+  // item on the active level? Reads fresh state so it's valid mid-drag.
+  const furnitureOverlaps = (
+    catalogId: string,
+    pos: Vec2,
+    rotation: number,
+    scale: Vec3,
+    excludeId?: string,
+  ): boolean => {
+    const entry = getCatalogEntry(catalogId);
+    if (!entry?.collidable) return false;
+    const a = {
+      center: pos,
+      rotation,
+      footprint: scaledFootprint(entry, scale),
+    };
+    for (const o of selectCurrentLevel(useStore.getState()).furniture) {
+      if (o.id === excludeId) continue;
+      const oe = getCatalogEntry(o.catalogId);
+      if (!oe?.collidable) continue;
+      if (
+        footprintsOverlap(a, {
+          center: o.position,
+          rotation: o.rotation,
+          footprint: scaledFootprint(oe, o.scale),
+        })
+      )
+        return true;
+    }
+    return false;
   };
 
   // Bounds of all drawn geometry (walls, floors, furniture footprints), or null
@@ -737,6 +797,11 @@ export function PlanEditor() {
     const furnHit = furnitureUnderCursor(world);
     if (furnHit) {
       store.setSelection({ kind: "furniture", id: furnHit.id });
+      // Seed the last-valid position for Hard-mode revert with the pre-drag spot.
+      lastValidFurnRef.current = {
+        pos: { ...furnHit.position },
+        rotation: furnHit.rotation,
+      };
       dragRef.current = {
         kind: "furniture",
         pointerId: e.pointerId,
@@ -872,6 +937,22 @@ export function PlanEditor() {
             item.scale,
           );
           store.moveFurniture(d.itemId, placed.pos, placed.rotation);
+          // Remember the last non-overlapping spot for a Hard-mode revert.
+          if (
+            collisionMode === "hard" &&
+            !furnitureOverlaps(
+              item.catalogId,
+              placed.pos,
+              placed.rotation,
+              item.scale,
+              d.itemId,
+            )
+          ) {
+            lastValidFurnRef.current = {
+              pos: placed.pos,
+              rotation: placed.rotation,
+            };
+          }
         }
       } else if (d.kind === "body") {
         const delta = snapToGrid({
@@ -917,6 +998,29 @@ export function PlanEditor() {
 
   const endDrag = (e: React.PointerEvent<SVGSVGElement>) => {
     const d = dragRef.current;
+    // Hard mode: if a furniture drag ends on an overlap, revert to the last
+    // non-overlapping spot (falling back to the pre-drag position) before commit.
+    if (d.kind === "furniture" && d.started && collisionMode === "hard") {
+      const item = selectCurrentLevel(useStore.getState()).furniture.find(
+        (f) => f.id === d.itemId,
+      );
+      if (
+        item &&
+        furnitureOverlaps(
+          item.catalogId,
+          item.position,
+          item.rotation,
+          item.scale,
+          d.itemId,
+        )
+      ) {
+        const target = lastValidFurnRef.current ?? {
+          pos: d.basePos,
+          rotation: item.rotation,
+        };
+        useStore.getState().moveFurniture(d.itemId, target.pos, target.rotation);
+      }
+    }
     if (
       (d.kind === "body" ||
         d.kind === "endpoint" ||
@@ -1041,7 +1145,7 @@ export function PlanEditor() {
                   selection?.kind === "furniture" && selection.id === item.id
                     ? " selected"
                     : ""
-                }`}
+                }${collisionSet.has(item.id) ? " warn" : ""}`}
               />
             ))}
 
@@ -1124,13 +1228,21 @@ export function PlanEditor() {
             furnGhost &&
             (() => {
               const entry = getCatalogEntry(placingCatalogId);
+              const warn =
+                collisionMode !== "off" &&
+                furnitureOverlaps(
+                  placingCatalogId,
+                  furnGhost.pos,
+                  furnGhost.rotation,
+                  UNIT_SCALE,
+                );
               return entry ? (
                 <FurnitureSymbolShape
                   entry={entry}
                   position={furnGhost.pos}
                   rotation={furnGhost.rotation}
                   materials={{}}
-                  className="furn furn-ghost"
+                  className={`furn furn-ghost${warn ? " warn" : ""}`}
                 />
               ) : null;
             })()}

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useStore, type Tool } from "../store/store";
+import { SettingsDialog } from "./SettingsDialog";
 
 interface ToolDef {
   tool: Tool;
@@ -130,9 +132,22 @@ const TOOLS: ToolDef[] = [
   { tool: "furniture", label: "Furniture", shortcut: "U", icon: FurnitureIcon },
 ];
 
+const SettingsIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export function Toolbar() {
   const activeTool = useStore((s) => s.activeTool);
   const setActiveTool = useStore((s) => s.setActiveTool);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <nav className="toolbar" aria-label="Tools">
@@ -150,6 +165,19 @@ export function Toolbar() {
           {shortcut && <span className="tool-shortcut">{shortcut}</span>}
         </button>
       ))}
+
+      <div className="toolbar-spacer" />
+      <button
+        type="button"
+        className="tool-button"
+        title="Settings"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <span className="tool-icon">{SettingsIcon}</span>
+        <span className="tool-label">Settings</span>
+      </button>
+
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </nav>
   );
 }

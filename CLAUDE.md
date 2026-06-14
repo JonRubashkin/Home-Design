@@ -188,6 +188,26 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item.
 
+## Furniture collision (Phase 3c.2 — footprint only, no vertical stacking)
+
+- Each `CatalogEntry` carries `collidable: boolean` — **true** for bulky
+  floor-standing items you'd never overlap, **false** for flat/surface/decor
+  items meant to sit on or under others (rug, lamps, plant, microwave, mirror,
+  towel rack, bathroom cabinet). A non-collidable item never collides.
+- Two **collidable** items on the **same level** collide when their oriented
+  (scaled, rotated) footprint rectangles overlap beyond a small tolerance —
+  Separating Axis Theorem in pure tested `footprintsOverlap` / `collidingIds`
+  (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
+  chair tucked under a table reads as a collision (expected; Soft handles it).
+- **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
+  set from the **Settings** dialog (gear in the toolbar): **Off** (no checks),
+  **Soft** (default — overlaps allowed but overlapping collidable items get a red
+  warning tint in 2D and 3D, live), **Hard** (an item may not come to rest
+  overlapping: placement is blocked, a drag reverts to its last non-overlapping
+  spot, and rotating/scaling into an overlap reverts). Hard guards live in the
+  store actions (`placeFurniture`/`rotateFurniture`/`setFurnitureScale`); the
+  drag-revert is in the plan editor (tracks last-valid, falls back to pre-drag).
+
 ## State, undo, persistence
 
 - One Zustand store holds: the `Design`, the current level id, the active tool, the

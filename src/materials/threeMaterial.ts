@@ -4,6 +4,7 @@ import type { MaterialRef } from "../model/types";
 import { patternTextureVariant, patternTextureVariantKey } from "./textures";
 
 const SELECT_EMISSIVE = "#2563eb";
+const WARN_EMISSIVE = "#ef4444";
 
 export interface MaterialBuildOptions {
   repeat?: [number, number];
@@ -17,6 +18,8 @@ export interface MaterialStyle {
   // Hover echo (3D furniture picking): a subtler version of the selection tint,
   // so hovered and selected read as related but distinct.
   hovered?: boolean;
+  // Collision warning tint (red) for an overlapping collidable item.
+  warned?: boolean;
   ghost?: boolean;
   // Depth-bias level for coplanar surfaces (higher = rendered on top). Used to
   // layer overlapping floor regions without z-fighting.
@@ -79,9 +82,12 @@ export function useThreeMaterial(
 
   const selected = style.selected ?? false;
   const hovered = style.hovered ?? false;
+  const warned = style.warned ?? false;
   const ghost = style.ghost ?? false;
-  material.emissive.set(selected || hovered ? SELECT_EMISSIVE : "#000000");
-  material.emissiveIntensity = selected ? 0.4 : hovered ? 0.18 : 0;
+  material.emissive.set(
+    selected || hovered ? SELECT_EMISSIVE : warned ? WARN_EMISSIVE : "#000000",
+  );
+  material.emissiveIntensity = selected ? 0.4 : warned ? 0.35 : hovered ? 0.18 : 0;
   material.transparent = ghost;
   material.opacity = ghost ? 0.15 : 1;
   material.depthWrite = !ghost;

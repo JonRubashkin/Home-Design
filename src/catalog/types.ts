@@ -57,6 +57,10 @@ export interface CatalogEntry {
   // automatically climbs onto a surface it's centered over (microwave, lamp…).
   surfaceTop?: number;
   stackable?: boolean;
+  // Collision (Phase 3c.2): true for bulky floor-standing items you'd never
+  // overlap; false for flat/surface/decor items meant to sit on or under others
+  // (rugs, lamps, plants, microwaves, mirrors…). Footprint-only, same level.
+  collidable: boolean;
   scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
   build: () => Part[]; // 3D parts in local space (y up from floor)

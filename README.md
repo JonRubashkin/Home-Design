@@ -177,6 +177,13 @@ npm run format   # Prettier
   the clamped value. **Reset size** restores the catalog default. Scaling drives
   the 3D mesh, the plan symbol, and hit-testing / wall-hugger snapping alike,
   participates in undo/redo, and round-trips through Export/Import.
+- **Collision** (Settings → gear in the toolbar) — **Off** / **Soft** (default) /
+  **Hard**. Bulky items collide by 2D footprint on the same level; flat/decor
+  items (rugs, lamps, plant, microwave, mirror…) never collide. Soft tints
+  overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an
+  overlapping placement, reverts a drag to its last clear spot, and undoes a
+  rotate/scale that would overlap. (Footprint-only — no place-on-surface yet, so a
+  chair tucked under a table reads as overlapping; that's what Soft is for.)
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are

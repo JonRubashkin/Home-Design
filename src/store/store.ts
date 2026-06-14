@@ -12,7 +12,16 @@ import type {
   Wall,
   WindowOpening,
 } from "../model/types";
-import { clampScale, getCatalogEntry } from "../catalog";
+import {
+  clampScale,
+  getCatalogEntry,
+  effectiveDimensions,
+  type CatalogEntry,
+} from "../catalog";
+import {
+  footprintsOverlap,
+  type OrientedFootprint,
+} from "../geometry/furniture";
 import {
   createDesign,
   createDoor,
@@ -30,11 +39,40 @@ import { snapEndpoint } from "../geometry/wallSnap";
 import {
   loadViewPrefs,
   saveViewPrefs,
+  type CollisionMode,
   type CutawayStyle,
   type Layout,
   type ViewMode,
 } from "../persistence/viewPrefs";
 import { polygonContains } from "../geometry/polygon";
+
+// Oriented (scaled, rotated) footprint of a placed item, for collision checks.
+function orientedFootprint(
+  item: FurnitureItem,
+  entry: CatalogEntry,
+): OrientedFootprint {
+  const d = effectiveDimensions(entry, item.scale);
+  return {
+    center: item.position,
+    rotation: item.rotation,
+    footprint: { width: d.width, depth: d.depth },
+  };
+}
+
+// Would this (collidable) item overlap any OTHER collidable item on the level?
+// Footprint-only; non-collidable items never collide. Used by Hard mode.
+function itemCollides(level: Level, item: FurnitureItem): boolean {
+  const entry = getCatalogEntry(item.catalogId);
+  if (!entry?.collidable) return false;
+  const a = orientedFootprint(item, entry);
+  for (const other of level.furniture) {
+    if (other.id === item.id) continue;
+    const oe = getCatalogEntry(other.catalogId);
+    if (!oe?.collidable) continue;
+    if (footprintsOverlap(a, orientedFootprint(other, oe))) return true;
+  }
+  return false;
+}
 
 export type Tool =
   | "select"
@@ -176,6 +214,8 @@ interface AppState {
   // Multi-level UI prefs (persisted, never in the Design).
   activeLevelOnly: boolean; // 3D: render only the active level
   showUnderlay: boolean; // 2D: ghost the level below the active one
+  // Furniture collision prevention (persisted UI pref, never in the Design).
+  collisionMode: CollisionMode;
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -204,6 +244,7 @@ interface AppState {
   setCurrentMaterial: (material: MaterialRef) => void;
   setActiveLevelOnly: (only: boolean) => void;
   setShowUnderlay: (show: boolean) => void;
+  setCollisionMode: (mode: CollisionMode) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
   setCurrentLevel: (id: string) => void;
@@ -318,6 +359,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      collisionMode,
       currentLevelId,
     } = get();
     saveViewPrefs({
@@ -327,6 +369,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      collisionMode,
       activeLevelId: currentLevelId,
     });
   };
@@ -346,6 +389,7 @@ export const useStore = create<AppState>((set, get) => {
     currentMaterial: prefs.currentMaterial,
     activeLevelOnly: prefs.activeLevelOnly,
     showUnderlay: prefs.showUnderlay,
+    collisionMode: prefs.collisionMode,
     past: [],
     future: [],
     dragBaseline: null,
@@ -378,6 +422,10 @@ export const useStore = create<AppState>((set, get) => {
     },
     setShowUnderlay: (showUnderlay) => {
       set({ showUnderlay });
+      persistViewPrefs();
+    },
+    setCollisionMode: (collisionMode) => {
+      set({ collisionMode });
       persistViewPrefs();
     },
 
@@ -687,8 +735,14 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     placeFurniture: (catalogId, position, rotation) => {
-      pushHistory();
       const item = createFurniture(catalogId, position, { rotation });
+      // Hard mode: refuse to place a collidable item onto another (no-op so the
+      // caller's warning ghost stays and the click simply doesn't place).
+      if (get().collisionMode === "hard") {
+        const level = levelOf(get().design, get().currentLevelId);
+        if (itemCollides(level, item)) return;
+      }
+      pushHistory();
       set((s) => {
         const design = clone(s.design);
         levelOf(design, s.currentLevelId).furniture.push(item);
@@ -714,6 +768,11 @@ export const useStore = create<AppState>((set, get) => {
       let deg = (item.rotation + deltaDeg) % 360;
       if (deg < 0) deg += 360;
       deg = (Math.round(deg / 15) * 15) % 360;
+      // Hard mode: revert (keep current rotation) if rotating into an overlap.
+      if (get().collisionMode === "hard") {
+        const level = levelOf(get().design, get().currentLevelId);
+        if (itemCollides(level, { ...item, rotation: deg })) return;
+      }
       get().updateFurniture(id, { rotation: deg });
     },
 
@@ -742,6 +801,11 @@ export const useStore = create<AppState>((set, get) => {
       if (!existing) return;
       const entry = getCatalogEntry(existing.catalogId);
       const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      // Hard mode: revert (keep current scale) if scaling into an overlap.
+      if (get().collisionMode === "hard") {
+        const level = levelOf(get().design, get().currentLevelId);
+        if (itemCollides(level, { ...existing, scale: clamped })) return;
+      }
       // Coalesce slider drags into one undo step (like paint/material edits).
       commitCoalesced(`furn-scale:${id}`, (design) => {
         const item = findFurniture(design, get().currentLevelId, id);

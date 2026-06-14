@@ -37,3 +37,9 @@ export function clampSide(meters: number): number {
   if (!isFinite(meters)) return SITE_MIN;
   return Math.max(SITE_MIN, Math.min(SITE_MAX, meters));
 }
+
+// Round a length to the nearest 0.1 m — the finest granularity the size chooser
+// allows, so dimensions never carry more than one decimal place.
+export function roundToTenth(meters: number): number {
+  return Math.round(meters * 10) / 10;
+}

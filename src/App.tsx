@@ -5,6 +5,7 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Preview3D } from "./components/preview/Preview3D";
 import { CatalogQA } from "./components/preview/CatalogQA";
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { LevelsPanel } from "./components/LevelsPanel";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 import { useAutosave } from "./hooks/useAutosave";
 import { useStore } from "./store/store";
@@ -39,6 +40,7 @@ export default function App() {
         <div className="panes">
           {showPlan && <PlanEditor />}
           {showPreview && <Preview3D />}
+          <LevelsPanel />
         </div>
         {showEditingChrome && <PropertiesPanel />}
       </div>

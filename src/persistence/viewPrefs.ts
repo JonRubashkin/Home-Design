@@ -13,6 +13,10 @@ export interface ViewPrefs {
   cutawayStyle: CutawayStyle;
   layout: Layout;
   currentMaterial: MaterialRef;
+  // Multi-level UI prefs.
+  activeLevelOnly: boolean; // 3D: render only the active level
+  showUnderlay: boolean; // 2D: ghost the level below the active one
+  activeLevelId: string | null; // restore the active level across reloads
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -20,6 +24,9 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   cutawayStyle: "ghost",
   layout: "split",
   currentMaterial: DEFAULT_MATERIAL,
+  activeLevelOnly: false,
+  showUnderlay: true,
+  activeLevelId: null,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -69,6 +76,16 @@ export function loadViewPrefs(): ViewPrefs {
         ? (parsed.layout as Layout)
         : DEFAULT_VIEW_PREFS.layout,
       currentMaterial: parseMaterial(parsed.currentMaterial),
+      activeLevelOnly:
+        typeof parsed.activeLevelOnly === "boolean"
+          ? parsed.activeLevelOnly
+          : DEFAULT_VIEW_PREFS.activeLevelOnly,
+      showUnderlay:
+        typeof parsed.showUnderlay === "boolean"
+          ? parsed.showUnderlay
+          : DEFAULT_VIEW_PREFS.showUnderlay,
+      activeLevelId:
+        typeof parsed.activeLevelId === "string" ? parsed.activeLevelId : null,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

@@ -16,6 +16,9 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
   const setViewMode = useStore((s) => s.setViewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
   const setCutawayStyle = useStore((s) => s.setCutawayStyle);
+  const activeLevelOnly = useStore((s) => s.activeLevelOnly);
+  const setActiveLevelOnly = useStore((s) => s.setActiveLevelOnly);
+  const multiLevel = useStore((s) => s.design.levels.length > 1);
 
   return (
     <div className="viewbar">
@@ -57,10 +60,22 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
         </div>
       )}
 
+      {multiLevel && (
+        <button
+          type="button"
+          className={`viewbar-fit${activeLevelOnly ? " active" : ""}`}
+          aria-pressed={activeLevelOnly}
+          title="Render only the active level"
+          onClick={() => setActiveLevelOnly(!activeLevelOnly)}
+        >
+          Active level only
+        </button>
+      )}
+
       <button
         type="button"
         className="viewbar-fit"
-        title="Frame the whole design"
+        title="Frame the whole building"
         onClick={onFit}
       >
         Fit view

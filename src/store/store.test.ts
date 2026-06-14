@@ -457,3 +457,53 @@ describe("furniture", () => {
     expect(furniture()[0]!.scale.x).toBe(2.0);
   });
 });
+
+const levels = () => state().design.levels;
+
+describe("levels", () => {
+  it("adds a floor above, names + stacks it, and makes it active", () => {
+    state().addLevelAbove();
+    expect(levels()).toHaveLength(2);
+    expect(levels()[1]!.name).toBe("First floor");
+    // ground at 0, first floor at wallHeight (2.4) + slab (0.2)
+    expect(levels()[0]!.elevation).toBe(0);
+    expect(levels()[1]!.elevation).toBeCloseTo(2.6);
+    expect(state().currentLevelId).toBe(levels()[1]!.id);
+  });
+
+  it("re-stacks elevations and clears active when a lower level is deleted", () => {
+    state().addLevelAbove(); // first
+    state().addLevelAbove(); // second
+    const groundId = levels()[0]!.id;
+    const firstId = levels()[1]!.id;
+    state().deleteLevel(firstId);
+    expect(levels()).toHaveLength(2);
+    expect(levels().map((l) => l.id)).not.toContain(firstId);
+    // the (former second, now upper) level re-stacks to 2.6
+    expect(levels()[1]!.elevation).toBeCloseTo(2.6);
+    expect(levels()[0]!.id).toBe(groundId);
+  });
+
+  it("never deletes the last remaining level", () => {
+    const id = levels()[0]!.id;
+    state().deleteLevel(id);
+    expect(levels()).toHaveLength(1);
+  });
+
+  it("renames a level (undoable)", () => {
+    const id = levels()[0]!.id;
+    state().renameLevel(id, "Basement");
+    expect(levels()[0]!.name).toBe("Basement");
+    state().undo();
+    expect(levels()[0]!.name).toBe("Ground floor");
+  });
+
+  it("makes add/delete undoable", () => {
+    state().addLevelAbove();
+    expect(levels()).toHaveLength(2);
+    state().undo();
+    expect(levels()).toHaveLength(1);
+    state().redo();
+    expect(levels()).toHaveLength(2);
+  });
+});

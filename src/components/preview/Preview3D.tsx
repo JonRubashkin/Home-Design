@@ -2,9 +2,7 @@ import { useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
-import { Walls3D } from "./Walls3D";
-import { Floors3D } from "./Floors3D";
-import { Furniture3D } from "./Furniture3D";
+import { Building3D } from "./Building3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
 import { GROUND_Y } from "./stacking";
@@ -95,9 +93,7 @@ export function Preview3D() {
         <ambientLight intensity={0.7} />
         <directionalLight position={[18, 30, 12]} intensity={0.45} />
         <Ground />
-        <Floors3D />
-        <Walls3D />
-        <Furniture3D pointerDownRef={pointerDownRef} />
+        <Building3D pointerDownRef={pointerDownRef} />
         <CameraController fitNonce={fitNonce} />
         <OrbitControls
           makeDefault

@@ -106,6 +106,21 @@ const PaintIcon = (
   </svg>
 );
 
+const FillIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <path
+      d="M5 11 11 5l7 7-6 6z"
+      fill="currentColor"
+      opacity="0.55"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+    <path d="M11 5 9 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M19 16c0 1.6 1.2 2.6 1.2 2.6S21 17.6 21 16a1.1 1.1 0 0 0-2 0z" fill="currentColor" />
+  </svg>
+);
+
 const StairIcon = (
   <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
     <path
@@ -140,6 +155,7 @@ const TOOLS: ToolDef[] = [
   { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
   { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
   { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
+  { tool: "fill", label: "Fill", shortcut: "G", icon: FillIcon },
   { tool: "stair", label: "Stair", shortcut: "S", icon: StairIcon },
   { tool: "furniture", label: "Furniture", shortcut: "U", icon: FurnitureIcon },
 ];

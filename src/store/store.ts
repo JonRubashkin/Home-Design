@@ -24,6 +24,12 @@ import {
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
+import { detectRoom, ROOM_FILL_MARGIN } from "../geometry/roomFill";
+import {
+  boundsOfPoints,
+  siteBounds,
+  unionBounds,
+} from "../geometry/planview";
 import {
   createDesign,
   createDoor,
@@ -48,7 +54,9 @@ import {
   type Layout,
   type ViewMode,
 } from "../persistence/viewPrefs";
-import { polygonContains } from "../geometry/polygon";
+import { polygonContains, pointInPolygon } from "../geometry/polygon";
+
+export type FillTarget = "floor" | "walls" | "both";
 
 // Oriented (scaled, rotated) footprint of a placed item, for collision checks.
 function orientedFootprint(
@@ -107,6 +115,7 @@ export type Tool =
   | "door"
   | "floor"
   | "paint"
+  | "fill"
   | "furniture"
   | "stair";
 export type WallSide = "A" | "B";
@@ -260,6 +269,8 @@ interface AppState {
   // The catalog item currently being placed by the Furniture tool (a ghost
   // follows the cursor). Transient UI state.
   placingCatalogId: string | null;
+  // Fill Room tool: what to fill (floor / walls / both). Transient UI state.
+  fillTarget: FillTarget;
 
   // 3D view preferences (persisted to localStorage, never in the Design).
   viewMode: ViewMode;
@@ -292,6 +303,11 @@ interface AppState {
     highlight: { wallId: string; side: WallSide } | null,
   ) => void;
   setPlacingCatalogId: (catalogId: string | null) => void;
+  setFillTarget: (target: FillTarget) => void;
+  // Fill the enclosed room around `point` on the active level (floor + interior
+  // wall paint) with the current material. One undo step. Returns false (no
+  // change) if the click isn't inside a fully enclosed room.
+  fillRoom: (point: Vec2, target: FillTarget) => boolean;
   setViewMode: (mode: ViewMode) => void;
   setCutawayStyle: (style: CutawayStyle) => void;
   setLayout: (layout: Layout) => void;
@@ -443,6 +459,7 @@ export const useStore = create<AppState>((set, get) => {
     hasSavedDesign: false,
     sideHighlight: null,
     placingCatalogId: null,
+    fillTarget: "both",
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
@@ -460,6 +477,44 @@ export const useStore = create<AppState>((set, get) => {
     setSelection: (selection) => set({ selection }),
     setSideHighlight: (sideHighlight) => set({ sideHighlight }),
     setPlacingCatalogId: (placingCatalogId) => set({ placingCatalogId }),
+    setFillTarget: (fillTarget) => set({ fillTarget }),
+
+    fillRoom: (point, target) => {
+      const { design, currentLevelId, currentMaterial } = get();
+      const level = levelOf(design, currentLevelId);
+      // Grid extent: the site unioned with all walls, plus a leak margin.
+      const wb = boundsOfPoints(level.walls.flatMap((w) => [w.start, w.end]));
+      const base = unionBounds(siteBounds(design.site), wb)!;
+      const bounds = {
+        minX: base.minX - ROOM_FILL_MARGIN,
+        minY: base.minY - ROOM_FILL_MARGIN,
+        maxX: base.maxX + ROOM_FILL_MARGIN,
+        maxY: base.maxY + ROOM_FILL_MARGIN,
+      };
+      const room = detectRoom(point, level.walls, bounds);
+      if (!room.enclosed) return false;
+
+      pushHistory();
+      set((s) => {
+        const next = clone(s.design);
+        const lvl = levelOf(next, s.currentLevelId);
+        if (target === "floor" || target === "both") {
+          // Replace any existing floor covering this room (the clicked point).
+          lvl.floors = lvl.floors.filter((f) => !pointInPolygon(point, f.polygon));
+          lvl.floors.push(createFloor(room.polygon, currentMaterial));
+        }
+        if (target === "walls" || target === "both") {
+          for (const { wallId, side } of room.wallSides) {
+            const wall = lvl.walls.find((w) => w.id === wallId);
+            if (!wall) continue;
+            if (side === "A") wall.paintA = clone(currentMaterial);
+            else wall.paintB = clone(currentMaterial);
+          }
+        }
+        return { design: next };
+      });
+      return true;
+    },
     setViewMode: (viewMode) => {
       set({ viewMode });
       persistViewPrefs();

@@ -60,6 +60,10 @@ export function useGlobalShortcuts(): void {
         case "S":
           s.setActiveTool("stair");
           break;
+        case "g":
+        case "G":
+          s.setActiveTool("fill");
+          break;
         case "u":
         case "U":
           s.setActiveTool("furniture");

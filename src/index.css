@@ -1346,3 +1346,20 @@ button:focus-visible,
   stroke-dasharray: 5 3;
   vector-effect: non-scaling-stroke;
 }
+
+/* --- Fill Room: not-enclosed message --- */
+.fill-message {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  background: rgba(58, 29, 36, 0.95);
+  border: 1px solid var(--danger);
+  color: #ffd9d9;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}

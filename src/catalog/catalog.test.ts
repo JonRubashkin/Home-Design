@@ -17,6 +17,29 @@ describe("catalog", () => {
     }
   });
 
+  it("declares a collidable flag; flat/decor items are non-collidable", () => {
+    for (const e of CATALOG_ITEMS) {
+      expect(typeof e.collidable).toBe("boolean");
+    }
+    const nonCollidable = new Set([
+      "rug",
+      "floor-lamp",
+      "plant",
+      "bedside-lamp",
+      "mirror",
+      "microwave",
+      "towel-rack",
+      "bathroom-cabinet",
+    ]);
+    for (const e of CATALOG_ITEMS) {
+      expect(e.collidable).toBe(!nonCollidable.has(e.id));
+    }
+    // flat items (rugs) must never be collidable
+    for (const e of CATALOG_ITEMS) {
+      if (e.flat) expect(e.collidable).toBe(false);
+    }
+  });
+
   it("every entry declares a valid scaling policy", () => {
     for (const e of CATALOG_ITEMS) {
       expect(["none", "uniform", "axes"]).toContain(e.scaling.mode);

@@ -15,12 +15,14 @@ function PartMesh({
   material,
   selected,
   hovered,
+  warned,
   doubleSided,
 }: {
   part: Part;
   material: MaterialRef;
   selected: boolean;
   hovered: boolean;
+  warned: boolean;
   // Flat items (rugs/mats) render double-sided so their thin faces never get
   // backface-culled and vanish when the camera orbits to a low / overhead angle.
   doubleSided: boolean;
@@ -28,7 +30,7 @@ function PartMesh({
   const mat = useThreeMaterial(
     material,
     doubleSided ? { side: THREE.DoubleSide } : {},
-    { selected, hovered },
+    { selected, hovered, warned },
   );
   const p = part.primitive;
   const common = {
@@ -67,6 +69,7 @@ export function FurniturePiece({
   baseLift,
   selected,
   hovered = false,
+  warned = false,
   entryOverride,
   onPointerOver,
   onPointerOut,
@@ -80,6 +83,7 @@ export function FurniturePiece({
   baseLift?: number;
   selected: boolean;
   hovered?: boolean;
+  warned?: boolean;
   entryOverride?: CatalogEntry;
   // Picking handlers (3D selection). Omitted by the catalog QA view.
   onPointerOver?: (e: ThreeEvent<PointerEvent>) => void;
@@ -116,6 +120,7 @@ export function FurniturePiece({
           material={resolve(part.slot)}
           selected={selected}
           hovered={hovered}
+          warned={warned}
           doubleSided={entry.flat ?? false}
         />
       ))}

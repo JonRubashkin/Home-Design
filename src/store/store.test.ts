@@ -507,3 +507,115 @@ describe("levels", () => {
     expect(levels()).toHaveLength(2);
   });
 });
+
+describe("addRoom (rectangle tool)", () => {
+  it("creates four joined walls with shared corners in one undo step", () => {
+    const pastBefore = state().past.length;
+    state().addRoom({ x: 0, y: 0 }, { x: 4, y: 3 });
+    expect(walls()).toHaveLength(4);
+    expect(state().past.length).toBe(pastBefore + 1);
+    // every corner is shared by exactly two walls (closed loop)
+    const ends = walls().flatMap((w) => [w.start, w.end]);
+    const key = (p: { x: number; y: number }) => `${p.x},${p.y}`;
+    const counts = new Map<string, number>();
+    for (const e of ends) counts.set(key(e), (counts.get(key(e)) ?? 0) + 1);
+    expect([...counts.values()].every((c) => c === 2)).toBe(true);
+    expect(counts.size).toBe(4);
+    state().undo();
+    expect(walls()).toHaveLength(0);
+  });
+
+  it("ignores a degenerate (zero-area) rectangle", () => {
+    state().addRoom({ x: 1, y: 1 }, { x: 1, y: 5 });
+    expect(walls()).toHaveLength(0);
+  });
+
+  it("snaps a corner onto an existing wall endpoint", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 6, y: 0 });
+    // a rectangle whose corner is just shy of (6,0) should fuse onto it
+    state().addRoom({ x: 6.1, y: 0.1 }, { x: 9, y: 3 });
+    const corners = walls()
+      .flatMap((w) => [w.start, w.end])
+      .filter((p) => Math.abs(p.x - 6) < 1e-9 && Math.abs(p.y - 0) < 1e-9);
+    expect(corners.length).toBeGreaterThan(0);
+  });
+});
+
+describe("copyWallsToAbove", () => {
+  it("creates the floor above, copies walls + openings with fresh ids, switches active", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const wallId = walls()[0]!.id;
+    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9 });
+    const groundId = state().currentLevelId;
+    state().copyWallsToAbove();
+    expect(state().design.levels).toHaveLength(2);
+    expect(state().currentLevelId).not.toBe(groundId); // switched to target
+    const upper = state().design.levels[1]!;
+    expect(upper.walls).toHaveLength(1);
+    expect(upper.walls[0]!.id).not.toBe(wallId); // fresh id
+    expect(upper.walls[0]!.windows).toHaveLength(1);
+  });
+
+  it("skips exact duplicates and is one undo step", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().copyWallsToAbove(); // creates first floor with the wall, active=first
+    // back to ground and copy again into the existing first floor
+    const groundId = state().design.levels[0]!.id;
+    state().setCurrentLevel(groundId);
+    const pastBefore = state().past.length;
+    state().copyWallsToAbove();
+    expect(state().design.levels[1]!.walls).toHaveLength(1); // dup skipped
+    expect(state().past.length).toBe(pastBefore + 1);
+    state().undo();
+    // undo restores the active level + design; first floor still has its 1 wall
+    expect(state().design.levels[1]!.walls).toHaveLength(1);
+  });
+
+  it("copies only the selected wall when ids are given", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 0, y: 2 }, { x: 4, y: 2 });
+    const firstWall = walls()[0]!.id;
+    state().copyWallsToAbove([firstWall]);
+    expect(state().design.levels[1]!.walls).toHaveLength(1);
+  });
+});
+
+describe("furniture collision (hard mode)", () => {
+  beforeEach(() => state().setCollisionMode("hard"));
+
+  it("blocks placing a collidable item onto another, allows a clear spot", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(1);
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0); // overlaps -> blocked
+    expect(furniture()).toHaveLength(1);
+    state().placeFurniture("sofa-3seat", { x: 6, y: 6 }, 0); // clear -> placed
+    expect(furniture()).toHaveLength(2);
+  });
+
+  it("never blocks non-collidable items (rug over a sofa)", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    state().placeFurniture("rug", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(2);
+  });
+
+  it("reverts a rotation that would overlap a neighbor", () => {
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    const aId = furniture()[0]!.id;
+    state().placeFurniture("sofa-3seat", { x: 0, y: 1.3 }, 0); // fits at rot 0
+    expect(furniture()).toHaveLength(2);
+    state().rotateFurniture(aId, 90); // rot 90 would overlap -> revert
+    expect(furniture().find((f) => f.id === aId)!.rotation).toBe(0);
+  });
+});
+
+describe("collision off/soft never block", () => {
+  it("off and soft both allow overlapping placement", () => {
+    state().setCollisionMode("off");
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(2);
+    state().setCollisionMode("soft");
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0);
+    expect(furniture()).toHaveLength(3);
+  });
+});

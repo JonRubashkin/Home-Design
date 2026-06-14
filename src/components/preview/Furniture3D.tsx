@@ -5,7 +5,9 @@ import { useStore } from "../../store/store";
 import { getCatalogEntry, effectiveDimensions } from "../../catalog";
 import {
   computeStackBaseLifts,
+  collidingIds,
   type StackItem,
+  type CollisionItem,
 } from "../../geometry/furniture";
 import { FurniturePiece } from "./FurniturePiece";
 import { FLAT_ITEM_LIFT, ITEM_LIFT, STACK_LIFT } from "./stacking";
@@ -33,7 +35,30 @@ export function Furniture3D({
   const setSelection = useStore((s) => s.setSelection);
   const setCurrentLevel = useStore((s) => s.setCurrentLevel);
   const currentLevelId = useStore((s) => s.currentLevelId);
+  const collisionMode = useStore((s) => s.collisionMode);
   const furniture = level.furniture;
+
+  // Collision warning set (red tint) — same SAT check as the 2D plan.
+  const warnedSet = useMemo(() => {
+    if (collisionMode === "off") return new Set<string>();
+    const items: CollisionItem[] = furniture.flatMap((item) => {
+      const entry = getCatalogEntry(item.catalogId);
+      if (!entry) return [];
+      const d = effectiveDimensions(entry, item.scale);
+      return [
+        {
+          id: item.id,
+          collidable: entry.collidable,
+          footprint: {
+            center: item.position,
+            rotation: item.rotation,
+            footprint: { width: d.width, depth: d.depth },
+          },
+        },
+      ];
+    });
+    return collidingIds(items);
+  }, [furniture, collisionMode]);
 
   const gl = useThree((s) => s.gl);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -111,6 +136,7 @@ export function Furniture3D({
           baseLift={baseLifts.get(item.id)}
           selected={selection?.kind === "furniture" && selection.id === item.id}
           hovered={hoveredId === item.id}
+          warned={warnedSet.has(item.id)}
           onPointerOver={handlePointerOver}
           onPointerOut={handlePointerOut}
           onClick={handleClick}

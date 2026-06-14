@@ -12,6 +12,12 @@ export function LevelsPanel() {
   const addLevelAbove = useStore((s) => s.addLevelAbove);
   const deleteLevel = useStore((s) => s.deleteLevel);
   const renameLevel = useStore((s) => s.renameLevel);
+  const copyWallsToAbove = useStore((s) => s.copyWallsToAbove);
+  const hasWalls = useStore(
+    (s) =>
+      (s.design.levels.find((l) => l.id === s.currentLevelId)?.walls.length ??
+        0) > 0,
+  );
 
   const canDelete = levels.length > 1;
 
@@ -24,6 +30,15 @@ export function LevelsPanel() {
         onClick={addLevelAbove}
       >
         + Add floor above
+      </button>
+      <button
+        type="button"
+        className="levels-copy"
+        title="Duplicate this level's walls onto the floor above (creating it if needed)"
+        disabled={!hasWalls}
+        onClick={() => copyWallsToAbove()}
+      >
+        Copy walls to floor above
       </button>
       <ul className="levels-list">
         {/* Render top floor first so the ground floor sits at the bottom. */}

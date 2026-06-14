@@ -5,8 +5,12 @@ import {
   footprintCorners,
   wallHuggerSnap,
   computeStackBaseLifts,
+  footprintsOverlap,
+  collidingIds,
   type Footprint,
   type StackItem,
+  type OrientedFootprint,
+  type CollisionItem,
 } from "./furniture";
 import { createWall } from "../model/defaults";
 import type { Wall } from "../model/types";
@@ -186,5 +190,77 @@ describe("computeStackBaseLifts", () => {
     // terminates and yields finite numbers
     expect(Number.isFinite(m.get("a")!)).toBe(true);
     expect(Number.isFinite(m.get("b")!)).toBe(true);
+  });
+});
+
+describe("footprintsOverlap (SAT)", () => {
+  const of = (
+    x: number,
+    y: number,
+    rotation: number,
+    w: number,
+    d: number,
+  ): OrientedFootprint => ({
+    center: { x, y },
+    rotation,
+    footprint: { width: w, depth: d },
+  });
+
+  it("detects overlapping axis-aligned rectangles", () => {
+    expect(footprintsOverlap(of(0, 0, 0, 2, 2), of(1, 0, 0, 2, 2))).toBe(true);
+  });
+
+  it("reports no overlap when clearly apart", () => {
+    expect(footprintsOverlap(of(0, 0, 0, 2, 2), of(5, 0, 0, 2, 2))).toBe(false);
+  });
+
+  it("treats a tiny sub-tolerance overlap as no collision", () => {
+    // centers 2.0 apart, widths 2 -> exactly touching; 0.01 into each other < tol
+    expect(footprintsOverlap(of(0, 0, 0, 2, 2), of(1.995, 0, 0, 2, 2))).toBe(
+      false,
+    );
+  });
+
+  it("is correct for rotated footprints", () => {
+    // a thin bar rotated 45° reaches into a neighbor an AABB test would miss/hit
+    const a = of(0, 0, 45, 3, 0.4);
+    const b = of(1.2, 1.2, 0, 0.6, 0.6);
+    expect(footprintsOverlap(a, b)).toBe(true);
+    const far = of(3, 3, 0, 0.6, 0.6);
+    expect(footprintsOverlap(a, far)).toBe(false);
+  });
+
+  it("accounts for scaled footprints (bigger rectangle reaches further)", () => {
+    expect(footprintsOverlap(of(0, 0, 0, 1, 1), of(1.4, 0, 0, 1, 1))).toBe(
+      false,
+    );
+    expect(footprintsOverlap(of(0, 0, 0, 2, 1), of(1.4, 0, 0, 1, 1))).toBe(true);
+  });
+});
+
+describe("collidingIds", () => {
+  const item = (
+    id: string,
+    x: number,
+    collidable: boolean,
+  ): CollisionItem => ({
+    id,
+    collidable,
+    footprint: { center: { x, y: 0 }, rotation: 0, footprint: { width: 2, depth: 2 } },
+  });
+
+  it("flags both members of an overlapping collidable pair", () => {
+    const ids = collidingIds([item("a", 0, true), item("b", 1, true)]);
+    expect(ids).toEqual(new Set(["a", "b"]));
+  });
+
+  it("never collides non-collidable items", () => {
+    const ids = collidingIds([item("a", 0, true), item("rug", 0, false)]);
+    expect(ids.size).toBe(0);
+  });
+
+  it("ignores well-separated items", () => {
+    const ids = collidingIds([item("a", 0, true), item("b", 5, true)]);
+    expect(ids.size).toBe(0);
   });
 });

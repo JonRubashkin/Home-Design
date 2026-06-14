@@ -70,6 +70,15 @@ npm run format   # Prettier
   (0.1 m minor / 1 m major lines that fade in and out with zoom).
 - **Wall tool** — click to start, live preview segment with a length label, click
   to commit, chained drawing, endpoint + grid snapping, angle constraint.
+- **Room tool** — drag a rectangle to drop four joined walls (shared corners) with
+  live width × depth labels; one undo removes the whole room.
+- **Auto-snap / heal** — wall endpoints fuse onto a nearby endpoint (exact, fixing
+  short/overshoot) or onto a wall face (T-junction) within 0.2 m, else grid-snap; a
+  green ring shows the active snap. Applies to drawing, the room tool, endpoint
+  dragging, and copy-to-floor-above.
+- **Copy walls to floor above** — duplicate the active level's walls (or just the
+  selected wall) with their openings onto the floor above (created if needed);
+  exact duplicates are skipped. One undo step.
 - **Select tool** — click to select (respects wall thickness), drag endpoints,
   drag the whole wall, edit length / thickness / height in the properties panel,
   delete.
@@ -168,6 +177,13 @@ npm run format   # Prettier
   the clamped value. **Reset size** restores the catalog default. Scaling drives
   the 3D mesh, the plan symbol, and hit-testing / wall-hugger snapping alike,
   participates in undo/redo, and round-trips through Export/Import.
+- **Collision** (Settings → gear in the toolbar) — **Off** / **Soft** (default) /
+  **Hard**. Bulky items collide by 2D footprint on the same level; flat/decor
+  items (rugs, lamps, plant, microwave, mirror…) never collide. Soft tints
+  overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an
+  overlapping placement, reverts a drag to its last clear spot, and undoes a
+  rotate/scale that would overlap. (Footprint-only — no place-on-surface yet, so a
+  chair tucked under a table reads as overlapping; that's what Soft is for.)
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are

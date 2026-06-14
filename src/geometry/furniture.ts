@@ -156,3 +156,81 @@ export function computeStackBaseLifts(
 
   return new Map(items.map((it) => [it.id, baseOf(it, new Set())]));
 }
+
+// --- Footprint collision (Phase 3c.2) --------------------------------------
+// 2D-only: do two oriented (rotated + scaled) footprint rectangles overlap by
+// more than `tolerance`? Uses the Separating Axis Theorem. No vertical stacking
+// is considered here — this is footprint geometry only.
+
+export interface OrientedFootprint {
+  center: Vec2;
+  rotation: number; // degrees (SVG/plan convention)
+  footprint: Footprint; // already scaled
+}
+
+function projectOntoAxis(corners: Vec2[], axis: Vec2): [number, number] {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const c of corners) {
+    const d = c.x * axis.x + c.y * axis.y;
+    if (d < min) min = d;
+    if (d > max) max = d;
+  }
+  return [min, max];
+}
+
+// Unit outward normal of the edge p->q.
+function edgeAxis(p: Vec2, q: Vec2): Vec2 {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: -dy / len, y: dx / len };
+}
+
+export function footprintsOverlap(
+  a: OrientedFootprint,
+  b: OrientedFootprint,
+  tolerance = 0.02,
+): boolean {
+  const ca = footprintCorners(a.center, a.rotation, a.footprint);
+  const cb = footprintCorners(b.center, b.rotation, b.footprint);
+  const axes = [
+    edgeAxis(ca[0]!, ca[1]!),
+    edgeAxis(ca[1]!, ca[2]!),
+    edgeAxis(cb[0]!, cb[1]!),
+    edgeAxis(cb[1]!, cb[2]!),
+  ];
+  for (const axis of axes) {
+    const [minA, maxA] = projectOntoAxis(ca, axis);
+    const [minB, maxB] = projectOntoAxis(cb, axis);
+    const gap = Math.max(minA - maxB, minB - maxA);
+    // Separated, or overlapping by less than the tolerance -> not colliding.
+    if (gap > -tolerance) return false;
+  }
+  return true;
+}
+
+export interface CollisionItem {
+  id: string;
+  collidable: boolean;
+  footprint: OrientedFootprint;
+}
+
+// Ids of items that overlap at least one OTHER collidable item. Only collidable
+// vs collidable pairs are considered; non-collidable items never collide.
+export function collidingIds(
+  items: CollisionItem[],
+  tolerance = 0.02,
+): Set<string> {
+  const hits = new Set<string>();
+  const c = items.filter((i) => i.collidable);
+  for (let i = 0; i < c.length; i++) {
+    for (let j = i + 1; j < c.length; j++) {
+      if (footprintsOverlap(c[i]!.footprint, c[j]!.footprint, tolerance)) {
+        hits.add(c[i]!.id);
+        hits.add(c[j]!.id);
+      }
+    }
+  }
+  return hits;
+}

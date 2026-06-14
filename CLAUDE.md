@@ -188,6 +188,26 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item.
 
+## Furniture collision (Phase 3c.2 — footprint only, no vertical stacking)
+
+- Each `CatalogEntry` carries `collidable: boolean` — **true** for bulky
+  floor-standing items you'd never overlap, **false** for flat/surface/decor
+  items meant to sit on or under others (rug, lamps, plant, microwave, mirror,
+  towel rack, bathroom cabinet). A non-collidable item never collides.
+- Two **collidable** items on the **same level** collide when their oriented
+  (scaled, rotated) footprint rectangles overlap beyond a small tolerance —
+  Separating Axis Theorem in pure tested `footprintsOverlap` / `collidingIds`
+  (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
+  chair tucked under a table reads as a collision (expected; Soft handles it).
+- **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
+  set from the **Settings** dialog (gear in the toolbar): **Off** (no checks),
+  **Soft** (default — overlaps allowed but overlapping collidable items get a red
+  warning tint in 2D and 3D, live), **Hard** (an item may not come to rest
+  overlapping: placement is blocked, a drag reverts to its last non-overlapping
+  spot, and rotating/scaling into an overlap reverts). Hard guards live in the
+  store actions (`placeFurniture`/`rotateFurniture`/`setFurnitureScale`); the
+  drag-revert is in the plan editor (tracks last-valid, falls back to pre-drag).
+
 ## State, undo, persistence
 
 - One Zustand store holds: the `Design`, the current level id, the active tool, the
@@ -316,6 +336,21 @@ in code under `src/catalog/`:
 - Wall tool: click to start, click to place end (live preview line + length label
   while drawing), Esc cancels; consecutive clicks chain walls; Enter/double-click
   ends the chain. Hold Shift to constrain to 0/45/90°.
+- **Room tool** (separate toolbar mode; no key — R is taken by furniture-rotate):
+  drag a rectangle to create **four joined walls** with shared coincident corners
+  (live W×D labels); Esc cancels; a zero-area rect is ignored; one undo step
+  (`addRoom`).
+- **Wall auto-snap/heal** (`WALL_SNAP_TOLERANCE = 0.2 m`, pure `snapEndpoint` in
+  `src/geometry/wallSnap.ts`, tested): every wall create/edit path — freehand
+  draw, room tool, endpoint drag, copy-up — snaps an endpoint first onto a nearby
+  **endpoint** (exact coincidence), else onto a wall **segment** (T-junction),
+  else falls back to grid. A green snap ring shows while a snap is active. (No
+  auto-trim/auto-split this phase.)
+- **Copy walls to floor above** (`copyWallsToAbove`): from the level list (all
+  active-level walls) or the wall properties panel (just the selected wall).
+  Duplicates geometry + openings under fresh ids onto the level above (created if
+  missing), skips exact duplicates, snaps copied endpoints, switches the active
+  level to the target. One undo step.
 - Select tool: click selects a wall (highlight in BOTH the plan and the 3D
   preview); drag an endpoint handle to move it; drag the wall body to translate
   the whole wall; Delete/Backspace removes it.

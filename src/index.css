@@ -1095,19 +1095,43 @@ button:focus-visible,
 
 /* --- levels panel (docked over the workspace, ground at bottom) --- */
 .levels {
-  position: absolute;
-  top: 10px;
-  left: 12px;
-  z-index: 12;
-  width: 210px;
-  background: rgba(24, 28, 38, 0.94);
-  border: 1px solid var(--chrome-border);
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  width: 230px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.levels-underlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* --- Floors dropdown (in the plan controls) --- */
+.floors-menu {
+  position: relative;
+}
+.floors-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  background: rgba(24, 28, 38, 0.97);
+  border: 1px solid var(--chrome-border);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* --- topbar icon button (Settings gear) --- */
+.topbar-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 7px;
 }
 .levels-add {
   background: var(--chrome-bg-2);

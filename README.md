@@ -47,10 +47,11 @@ npm run format   # Prettier
 
 ### Multiple levels / storeys (phase 3c)
 
-- **Level list** (docked, ground floor at the bottom): add a floor above, rename
-  inline, delete (with confirm; the last level can't be removed), and click a row
-  to make it the **active** (editable) level. All level changes are undoable; the
-  active level persists across reloads.
+- **Level list** (in the **Floors** dropdown beside Resize Area / Fit View, ground
+  floor at the bottom): add a floor above, rename inline, delete (with confirm; the
+  last level can't be removed), and click a row to make it the **active** (editable)
+  level. The dropdown also holds the underlay toggle. All level changes are
+  undoable; the active level persists across reloads.
 - **Auto-stacked elevations:** a level's height is derived — ground sits at 0 and
   each floor above sits at the previous one's wall height + a 0.2 m floor slab.
 - **Edit one level at a time** — the plan edits the active level; the level
@@ -192,7 +193,7 @@ npm run format   # Prettier
   the clamped value. **Reset size** restores the catalog default. Scaling drives
   the 3D mesh, the plan symbol, and hit-testing / wall-hugger snapping alike,
   participates in undo/redo, and round-trips through Export/Import.
-- **Collision** (Settings → gear in the toolbar) — **Off** / **Soft** (default) /
+- **Collision** (Settings → gear in the top bar, by Undo/Redo) — **Off** / **Soft** (default) /
   **Hard**. Bulky items collide by 2D footprint on the same level; flat/decor
   items (rugs, lamps, plant, microwave, mirror…) never collide. Soft tints
   overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an

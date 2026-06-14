@@ -55,6 +55,7 @@ import {
   type Bounds,
 } from "../geometry/planview";
 import { ResizeAreaDialog } from "./ResizeAreaDialog";
+import { LevelsPanel } from "./LevelsPanel";
 import {
   getCatalogEntry,
   primarySlot,
@@ -185,12 +186,12 @@ export function PlanEditor() {
   const levels = useStore((s) => s.design.levels);
   const currentLevelId = useStore((s) => s.currentLevelId);
   const showUnderlay = useStore((s) => s.showUnderlay);
-  const setShowUnderlay = useStore((s) => s.setShowUnderlay);
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
   const [resizeOpen, setResizeOpen] = useState(false);
+  const [floorsOpen, setFloorsOpen] = useState(false);
 
   // The level directly below the active one — drawn as a faint, non-interactive
   // underlay so the user can align to it (only when not on the ground floor).
@@ -1533,17 +1534,22 @@ export function PlanEditor() {
       </svg>
 
       <div className="plan-controls">
-        {belowLevel && (
+        <div className="floors-menu">
           <button
             type="button"
-            className={`plan-control-button${showUnderlay ? " active" : ""}`}
-            aria-pressed={showUnderlay}
-            title="Show the level below as a faint reference"
-            onClick={() => setShowUnderlay(!showUnderlay)}
+            className={`plan-control-button${floorsOpen ? " active" : ""}`}
+            aria-expanded={floorsOpen}
+            title="Manage floors / levels"
+            onClick={() => setFloorsOpen((v) => !v)}
           >
-            Underlay
+            Floors ▾
           </button>
-        )}
+          {floorsOpen && (
+            <div className="floors-dropdown">
+              <LevelsPanel />
+            </div>
+          )}
+        </div>
         <button
           type="button"
           className="plan-control-button"

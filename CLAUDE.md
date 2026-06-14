@@ -210,7 +210,8 @@ in code under `src/catalog/`:
   (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
   chair tucked under a table reads as a collision (expected; Soft handles it).
 - **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
-  set from the **Settings** dialog (gear in the toolbar): **Off** (no checks),
+  set from the **Settings** dialog (gear in the top bar, next to Undo/Redo):
+  **Off** (no checks),
   **Soft** (default — overlaps allowed but overlapping collidable items get a red
   warning tint in 2D and 3D, live), **Hard** (an item may not come to rest
   overlapping: placement is blocked, a drag reverts to its last non-overlapping
@@ -323,10 +324,12 @@ in code under `src/catalog/`:
   upper floors above. Add floor above (empty, default-named "First floor"…),
   rename inline, delete (confirm; never the last level), click to set active. All
   structural changes are undoable store actions (`addLevelAbove`, `deleteLevel`,
-  `renameLevel`, `setCurrentLevel`).
+  `renameLevel`, `setCurrentLevel`). It lives in the **Floors dropdown** (a button
+  beside Resize Area / Fit View in the plan controls), which also holds the
+  underlay toggle.
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
-  from the plan controls (only when not on the ground floor).
+  from the Floors dropdown (only when not on the ground floor).
 - **3D:** `Building3D` stacks every level at its elevation; an "Active level only"
   toggle isolates the active one. Floor regions render as **real slabs**
   (`Floors3D`, extruded `FLOOR_SLAB_THICKNESS`, walking surface at the elevation).

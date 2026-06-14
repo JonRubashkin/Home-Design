@@ -4,15 +4,17 @@ import {
   SITE_PRESETS,
   areaToSquare,
   clampSide,
+  roundToTenth,
   SITE_MIN,
   SITE_MAX,
 } from "../model/site";
-import { formatMeters } from "../lib/format";
 
 // Shared work-area size chooser: three square presets (by area) plus a custom
 // width × depth. Used by the welcome screen and the "Resize area" dialog. Enter
-// confirms. `onConfirm` receives the clamped site; sizes are never enforced
-// later, this just seeds/updates `Design.site`.
+// confirms. Sizes are kept to a single decimal (nearest 0.1 m) so the number
+// inputs never hold a step-invalid value. `onConfirm` receives the clamped,
+// rounded site; sizes are never enforced later, this just seeds/updates
+// `Design.site`.
 export function SiteSizeForm({
   initial,
   confirmLabel,
@@ -25,29 +27,35 @@ export function SiteSizeForm({
   onCancel?: () => void;
 }) {
   const [width, setWidth] = useState<string>(
-    initial ? String(round2(initial.width)) : "10",
+    initial ? String(roundToTenth(initial.width)) : "10",
   );
   const [depth, setDepth] = useState<string>(
-    initial ? String(round2(initial.depth)) : "10",
+    initial ? String(roundToTenth(initial.depth)) : "10",
   );
 
   const applyPreset = (area: number) => {
     const s = areaToSquare(area);
-    setWidth(String(round2(s.width)));
-    setDepth(String(round2(s.depth)));
+    setWidth(String(roundToTenth(s.width)));
+    setDepth(String(roundToTenth(s.depth)));
+  };
+
+  // Snap a field to one decimal when the user leaves it.
+  const snap = (raw: string, set: (v: string) => void) => {
+    const n = Number(raw);
+    if (Number.isFinite(n)) set(String(roundToTenth(clampSide(n))));
   };
 
   const current: Site = {
-    width: clampSide(Number(width)),
-    depth: clampSide(Number(depth)),
+    width: clampSide(roundToTenth(Number(width))),
+    depth: clampSide(roundToTenth(Number(depth))),
   };
 
-  // Mark the preset whose square matches the current entry (within 1 cm).
+  // Mark the preset whose (rounded) square matches the current entry.
   const activePreset = SITE_PRESETS.find((p) => {
-    const side = Math.sqrt(p.area);
+    const side = roundToTenth(Math.sqrt(p.area));
     return (
-      Math.abs(side - current.width) < 0.01 &&
-      Math.abs(side - current.depth) < 0.01
+      Math.abs(side - current.width) < 0.05 &&
+      Math.abs(side - current.depth) < 0.05
     );
   })?.id;
 
@@ -56,6 +64,7 @@ export function SiteSizeForm({
   return (
     <form
       className="site-form"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         confirm();
@@ -75,7 +84,8 @@ export function SiteSizeForm({
               <span className="site-preset-name">{p.label}</span>
               <span className="site-preset-area">{p.area} m²</span>
               <span className="site-preset-dims">
-                {formatMeters(s.width)} × {formatMeters(s.depth)}
+                {roundToTenth(s.width).toFixed(1)} ×{" "}
+                {roundToTenth(s.depth).toFixed(1)} m
               </span>
             </button>
           );
@@ -94,6 +104,7 @@ export function SiteSizeForm({
               step={0.1}
               value={width}
               onChange={(e) => setWidth(e.target.value)}
+              onBlur={(e) => snap(e.target.value, setWidth)}
             />
             <span className="field-unit">m</span>
           </span>
@@ -108,6 +119,7 @@ export function SiteSizeForm({
               step={0.1}
               value={depth}
               onChange={(e) => setDepth(e.target.value)}
+              onBlur={(e) => snap(e.target.value, setDepth)}
             />
             <span className="field-unit">m</span>
           </span>
@@ -126,8 +138,4 @@ export function SiteSizeForm({
       </div>
     </form>
   );
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }

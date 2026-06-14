@@ -1288,3 +1288,37 @@ button:focus-visible,
   color: var(--text-dim);
   font-size: 12px;
 }
+
+/* --- staircase plan symbol --- */
+.stair-outline {
+  fill: rgba(138, 109, 75, 0.16);
+  stroke: #6b5840;
+  stroke-width: 1.4;
+}
+.stair-treads line {
+  stroke: #6b5840;
+  stroke-width: 1;
+}
+.stair-arrow {
+  stroke: #3c3322;
+  stroke-width: 1.4;
+}
+.stair.selected .stair-outline {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.stair.warn .stair-outline {
+  stroke: var(--danger);
+  stroke-width: 2.4;
+}
+.stair-ghost {
+  opacity: 0.6;
+}
+/* "open below" stairwell void on the upper level */
+.stair-void {
+  fill: rgba(17, 24, 39, 0.06);
+  stroke: #6b5840;
+  stroke-width: 1.4;
+  stroke-dasharray: 5 3;
+  vector-effect: non-scaling-stroke;
+}

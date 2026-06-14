@@ -30,6 +30,21 @@ npm run format   # Prettier
 
 ## Features
 
+### Staircases (phase 3d)
+
+- **Staircase tool (S)** — a ghost follows the cursor (grid-snapped); `R` /
+  `Shift+R` rotate in 15° steps; click to place. Steps auto-fit the storey height.
+  Placing a stair with no floor above **auto-creates** the floor above and ascends
+  to it.
+- **Opens the floor above** — the upper floor slab gets a real **hole** over the
+  stair (built with `THREE.Shape` holes, no CSG), so the stair is visible from
+  below and reachable from above. Drawing a floor region across the opening still
+  renders the hole.
+- Staircases are **collidable** (bulky footprint), selectable/draggable/rotatable
+  in the plan with a properties panel (width, rotation, position, material), and
+  pickable in 3D. The plan shows tread lines + an up arrow (lower level) and an
+  "open below" void (upper level).
+
 ### Multiple levels / storeys (phase 3c)
 
 - **Level list** (docked, ground floor at the bottom): add a floor above, rename
@@ -213,6 +228,7 @@ npm run format   # Prettier
 | Door tool                 | `D`                                         |
 | Floor tool                | `F`                                         |
 | Paint tool                | `P`                                         |
+| Staircase tool            | `S`                                         |
 | Furniture tool            | `U`                                         |
 | Rotate furniture / ghost  | `R` (+15°) · `Shift`+`R` (−15°)             |
 | Draw / place point        | Click (Wall / Floor tools)                  |

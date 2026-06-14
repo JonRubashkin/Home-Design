@@ -6,6 +6,7 @@ import type {
   Level,
   MaterialRef,
   Site,
+  Staircase,
   Vec2,
   Vec3,
   Wall,
@@ -26,6 +27,15 @@ export const DEFAULT_DOOR_HEIGHT = 2.0;
 // elevation; the slab occupies [elevation - thickness, elevation] and doubles as
 // the ceiling of the level below.
 export const FLOOR_SLAB_THICKNESS = 0.2;
+
+// Staircase defaults + comfortable step geometry (meters).
+export const DEFAULT_STAIR_WIDTH = 1.0;
+export const STAIR_RISER_TARGET = 0.18; // target step rise; actual fits the storey
+export const STAIR_TREAD_DEPTH = 0.25; // going per step
+export const DEFAULT_STAIR_MATERIAL: MaterialRef = {
+  kind: "solid",
+  color: "#8a6d4b",
+};
 
 // Default door leaf material (a warm wood tone).
 export const DEFAULT_DOOR_MATERIAL: MaterialRef = {
@@ -126,6 +136,21 @@ export function createFurniture(
   };
 }
 
+export function createStaircase(
+  position: Vec2,
+  opts?: { rotation?: number; width?: number; material?: MaterialRef },
+): Staircase {
+  return {
+    id: makeId("stair"),
+    position: { ...position },
+    rotation: opts?.rotation ?? 0,
+    width: opts?.width ?? DEFAULT_STAIR_WIDTH,
+    material: opts?.material
+      ? { ...opts.material }
+      : { ...DEFAULT_STAIR_MATERIAL },
+  };
+}
+
 export function createLevel(name = "Ground floor"): Level {
   return {
     id: makeId("level"),
@@ -135,6 +160,7 @@ export function createLevel(name = "Ground floor"): Level {
     walls: [],
     floors: [],
     furniture: [],
+    staircases: [],
   };
 }
 
@@ -143,7 +169,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

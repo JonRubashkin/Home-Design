@@ -619,3 +619,50 @@ describe("collision off/soft never block", () => {
     expect(furniture()).toHaveLength(3);
   });
 });
+
+const stairs = () => selectCurrentLevel(useStore.getState()).staircases;
+
+describe("staircases", () => {
+  it("places a stair on the active level, auto-creating the level above", () => {
+    expect(state().design.levels).toHaveLength(1);
+    state().placeStaircase({ x: 2, y: 2 }, 0);
+    expect(state().design.levels).toHaveLength(2); // upper auto-created
+    expect(stairs()).toHaveLength(1); // on the (lower) active level
+    expect(state().currentLevelId).toBe(state().design.levels[0]!.id); // stays lower
+    expect(state().selection).toEqual({
+      kind: "staircase",
+      id: stairs()[0]!.id,
+    });
+  });
+
+  it("adds to the existing level above instead of creating another", () => {
+    state().addLevelAbove(); // creates first floor, active = first
+    state().setCurrentLevel(state().design.levels[0]!.id); // back to ground
+    state().placeStaircase({ x: 1, y: 1 }, 0);
+    expect(state().design.levels).toHaveLength(2); // no extra level
+  });
+
+  it("rotates in 15° steps, moves, and deletes (undoable)", () => {
+    state().placeStaircase({ x: 0, y: 0 }, 0);
+    const id = stairs()[0]!.id;
+    state().rotateStaircase(id, 90);
+    expect(stairs()[0]!.rotation).toBe(90);
+    state().updateStaircase(id, { width: 1.4 });
+    expect(stairs()[0]!.width).toBe(1.4);
+    state().deleteStaircase(id);
+    expect(stairs()).toHaveLength(0);
+    state().undo(); // undo delete
+    expect(stairs()).toHaveLength(1);
+  });
+
+  it("collides with furniture in Hard mode (stair blocks a sofa drop)", () => {
+    state().setCollisionMode("hard");
+    state().placeStaircase({ x: 0, y: 0 }, 0);
+    expect(stairs()).toHaveLength(1);
+    state().placeFurniture("sofa-3seat", { x: 0, y: 0 }, 0); // over the stair
+    expect(
+      selectCurrentLevel(useStore.getState()).furniture,
+    ).toHaveLength(0); // blocked
+    state().setCollisionMode("soft");
+  });
+});

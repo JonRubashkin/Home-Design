@@ -50,10 +50,10 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 5;         // v1 = Phase 1; v2 = doors; v3 = furniture;
-                            // v4 = furniture scale; v5 = work-area (site).
-                            // Migrations in src/model/migrations.ts upgrade
-                            // older saved designs.
+  schemaVersion: 6;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+                            // v4 = furniture scale; v5 = work-area (site);
+                            // v6 = staircases. Migrations in
+                            // src/model/migrations.ts upgrade older saved designs.
   name: string;
   site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
@@ -128,6 +128,16 @@ interface FloorRegion {
   polygon: Vec2[];          // user-drawn, grid-snapped, >= 3 points, plan coords
   material: MaterialRef;
 }
+
+interface Staircase {       // Phase 3d. Straight stairs; stored on the LOWER level.
+  id: string;
+  position: Vec2;           // plan coords of footprint CENTER
+  rotation: number;         // degrees; ascent direction; 15° steps
+  width: number;            // meters (default 1.0)
+  material: MaterialRef;
+}
+// Level gains `staircases: Staircase[]`. A staircase ascends to the level above
+// (auto-created if none) and opens a stairwell HOLE in that level's floor slab.
 
 interface Vec2 { x: number; y: number; }
 interface Vec3 { x: number; y: number; z: number; }
@@ -325,6 +335,31 @@ in code under `src/catalog/`:
   every storey. Reuses the existing cutaway/ghost machinery and shared material
   helper. **Fit view frames the whole building.** Picking an item on a non-active
   level switches the active level to it (so the plan/panel act on it).
+
+## Staircases (Phase 3d — straight stairs only)
+
+- A `Staircase` is stored on the **lower** level it ascends from. **Staircase tool
+  (S):** ghost footprint follows the cursor (grid-snapped), R / Shift+R rotate in
+  15° steps, click places, Esc cancels, tool stays active. Placing one with no
+  level above **auto-creates** the level above (3c naming); the active level stays
+  the lower one.
+- Pure tested `computeStair(stair, storeyHeight)` in `src/geometry/stair.ts`:
+  storey height = `wallHeight + FLOOR_SLAB_THICKNESS`; `steps = round(storey /
+  STAIR_RISER_TARGET)` (0.18), actual riser = storey/steps, `runLength = steps *
+  STAIR_TREAD_DEPTH` (0.25); footprint = width × runLength rotated about position;
+  the **opening** rectangle (= footprint) is cut from the floor above.
+- **Floor opening:** a level's floor slabs are built with `THREE.Shape` + **hole
+  paths** for the opening rectangles of the level BELOW (`Floors3D`, no CSG). The
+  mask is authoritative — a floor region drawn over the opening still renders the
+  hole, so the floor tool needs no special blocking.
+- **Collidable:** staircases participate in the collision system as bulky
+  footprints (`levelCollidables` includes furniture + stairs); Soft warns / Hard
+  reverts vs furniture and other stairs on the same level.
+- **3D:** `Staircase3D` is a box per step rising from the lower elevation; pickable
+  like furniture (Phase 3a). **2D:** tread lines + up-arrow on the lower level; an
+  "open below" dashed void on the upper level (plus the stair through the
+  underlay). Selectable/draggable/rotatable with a properties panel (width,
+  rotation, position, material, delete). `Selection` gains `{ kind: "staircase" }`.
 
 ## 2D plan editor rules
 

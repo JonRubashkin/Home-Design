@@ -69,6 +69,11 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.furniture[0]!.scale).toEqual({ x: 1, y: 1, z: 1 });
   });
 
+  it("adds an empty staircases array to every level (-> v6)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.levels[0]!.staircases).toEqual([]);
+  });
+
   it("gives an older design a default large site (-> v5)", () => {
     const out = migrateToLatest(structuredClone(V1_FIXTURE));
     expect(out.site.width).toBeCloseTo(Math.sqrt(1000), 3);

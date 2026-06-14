@@ -54,6 +54,16 @@ export interface FloorRegion {
   material: MaterialRef;
 }
 
+// A straight staircase, stored on the LOWER level it ascends FROM. It rises to
+// the level above and opens a stairwell hole in that level's floor slab.
+export interface Staircase {
+  id: string;
+  position: Vec2; // plan coords of footprint CENTER (on the lower level)
+  rotation: number; // degrees; ascent direction; rotates in 15° steps
+  width: number; // meters (default 1.0)
+  material: MaterialRef;
+}
+
 // A placed furniture instance. References a catalog id — never geometry. Slot
 // material overrides are keyed by the catalog entry's part-slot names.
 export interface Vec3 {
@@ -79,6 +89,7 @@ export interface Level {
   walls: Wall[];
   floors: FloorRegion[];
   furniture: FurnitureItem[];
+  staircases: Staircase[];
 }
 
 // The work area ("site"): a soft, buildable rectangle. Never enforced — it frames
@@ -90,7 +101,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 5;
+  schemaVersion: 6;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

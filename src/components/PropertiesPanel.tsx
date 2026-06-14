@@ -120,6 +120,7 @@ type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
   | { kind: "furnSlot"; id: string; slot: string }
+  | { kind: "stairMat"; id: string }
   | { kind: "floor"; id: string };
 
 // The Furniture tool's right-panel palette: catalog items grouped by category.
@@ -364,6 +365,8 @@ export function PropertiesPanel() {
   const setFurnitureScale = useStore((s) => s.setFurnitureScale);
   const resetFurnitureScale = useStore((s) => s.resetFurnitureScale);
   const deleteFurniture = useStore((s) => s.deleteFurniture);
+  const updateStaircase = useStore((s) => s.updateStaircase);
+  const deleteStaircase = useStore((s) => s.deleteStaircase);
   const setSideHighlight = useStore((s) => s.setSideHighlight);
 
   const [edit, setEdit] = useState<EditTarget | null>(null);
@@ -481,6 +484,96 @@ export function PropertiesPanel() {
           onClick={() => deleteFurniture(item.id)}
         >
           Delete item
+        </button>
+      </aside>
+    );
+  }
+
+  // --- staircase selected ---
+  if (selection?.kind === "staircase") {
+    const stair = level.staircases.find((s) => s.id === selection.id);
+    if (!stair) return <aside className="properties">{EMPTY_TIPS}</aside>;
+
+    if (edit?.kind === "stairMat") {
+      return (
+        <aside className="properties" aria-label="Staircase material">
+          <PickerHeader title="Stair material" onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={stair.material}
+            onChange={(m) => updateStaircase(stair.id, { material: m })}
+          />
+        </aside>
+      );
+    }
+
+    return (
+      <aside className="properties" aria-label="Staircase">
+        <h2 className="properties-title">Staircase</h2>
+        <p className="properties-hint">Ascends to the floor above.</p>
+        <div className="properties-fields">
+          <NumberField
+            label="Width"
+            value={stair.width}
+            min={0.5}
+            step={0.1}
+            onCommit={(v) => updateStaircase(stair.id, { width: v })}
+          />
+          <label className="field">
+            <span className="field-label">Rotation</span>
+            <span className="field-input">
+              <input
+                type="number"
+                step={15}
+                value={Math.round(stair.rotation)}
+                onChange={(e) => {
+                  const deg = Number(e.target.value);
+                  if (Number.isFinite(deg)) {
+                    const snapped =
+                      (((Math.round(deg / 15) * 15) % 360) + 360) % 360;
+                    updateStaircase(stair.id, { rotation: snapped });
+                  }
+                }}
+              />
+              <span className="field-unit">°</span>
+            </span>
+          </label>
+          <NumberField
+            label="X"
+            value={stair.position.x}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateStaircase(stair.id, {
+                position: { x: v, y: stair.position.y },
+              })
+            }
+          />
+          <NumberField
+            label="Y"
+            value={stair.position.y}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateStaircase(stair.id, {
+                position: { x: stair.position.x, y: v },
+              })
+            }
+          />
+        </div>
+        <h3 className="properties-subhead">Material</h3>
+        <div className="chip-row">
+          <MaterialChip
+            material={stair.material}
+            label="Steps"
+            onClick={() => setEdit({ kind: "stairMat", id: stair.id })}
+          />
+        </div>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteStaircase(stair.id)}
+        >
+          Delete staircase
         </button>
       </aside>
     );

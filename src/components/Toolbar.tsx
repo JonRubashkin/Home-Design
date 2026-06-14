@@ -3,7 +3,7 @@ import { useStore, type Tool } from "../store/store";
 interface ToolDef {
   tool: Tool;
   label: string;
-  shortcut: string;
+  shortcut?: string;
   icon: React.ReactNode;
 }
 
@@ -23,6 +23,21 @@ const WallIcon = (
   <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
     <rect x="3" y="6" width="18" height="5" rx="1" fill="currentColor" />
     <rect x="3" y="13" width="18" height="5" rx="1" fill="currentColor" />
+  </svg>
+);
+
+const RoomIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <rect
+      x="4"
+      y="4"
+      width="16"
+      height="16"
+      rx="1"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+    />
   </svg>
 );
 
@@ -107,6 +122,7 @@ const FurnitureIcon = (
 const TOOLS: ToolDef[] = [
   { tool: "select", label: "Select", shortcut: "V", icon: SelectIcon },
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
+  { tool: "room", label: "Room", icon: RoomIcon },
   { tool: "window", label: "Window", shortcut: "N", icon: WindowIcon },
   { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
   { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
@@ -126,12 +142,12 @@ export function Toolbar() {
           type="button"
           className={`tool-button${activeTool === tool ? " active" : ""}`}
           aria-pressed={activeTool === tool}
-          title={`${label} (${shortcut})`}
+          title={shortcut ? `${label} (${shortcut})` : label}
           onClick={() => setActiveTool(tool)}
         >
           <span className="tool-icon">{icon}</span>
           <span className="tool-label">{label}</span>
-          <span className="tool-shortcut">{shortcut}</span>
+          {shortcut && <span className="tool-shortcut">{shortcut}</span>}
         </button>
       ))}
     </nav>

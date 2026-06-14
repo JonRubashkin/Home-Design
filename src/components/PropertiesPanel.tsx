@@ -349,6 +349,7 @@ export function PropertiesPanel() {
   const level = useStore(selectCurrentLevel);
   const updateWall = useStore((s) => s.updateWall);
   const deleteWall = useStore((s) => s.deleteWall);
+  const copyWallsToAbove = useStore((s) => s.copyWallsToAbove);
   const updateWindow = useStore((s) => s.updateWindow);
   const deleteWindow = useStore((s) => s.deleteWindow);
   const updateDoor = useStore((s) => s.updateDoor);
@@ -563,6 +564,13 @@ export function PropertiesPanel() {
             }
           />
         </div>
+        <button
+          type="button"
+          className="link-button reset-link"
+          onClick={() => copyWallsToAbove([wall.id])}
+        >
+          Copy wall to floor above
+        </button>
         <button
           type="button"
           className="danger-button"

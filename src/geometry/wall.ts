@@ -60,3 +60,28 @@ export function hitTestWall(point: Vec2, wall: Wall, tolerance = 0): boolean {
   const d = distancePointToSegment(point, wall.start, wall.end);
   return d <= wall.thickness / 2 + tolerance;
 }
+
+// Four wall segments forming the axis-aligned rectangle between opposite corners
+// a and b, with shared (coincident-valued) corners so the joins are clean.
+// Returns [] when the rectangle is degenerate (zero/near-zero width or depth).
+export function rectangleSegments(
+  a: Vec2,
+  b: Vec2,
+  minSide = 1e-6,
+): { start: Vec2; end: Vec2 }[] {
+  const x0 = Math.min(a.x, b.x);
+  const x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y);
+  const y1 = Math.max(a.y, b.y);
+  if (x1 - x0 < minSide || y1 - y0 < minSide) return [];
+  const c = [
+    { x: x0, y: y0 },
+    { x: x1, y: y0 },
+    { x: x1, y: y1 },
+    { x: x0, y: y1 },
+  ];
+  return [0, 1, 2, 3].map((i) => ({
+    start: { ...c[i]! },
+    end: { ...c[(i + 1) % 4]! },
+  }));
+}

@@ -9,7 +9,6 @@ import {
   DEFAULT_WINDOW_HEIGHT,
   DEFAULT_WINDOW_SILL_HEIGHT,
   DEFAULT_WINDOW_WIDTH,
-  ENDPOINT_SNAP_RADIUS,
 } from "../model/defaults";
 import { add, sub, dot, scale as vscale, distance } from "../geometry/vec";
 import { snapToGrid, constrainAngle } from "../geometry/snap";
@@ -18,8 +17,8 @@ import {
   wallDirection,
   wallLength,
   hitTestWall,
-  nearestEndpoint,
 } from "../geometry/wall";
+import { snapEndpoint, WALL_SNAP_TOLERANCE } from "../geometry/wallSnap";
 import {
   windowSpan,
   projectPointToWallT,
@@ -116,7 +115,8 @@ type DragState =
       startWorld: Vec2;
       basePos: Vec2;
       started: boolean;
-    };
+    }
+  | { kind: "room"; pointerId: number; startScreen: Vec2 };
 
 const GRID_TIERS: { spacing: number; className: string }[] = [
   { spacing: 0.1, className: "grid-minor" },
@@ -202,6 +202,11 @@ export function PlanEditor() {
   // Floor drawing.
   const [floorPts, setFloorPts] = useState<Vec2[]>([]);
   const [floorCursor, setFloorCursor] = useState<Vec2 | null>(null);
+  // Rectangle (room) tool drag + the active wall-snap indicator point.
+  const [roomRect, setRoomRect] = useState<{ start: Vec2; end: Vec2 } | null>(
+    null,
+  );
+  const [snapHint, setSnapHint] = useState<Vec2 | null>(null);
   // Furniture placement ghost.
   const placingCatalogId = useStore((s) => s.placingCatalogId);
   const [ghostRotation, setGhostRotation] = useState(0);
@@ -355,14 +360,15 @@ export function PlanEditor() {
     let p = raw;
     if (shiftRef.current && fromChain) p = constrainAngle(fromChain, p);
     for (const s of extraSnaps) {
-      if (distance(p, s) <= ENDPOINT_SNAP_RADIUS)
+      if (distance(p, s) <= WALL_SNAP_TOLERANCE)
         return { pt: s, snapped: true };
     }
     const candidates = excludeId
       ? walls.filter((w) => w.id !== excludeId)
       : walls;
-    const ep = nearestEndpoint(p, candidates, ENDPOINT_SNAP_RADIUS);
-    if (ep) return { pt: ep, snapped: true };
+    // Endpoint→endpoint, then endpoint→segment (T-junction), else grid.
+    const snap = snapEndpoint(p, candidates, WALL_SNAP_TOLERANCE);
+    if (snap.kind !== "none") return { pt: snap.point, snapped: true };
     return { pt: snapToGrid(p), snapped: false };
   };
 
@@ -488,6 +494,9 @@ export function PlanEditor() {
         setFloorPts([]);
         setFloorCursor(null);
         setFurnGhost(null);
+        setRoomRect(null);
+        setSnapHint(null);
+        dragRef.current = { kind: "none" };
         useStore.getState().setPlacingCatalogId(null);
       } else if (e.key === "Enter") {
         setChainStart(null);
@@ -561,6 +570,18 @@ export function PlanEditor() {
         setChainStart(pt);
       }
       setPreview({ pt, snapped: false });
+      return;
+    }
+
+    if (activeTool === "room") {
+      const { pt } = resolveDrawPoint(world, null);
+      dragRef.current = {
+        kind: "room",
+        pointerId: e.pointerId,
+        startScreen: screen,
+      };
+      setRoomRect({ start: pt, end: pt });
+      svgRef.current?.setPointerCapture(e.pointerId);
       return;
     }
 
@@ -817,6 +838,14 @@ export function PlanEditor() {
       return;
     }
 
+    if (d.kind === "room") {
+      const world = clientToWorld(e.clientX, e.clientY);
+      const r = resolveDrawPoint(world, null);
+      setRoomRect((rect) => (rect ? { ...rect, end: r.pt } : rect));
+      setSnapHint(r.snapped ? r.pt : null);
+      return;
+    }
+
     if (
       d.kind === "body" ||
       d.kind === "endpoint" ||
@@ -855,11 +884,9 @@ export function PlanEditor() {
           add(d.baseEnd, delta),
         );
       } else if (d.kind === "endpoint") {
-        store.moveWallEndpoint(
-          d.wallId,
-          d.which,
-          resolveDrawPoint(world, null, d.wallId).pt,
-        );
+        const r = resolveDrawPoint(world, null, d.wallId);
+        store.moveWallEndpoint(d.wallId, d.which, r.pt);
+        setSnapHint(r.snapped ? r.pt : null);
       } else if (d.kind === "window") {
         const wall = walls.find((w) => w.id === d.wallId);
         const win = wall?.windows.find((x) => x.id === d.windowId);
@@ -900,6 +927,11 @@ export function PlanEditor() {
     ) {
       useStore.getState().endDrag();
     }
+    if (d.kind === "room") {
+      if (roomRect) useStore.getState().addRoom(roomRect.start, roomRect.end);
+      setRoomRect(null);
+    }
+    setSnapHint(null);
     if (d.kind !== "none") {
       try {
         svgRef.current?.releasePointerCapture(e.pointerId);
@@ -1119,6 +1151,18 @@ export function PlanEditor() {
           {activeTool === "floor" && floorPts.length > 0 && (
             <FloorPreview points={floorPts} cursor={floorCursor} />
           )}
+
+          {/* Rectangle (room) tool preview. */}
+          {roomRect && (
+            <rect
+              className="room-preview"
+              x={Math.min(roomRect.start.x, roomRect.end.x)}
+              y={Math.min(roomRect.start.y, roomRect.end.y)}
+              width={Math.abs(roomRect.end.x - roomRect.start.x)}
+              height={Math.abs(roomRect.end.y - roomRect.start.y)}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
         </g>
 
         <Overlay
@@ -1144,6 +1188,44 @@ export function PlanEditor() {
             </text>
           );
         })()}
+
+        {/* Rectangle (room) tool width × depth labels (screen space). */}
+        {roomRect &&
+          (() => {
+            const w = Math.abs(roomRect.end.x - roomRect.start.x);
+            const d = Math.abs(roomRect.end.y - roomRect.start.y);
+            const cx = (roomRect.start.x + roomRect.end.x) / 2;
+            const top = worldToScreen({
+              x: cx,
+              y: Math.min(roomRect.start.y, roomRect.end.y),
+            });
+            const cy = (roomRect.start.y + roomRect.end.y) / 2;
+            const leftEdge = worldToScreen({
+              x: Math.min(roomRect.start.x, roomRect.end.x),
+              y: cy,
+            });
+            return (
+              <g className="length-label">
+                <RoomDimLabel x={top.x} y={top.y - 12} text={formatMeters(w)} />
+                <RoomDimLabel
+                  x={leftEdge.x - 30}
+                  y={leftEdge.y}
+                  text={formatMeters(d)}
+                />
+              </g>
+            );
+          })()}
+
+        {/* Active wall-snap indicator (endpoint / segment fuse). */}
+        {(snapHint ||
+          (preview?.snapped && activeTool === "wall" ? preview.pt : null)) &&
+          (() => {
+            const node = snapHint ?? preview!.pt;
+            const s = worldToScreen(node);
+            return (
+              <circle className="snap-ring" cx={s.x} cy={s.y} r={7} />
+            );
+          })()}
       </svg>
 
       <div className="plan-controls">
@@ -1191,6 +1273,8 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
       return chainStart
         ? "Click to add a point · Enter / double-click to finish · Esc to cancel"
         : "Click to start a wall · hold Shift for 0/45/90°";
+    case "room":
+      return "Drag a rectangle to make four joined walls · Esc cancels";
     case "window":
       return "Hover a wall and click to place a window · invalid spots show red";
     case "door":
@@ -1418,6 +1502,19 @@ function UnderlayLayer({ level }: { level: Level }) {
           strokeLinecap="round"
         />
       ))}
+    </g>
+  );
+}
+
+// A small screen-space dimension chip (reuses the length-label styling).
+function RoomDimLabel({ x, y, text }: { x: number; y: number; text: string }) {
+  const w = text.length * 7 + 10;
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x={-w / 2} y={-10} width={w} height={18} rx={3} />
+      <text x={0} y={3} textAnchor="middle">
+        {text}
+      </text>
     </g>
   );
 }

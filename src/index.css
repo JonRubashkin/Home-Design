@@ -1197,3 +1197,31 @@ button:focus-visible,
   opacity: 0.3;
   cursor: default;
 }
+
+/* --- rectangle (room) tool --- */
+.room-preview {
+  fill: rgba(59, 130, 246, 0.1);
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.snap-ring {
+  fill: none;
+  stroke: #16a34a;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+/* --- levels: copy walls up --- */
+.levels-copy {
+  background: var(--chrome-bg-2);
+  color: var(--text);
+  border: 1px solid var(--chrome-border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.levels-copy:hover {
+  border-color: var(--accent);
+}

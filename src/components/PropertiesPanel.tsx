@@ -116,6 +116,33 @@ function ToolMaterialPanel({ tool }: { tool: "paint" | "floor" }) {
   );
 }
 
+// Wall tool panel: choose the sub-mode — Draw (chain walls) or Room (drag a
+// rectangle of four joined walls). The two share one toolbar button.
+function WallToolPanel() {
+  const activeTool = useStore((s) => s.activeTool);
+  const setActiveTool = useStore((s) => s.setActiveTool);
+  const mode: "wall" | "room" = activeTool === "room" ? "room" : "wall";
+  return (
+    <aside className="properties" aria-label="Wall tool">
+      <h2 className="properties-title">Walls</h2>
+      <ToggleField
+        label="Mode"
+        value={mode}
+        options={[
+          { value: "wall", label: "Draw" },
+          { value: "room", label: "Room" },
+        ]}
+        onChange={(v) => setActiveTool(v)}
+      />
+      <p className="properties-hint">
+        {mode === "room"
+          ? "Drag a rectangle to create four joined walls."
+          : "Click to start a wall and keep clicking to chain; Enter or double-click finishes. Hold Shift for 0/45/90°."}
+      </p>
+    </aside>
+  );
+}
+
 // Fill Room tool panel: choose what to fill (floor / walls / both) with the
 // current material, then click inside an enclosed room.
 function FillRoomPanel() {
@@ -412,6 +439,10 @@ export function PropertiesPanel() {
 
   if (activeTool === "paint" || activeTool === "floor") {
     return <ToolMaterialPanel tool={activeTool} />;
+  }
+
+  if (activeTool === "wall" || activeTool === "room") {
+    return <WallToolPanel />;
   }
 
   if (activeTool === "fill") {

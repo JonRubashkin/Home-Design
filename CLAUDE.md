@@ -374,10 +374,16 @@ in code under `src/catalog/`:
 - Wall tool: click to start, click to place end (live preview line + length label
   while drawing), Esc cancels; consecutive clicks chain walls; Enter/double-click
   ends the chain. Hold Shift to constrain to 0/45/90°.
-- **Room tool** (separate toolbar mode; no key — R is taken by furniture-rotate):
-  drag a rectangle to create **four joined walls** with shared coincident corners
-  (live W×D labels); Esc cancels; a zero-area rect is ignored; one undo step
-  (`addRoom`).
+- **Room** is a sub-mode of the **Wall** tool (one toolbar button; Draw / Room
+  chosen in the properties panel — R is taken by furniture-rotate): drag a
+  rectangle to create **four joined walls** with shared coincident corners (live
+  W×D labels); Esc cancels; a zero-area rect is ignored; one undo step (`addRoom`).
+- **2D walls render each side's paint:** every wall span draws an A-side half and a
+  B-side half (each filled with `paintA` / `paintB`) plus a thin outline, so paint
+  applied to either side (Paint tool or Fill Room) shows in the plan, not just 3D.
+- **2D floors cut stairwell holes:** floor regions render as SVG paths with the
+  level-below's stairwell openings as even-odd holes (mirrors the 3D slab mask), so
+  a filled floor over a stair shows the opening in the plan too.
 - **Fill Room tool (G):** click inside a fully enclosed room to fill its floor
   and/or paint its interior wall faces with the current material (panel toggle:
   Floor / Walls / Both, default Both). Enclosure is found by a pure tested **grid

@@ -30,6 +30,17 @@ npm run format   # Prettier
 
 ## Features
 
+### Fill Room (phase 3e)
+
+- **Fill Room tool (G)** — click inside a fully enclosed room to fill its **floor**
+  and/or paint its **interior wall faces** with the current material (choose Floor
+  / Walls / Both in the panel). Enclosure is detected by a grid **flood-fill**
+  bounded by the work area: walls become barriers, and if the flood leaks to the
+  outside the room is reported "not fully enclosed" and nothing changes. The
+  detected floor is traced to the wall inner faces (handles L-shaped rooms), only
+  the room-facing wall side is painted, re-filling replaces rather than stacks,
+  and a room containing a staircase still shows the stairwell hole. One undo step.
+
 ### Staircases (phase 3d)
 
 - **Staircase tool (S)** — a ghost follows the cursor (grid-snapped); `R` /
@@ -229,6 +240,7 @@ npm run format   # Prettier
 | Door tool                 | `D`                                         |
 | Floor tool                | `F`                                         |
 | Paint tool                | `P`                                         |
+| Fill Room tool            | `G`                                         |
 | Staircase tool            | `S`                                         |
 | Furniture tool            | `U`                                         |
 | Rotate furniture / ghost  | `R` (+15°) · `Shift`+`R` (−15°)             |

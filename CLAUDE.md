@@ -378,6 +378,17 @@ in code under `src/catalog/`:
   drag a rectangle to create **four joined walls** with shared coincident corners
   (live W×D labels); Esc cancels; a zero-area rect is ignored; one undo step
   (`addRoom`).
+- **Fill Room tool (G):** click inside a fully enclosed room to fill its floor
+  and/or paint its interior wall faces with the current material (panel toggle:
+  Floor / Walls / Both, default Both). Enclosure is found by a pure tested **grid
+  flood-fill** at the 0.1 m grid (`detectRoom` in `src/geometry/roomFill.ts`):
+  walls rasterize to barrier cells, the flood from the click is **open** if it
+  reaches the site+margin border (→ "Room isn't fully enclosed", no change), else
+  the flooded cells are traced into a rectilinear floor polygon and each bordering
+  wall's **interior-facing side** (A/B, sampled just off each face) is painted —
+  the outward face is untouched. Floor fill replaces an existing floor covering
+  the clicked point (no stacking). Staircase holes are handled by the existing
+  floor-slab render mask. One undo step (`fillRoom`).
 - **Wall auto-snap/heal** (`WALL_SNAP_TOLERANCE = 0.2 m`, pure `snapEndpoint` in
   `src/geometry/wallSnap.ts`, tested): every wall create/edit path — freehand
   draw, room tool, endpoint drag, copy-up — snaps an endpoint first onto a nearby

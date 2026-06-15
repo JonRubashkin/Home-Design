@@ -666,3 +666,54 @@ describe("staircases", () => {
     state().setCollisionMode("soft");
   });
 });
+
+describe("fillRoom", () => {
+  const closeRoom = () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 3 });
+    state().addWall({ x: 4, y: 3 }, { x: 0, y: 3 });
+    state().addWall({ x: 0, y: 3 }, { x: 0, y: 0 });
+  };
+
+  it("fills floor + paints interior walls in one undo step", () => {
+    closeRoom();
+    const pastBefore = state().past.length;
+    const ok = state().fillRoom({ x: 2, y: 1.5 }, "both");
+    expect(ok).toBe(true);
+    expect(floors()).toHaveLength(1);
+    expect(state().past.length).toBe(pastBefore + 1);
+    state().undo();
+    expect(floors()).toHaveLength(0);
+  });
+
+  it("returns false and changes nothing for an open room", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 3 });
+    state().addWall({ x: 4, y: 3 }, { x: 0, y: 3 }); // left wall missing
+    const pastBefore = state().past.length;
+    const ok = state().fillRoom({ x: 2, y: 1.5 }, "both");
+    expect(ok).toBe(false);
+    expect(floors()).toHaveLength(0);
+    expect(state().past.length).toBe(pastBefore);
+  });
+
+  it("re-filling the same room replaces rather than stacking floors", () => {
+    closeRoom();
+    state().fillRoom({ x: 2, y: 1.5 }, "floor");
+    state().fillRoom({ x: 2, y: 1.5 }, "floor");
+    expect(floors()).toHaveLength(1);
+  });
+
+  it("walls-only paints interior faces and adds no floor", () => {
+    closeRoom();
+    const ok = state().fillRoom({ x: 2, y: 1.5 }, "walls");
+    expect(ok).toBe(true);
+    expect(floors()).toHaveLength(0);
+    const painted = walls().some(
+      (w) =>
+        (w.paintA.kind === "solid" && w.paintA.color !== "#e8e4dc") ||
+        (w.paintB.kind === "solid" && w.paintB.color !== "#e8e4dc"),
+    );
+    expect(painted).toBe(true);
+  });
+});

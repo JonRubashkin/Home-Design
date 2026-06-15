@@ -116,6 +116,36 @@ function ToolMaterialPanel({ tool }: { tool: "paint" | "floor" }) {
   );
 }
 
+// Fill Room tool panel: choose what to fill (floor / walls / both) with the
+// current material, then click inside an enclosed room.
+function FillRoomPanel() {
+  const currentMaterial = useStore((s) => s.currentMaterial);
+  const setCurrentMaterial = useStore((s) => s.setCurrentMaterial);
+  const fillTarget = useStore((s) => s.fillTarget);
+  const setFillTarget = useStore((s) => s.setFillTarget);
+  return (
+    <aside className="properties" aria-label="Fill room">
+      <h2 className="properties-title">Fill room</h2>
+      <p className="properties-hint">
+        Click inside a fully enclosed room to fill its floor and/or paint its
+        interior wall faces with the current material.
+      </p>
+      <ToggleField
+        label="Fill"
+        value={fillTarget}
+        options={[
+          { value: "both", label: "Both" },
+          { value: "floor", label: "Floor" },
+          { value: "walls", label: "Walls" },
+        ]}
+        onChange={setFillTarget}
+      />
+      <h3 className="properties-subhead">Material</h3>
+      <MaterialPicker value={currentMaterial} onChange={setCurrentMaterial} />
+    </aside>
+  );
+}
+
 type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
@@ -382,6 +412,10 @@ export function PropertiesPanel() {
 
   if (activeTool === "paint" || activeTool === "floor") {
     return <ToolMaterialPanel tool={activeTool} />;
+  }
+
+  if (activeTool === "fill") {
+    return <FillRoomPanel />;
   }
 
   // --- furniture selected ---

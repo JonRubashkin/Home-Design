@@ -190,8 +190,10 @@ export function PlanEditor() {
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
+  const fillTarget = useStore((s) => s.fillTarget);
   const [resizeOpen, setResizeOpen] = useState(false);
   const [floorsOpen, setFloorsOpen] = useState(false);
+  const [fillMessage, setFillMessage] = useState<string | null>(null);
 
   // The level directly below the active one — drawn as a faint, non-interactive
   // underlay so the user can align to it (only when not on the ground floor).
@@ -759,6 +761,13 @@ export function PlanEditor() {
     if (activeTool === "stair") {
       store.placeStaircase(snapToGrid(world), ghostRotation);
       // tool stays active for repeat placement
+      return;
+    }
+
+    if (activeTool === "fill") {
+      const ok = store.fillRoom(world, fillTarget);
+      setFillMessage(ok ? null : "Room isn't fully enclosed");
+      if (!ok) window.setTimeout(() => setFillMessage(null), 2200);
       return;
     }
 
@@ -1572,6 +1581,8 @@ export function PlanEditor() {
         {hintFor(activeTool, chainStart, floorPts.length)}
       </div>
 
+      {fillMessage && <div className="fill-message">{fillMessage}</div>}
+
       {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
     </div>
   );
@@ -1587,6 +1598,8 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
       return "Drag a rectangle to make four joined walls · Esc cancels";
     case "stair":
       return "Click to place a staircase · R / Shift+R rotates · ascends to the floor above";
+    case "fill":
+      return "Click inside an enclosed room to fill its floor / walls with the current material";
     case "window":
       return "Hover a wall and click to place a window · invalid spots show red";
     case "door":

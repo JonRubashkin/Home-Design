@@ -301,7 +301,7 @@ in code under `src/catalog/`:
 - **Site rendering:** the 2D plan shades the site rectangle with a border +
   dimension label and dims the grid outside it (soft — drawing outside still
   works). The 3D ground shows the site as a lighter "lot" over the dark
-  surroundings. **Resize area** (plan overlay button → `setSite`, undoable) grows
+  surroundings. **Resize area** (top-bar button, left of New → `setSite`, undoable) grows
   or shrinks the site without moving/deleting anything.
 - **Fit view** exists in BOTH the 2D plan and the 3D preview and they're
   siblings: frame the union of the site and all drawn geometry (or just the site
@@ -325,8 +325,8 @@ in code under `src/catalog/`:
   rename inline, delete (confirm; never the last level), click to set active. All
   structural changes are undoable store actions (`addLevelAbove`, `deleteLevel`,
   `renameLevel`, `setCurrentLevel`). It lives in the **Floors dropdown** (a button
-  beside Resize Area / Fit View in the plan controls), which also holds the
-  underlay toggle.
+  beside Fit View in the plan controls), which also holds the underlay toggle.
+  (The toolbar scrolls vertically when the viewport is too short for every tool.)
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
   from the Floors dropdown (only when not on the ground floor).

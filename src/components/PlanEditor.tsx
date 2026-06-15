@@ -157,6 +157,22 @@ function spanCorners(wall: Wall, a: number, b: number): Vec2[] {
   return [add(A, o), add(B, o), sub(B, o), sub(A, o)];
 }
 
+// Half of a wall SPAN on the given side (centerline → outer face), so each side
+// can be filled with its own paint in the plan.
+function spanHalfCorners(
+  wall: Wall,
+  a: number,
+  b: number,
+  side: WallSide,
+): Vec2[] {
+  const dir = wallDirection(wall);
+  const n = wallNormal(wall); // points to side A
+  const o = vscale(n, side === "A" ? wall.thickness / 2 : -wall.thickness / 2);
+  const A = add(wall.start, vscale(dir, a));
+  const B = add(wall.start, vscale(dir, b));
+  return [A, B, add(B, o), add(A, o)];
+}
+
 // Half of the wall rectangle on the given side (for the paint hover highlight).
 function sideHalfCorners(wall: Wall, side: WallSide): Vec2[] {
   const n = wallNormal(wall); // points to side A
@@ -165,6 +181,14 @@ function sideHalfCorners(wall: Wall, side: WallSide): Vec2[] {
 }
 
 const toPoints = (pts: Vec2[]) => pts.map((p) => `${p.x},${p.y}`).join(" ");
+
+const ringD = (pts: Vec2[]) =>
+  pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") + " Z";
+
+// SVG path for a floor polygon with stairwell openings cut out as holes
+// (even-odd fill) — mirrors the 3D floor-slab mask so the plan shows the hole.
+const floorPathD = (polygon: Vec2[], holes: Vec2[][]) =>
+  [ringD(polygon), ...holes.map(ringD)].join(" ");
 
 // Which side of the wall centerline a point is on (A = left of start->end).
 function sideOf(wall: Wall, p: Vec2): WallSide {
@@ -199,6 +223,13 @@ export function PlanEditor() {
   // underlay so the user can align to it (only when not on the ground floor).
   const activeIndex = levels.findIndex((l) => l.id === currentLevelId);
   const belowLevel = activeIndex > 0 ? levels[activeIndex - 1] : undefined;
+  // Stairwell opening rectangles from the level below (cut as holes in floors).
+  const belowOpenings = belowLevel
+    ? belowLevel.staircases.map(
+        (s) =>
+          computeStair(s, belowLevel.wallHeight + FLOOR_SLAB_THICKNESS).opening,
+      )
+    : [];
 
   const [view, setView] = useState<View>({
     pan: { x: 160, y: 160 },
@@ -1266,16 +1297,22 @@ export function PlanEditor() {
             />
           ))}
 
-          {/* Floors beneath everything. */}
-          {floors.map((f) => (
-            <polygon
-              key={f.id}
-              className={`floor${selection?.kind === "floor" && selection.id === f.id ? " selected" : ""}`}
-              points={toPoints(f.polygon)}
-              fill={fillFor(f.material)}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+          {/* Floors beneath everything, with stairwell openings cut as holes. */}
+          {floors.map((f) => {
+            const holes = belowOpenings.filter((op) =>
+              op.every((c) => pointInPolygon(c, f.polygon)),
+            );
+            return (
+              <path
+                key={f.id}
+                className={`floor${selection?.kind === "floor" && selection.id === f.id ? " selected" : ""}`}
+                d={floorPathD(f.polygon, holes)}
+                fillRule="evenodd"
+                fill={fillFor(f.material)}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
 
           {/* Furniture: rugs (flat) first, then everything else, above floors. */}
           {[...furniture]
@@ -1325,13 +1362,25 @@ export function PlanEditor() {
             return (
               <g key={w.id}>
                 {wallPlanSegments(w).map((seg, i) => (
-                  <polygon
-                    key={i}
-                    className={`wall${isSel ? " selected" : ""}`}
-                    points={toPoints(spanCorners(w, seg.a, seg.b))}
-                    fill={fillFor(w.paintA)}
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  <g key={i}>
+                    {/* Each side filled with its own paint (A and B halves). */}
+                    <polygon
+                      className="wall-paint"
+                      points={toPoints(spanHalfCorners(w, seg.a, seg.b, "A"))}
+                      fill={fillFor(w.paintA)}
+                    />
+                    <polygon
+                      className="wall-paint"
+                      points={toPoints(spanHalfCorners(w, seg.a, seg.b, "B"))}
+                      fill={fillFor(w.paintB)}
+                    />
+                    <polygon
+                      className={`wall-edge${isSel ? " selected" : ""}`}
+                      points={toPoints(spanCorners(w, seg.a, seg.b))}
+                      fill="none"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </g>
                 ))}
                 {w.windows.map((win) => (
                   <WindowSymbol

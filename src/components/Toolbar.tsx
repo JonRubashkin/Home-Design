@@ -26,21 +26,6 @@ const WallIcon = (
   </svg>
 );
 
-const RoomIcon = (
-  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-    <rect
-      x="4"
-      y="4"
-      width="16"
-      height="16"
-      rx="1"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-    />
-  </svg>
-);
-
 const WindowIcon = (
   <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
     <rect
@@ -147,16 +132,17 @@ const FurnitureIcon = (
   </svg>
 );
 
+// The Wall button covers both wall sub-modes (Draw walls / Room); the sub-mode
+// is chosen in the properties panel. Floor sits just below Stair.
 const TOOLS: ToolDef[] = [
   { tool: "select", label: "Select", shortcut: "V", icon: SelectIcon },
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
-  { tool: "room", label: "Room", icon: RoomIcon },
   { tool: "window", label: "Window", shortcut: "N", icon: WindowIcon },
   { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
-  { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
   { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
   { tool: "fill", label: "Fill", shortcut: "G", icon: FillIcon },
   { tool: "stair", label: "Stair", shortcut: "S", icon: StairIcon },
+  { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
   { tool: "furniture", label: "Furniture", shortcut: "U", icon: FurnitureIcon },
 ];
 
@@ -166,20 +152,31 @@ export function Toolbar() {
 
   return (
     <nav className="toolbar" aria-label="Tools">
-      {TOOLS.map(({ tool, label, shortcut, icon }) => (
-        <button
-          key={tool}
-          type="button"
-          className={`tool-button${activeTool === tool ? " active" : ""}`}
-          aria-pressed={activeTool === tool}
-          title={shortcut ? `${label} (${shortcut})` : label}
-          onClick={() => setActiveTool(tool)}
-        >
-          <span className="tool-icon">{icon}</span>
-          <span className="tool-label">{label}</span>
-          {shortcut && <span className="tool-shortcut">{shortcut}</span>}
-        </button>
-      ))}
+      {TOOLS.map(({ tool, label, shortcut, icon }) => {
+        // The Wall button stays active for both "wall" (draw) and "room" modes.
+        const active =
+          activeTool === tool || (tool === "wall" && activeTool === "room");
+        const onClick = () => {
+          if (tool === "wall") {
+            if (activeTool !== "wall" && activeTool !== "room")
+              setActiveTool("wall");
+          } else setActiveTool(tool);
+        };
+        return (
+          <button
+            key={tool}
+            type="button"
+            className={`tool-button${active ? " active" : ""}`}
+            aria-pressed={active}
+            title={shortcut ? `${label} (${shortcut})` : label}
+            onClick={onClick}
+          >
+            <span className="tool-icon">{icon}</span>
+            <span className="tool-label">{label}</span>
+            {shortcut && <span className="tool-shortcut">{shortcut}</span>}
+          </button>
+        );
+      })}
     </nav>
   );
 }

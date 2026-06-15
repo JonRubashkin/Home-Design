@@ -97,8 +97,9 @@ npm run format   # Prettier
   (0.1 m minor / 1 m major lines that fade in and out with zoom).
 - **Wall tool** — click to start, live preview segment with a length label, click
   to commit, chained drawing, endpoint + grid snapping, angle constraint.
-- **Room tool** — drag a rectangle to drop four joined walls (shared corners) with
-  live width × depth labels; one undo removes the whole room.
+- **Room mode** — a sub-mode of the Wall tool (Draw / Room toggle in the panel):
+  drag a rectangle to drop four joined walls (shared corners) with live width ×
+  depth labels; one undo removes the whole room.
 - **Auto-snap / heal** — wall endpoints fuse onto a nearby endpoint (exact, fixing
   short/overshoot) or onto a wall face (T-junction) within 0.2 m, else grid-snap; a
   green ring shows the active snap. Applies to drawing, the room tool, endpoint

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { CatalogEntry, CatalogScaling, ScaleAxes } from "./types";
-import { box, cyl, rbox, legs, solid } from "./parts";
+import { box, cyl, cone, rbox, legs, solid } from "./parts";
 
 // Muted, consistent palette.
 const WOOD = solid("#8a6d4b");
@@ -1384,6 +1384,330 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>
         {gc(0, 0.02, w / 4 + 0.02, "porthole")}
         {gl(-w / 4, d / 2 - 0.08, w / 4, d / 2 - 0.08, "vent")}
+      </>
+    ),
+  },
+
+  // ---------------- OUTDOOR ----------------
+  {
+    id: "patio-table",
+    name: "Patio table",
+    category: "outdoor",
+    footprint: { width: 1.0, depth: 1.0 },
+    height: 0.74,
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.74,
+    scaling: axesScale({ x: [0.6, 1.8], z: [0.6, 1.8] }),
+    slots: [
+      { name: "top", default: solid("#9aa6ad") },
+      { name: "legs", default: METAL },
+    ],
+    build: () => {
+      const W = 1.0,
+        D = 1.0;
+      return [
+        box("top", [W, 0.05, D], [0, 0.72, 0]),
+        ...legs("legs", W, D, 0.7, 0.05, 0.06),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.1, -d / 2 + 0.1, w - 0.2, d - 0.2, "top")}
+        {gc(0, 0, 0.06, "hole")}
+      </>
+    ),
+  },
+  {
+    id: "patio-chair",
+    name: "Patio chair",
+    category: "outdoor",
+    footprint: { width: 0.55, depth: 0.55 },
+    height: 0.85,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "seat", default: FABRIC2 },
+      { name: "back", default: FABRIC2 },
+      { name: "frame", default: METAL },
+    ],
+    build: () => {
+      const W = 0.55,
+        D = 0.55;
+      return [
+        box("seat", [0.5, 0.06, 0.5], [0, 0.45, 0]),
+        box("back", [0.5, 0.4, 0.06], [0, 0.66, -D / 2 + 0.03]),
+        ...legs("frame", W, D, 0.45, 0.04, 0.04),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.16, w - 0.16, d - 0.24, "seat")}
+        {gl(-w / 2 + 0.08, -d / 2 + 0.07, w / 2 - 0.08, -d / 2 + 0.07, "back")}
+      </>
+    ),
+  },
+  {
+    id: "sun-lounger",
+    name: "Sun lounger",
+    category: "outdoor",
+    footprint: { width: 0.7, depth: 1.9 },
+    height: 0.9,
+    wallHugger: false,
+    collidable: true,
+    scaling: axesScale({ z: [0.7, 1.4] }),
+    slots: [
+      { name: "frame", default: METAL },
+      { name: "cushion", default: FABRIC },
+    ],
+    build: () => {
+      const W = 0.7,
+        D = 1.9;
+      return [
+        box("frame", [0.66, 0.1, D], [0, 0.28, 0]),
+        box("cushion", [0.6, 0.1, D - 0.3], [0, 0.4, 0.1]),
+        box("cushion", [0.6, 0.1, 0.55], [0, 0.6, -D / 2 + 0.3], [-0.6, 0, 0]),
+        ...legs("frame", W, D, 0.23, 0.05, 0.06),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "pad")}
+        {gl(-w / 2 + 0.1, -d / 2 + 0.55, w / 2 - 0.1, -d / 2 + 0.55, "knee")}
+      </>
+    ),
+  },
+  {
+    id: "parasol",
+    name: "Parasol",
+    category: "outdoor",
+    footprint: { width: 0.5, depth: 0.5 },
+    height: 2.3,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.7, 1.5),
+    slots: [
+      { name: "pole", default: WOOD_DARK },
+      { name: "canopy", default: solid("#c2603f") },
+    ],
+    build: () => [
+      cyl("pole", 0.2, 0.06, [0, 0.03, 0]), // weighted base
+      cyl("pole", 0.03, 2.1, [0, 1.08, 0]), // mast
+      cone("canopy", 1.1, 0.05, 0.4, [0, 2.1, 0]), // raised canopy
+    ],
+    // Canopy overhangs the footprint; the dashed circle shows the shaded area.
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0, w * 1.5, "canopy")}
+        {gc(0, 0, 0.05, "pole")}
+      </>
+    ),
+  },
+  {
+    id: "bbq-grill",
+    name: "BBQ grill",
+    category: "outdoor",
+    footprint: { width: 0.7, depth: 0.6 },
+    height: 1.1,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "body", default: solid("#3a3d42") },
+      { name: "lid", default: solid("#2b2e33") },
+      { name: "legs", default: METAL },
+    ],
+    build: () => {
+      const W = 0.7,
+        D = 0.6;
+      return [
+        box("body", [W, 0.4, D], [0, 0.6, 0]),
+        rbox("lid", [W, 0.3, D], 0.12, [0, 0.9, 0]),
+        ...legs("legs", W, D, 0.4, 0.04, 0.06),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.06, w - 0.12, d - 0.12, "body")}
+        {gc(0, 0, 0.12, "grill")}
+      </>
+    ),
+  },
+  {
+    id: "garden-bench",
+    name: "Garden bench",
+    category: "outdoor",
+    footprint: { width: 1.5, depth: 0.55 },
+    height: 0.85,
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.47,
+    scaling: axesScale({ x: [0.5, 2.2] }),
+    slots: [
+      { name: "seat", default: WOOD },
+      { name: "back", default: WOOD },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 1.5,
+        D = 0.55;
+      return [
+        box("seat", [W, 0.06, 0.5], [0, 0.45, 0.02]),
+        box("back", [W, 0.4, 0.06], [0, 0.66, -D / 2 + 0.03]),
+        ...legs("legs", W, D, 0.45, 0.06, 0.05),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.16, w - 0.12, d - 0.24, "seat")}
+        {gl(-w / 2 + 0.06, -d / 2 + 0.07, w / 2 - 0.06, -d / 2 + 0.07, "back")}
+      </>
+    ),
+  },
+  {
+    id: "planter-box",
+    name: "Planter box",
+    category: "outdoor",
+    footprint: { width: 1.0, depth: 0.4 },
+    height: 0.55,
+    wallHugger: false,
+    collidable: true,
+    scaling: axesScale({ x: [0.5, 2.5] }),
+    slots: [
+      { name: "box", default: WOOD },
+      { name: "soil", default: solid("#5a4632") },
+      { name: "foliage", default: LEAF },
+    ],
+    build: () => {
+      const W = 1.0,
+        D = 0.4;
+      return [
+        box("box", [W, 0.4, D], [0, 0.2, 0]),
+        box("soil", [W - 0.08, 0.06, D - 0.08], [0, 0.4, 0]),
+        rbox("foliage", [W - 0.2, 0.32, D - 0.04], 0.12, [-0.2, 0.55, 0]),
+        rbox("foliage", [W - 0.55, 0.4, D - 0.06], 0.14, [0.28, 0.58, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.04, -d / 2 + 0.04, w - 0.08, d - 0.08, "box")}
+        {gc(-w / 5, 0, 0.1, "f1")}
+        {gc(w / 5, 0, 0.12, "f2")}
+      </>
+    ),
+  },
+  {
+    id: "fire-pit",
+    name: "Fire pit",
+    category: "outdoor",
+    footprint: { width: 0.8, depth: 0.8 },
+    height: 0.4,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.7, 1.5),
+    slots: [
+      { name: "bowl", default: solid("#4a4d52") },
+      { name: "base", default: STONE },
+    ],
+    build: () => [
+      cyl("base", 0.3, 0.3, [0, 0.15, 0]), // pedestal
+      cyl("bowl", 0.4, 0.14, [0, 0.34, 0]), // bowl rim
+      cyl("bowl", 0.34, 0.04, [0, 0.3, 0]), // inner hearth
+    ],
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0, w / 2 - 0.04, "bowl")}
+        {gc(0, 0, w / 4, "inner")}
+      </>
+    ),
+  },
+  {
+    id: "tree",
+    name: "Tree",
+    category: "outdoor",
+    footprint: { width: 1.2, depth: 1.2 },
+    height: 3.0,
+    wallHugger: false,
+    collidable: true,
+    // Size variety matters for trees — a wide uniform range.
+    scaling: uniformScale(0.5, 2.5),
+    slots: [
+      { name: "trunk", default: solid("#6e4e34") },
+      { name: "canopy", default: solid("#4e6b42") },
+    ],
+    build: () => [
+      cyl("trunk", 0.12, 1.4, [0, 0.7, 0]),
+      rbox("canopy", [1.3, 1.4, 1.3], 0.55, [0, 2.0, 0]),
+      rbox("canopy", [0.9, 0.8, 0.9], 0.4, [0, 2.7, 0]),
+    ],
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0, w / 2 - 0.05, "canopy")}
+        {gc(0, 0, 0.08, "trunk")}
+      </>
+    ),
+  },
+  {
+    id: "hedge",
+    name: "Hedge",
+    category: "outdoor",
+    footprint: { width: 1.5, depth: 0.5 },
+    height: 1.0,
+    wallHugger: false,
+    collidable: true,
+    // Stretches in length to work as a garden divider.
+    scaling: axesScale({ x: [0.4, 3.0] }),
+    slots: [{ name: "foliage", default: solid("#4e6b42") }],
+    build: () => {
+      const W = 1.5,
+        D = 0.5;
+      return [
+        rbox("foliage", [W, 0.9, D], 0.12, [0, 0.45, 0]),
+        rbox("foliage", [W - 0.05, 0.2, D - 0.05], 0.1, [0, 0.95, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.04, -d / 2 + 0.04, w - 0.08, d - 0.08, "hedge")}
+        {gc(-w / 4, 0, 0.08, "b1")}
+        {gc(0, 0, 0.08, "b2")}
+        {gc(w / 4, 0, 0.08, "b3")}
+      </>
+    ),
+  },
+  {
+    id: "fence-panel",
+    name: "Fence panel",
+    category: "outdoor",
+    footprint: { width: 1.8, depth: 0.1 },
+    height: 1.2,
+    wallHugger: false,
+    collidable: true,
+    // A placeable item (not a wall); rotate in 15° steps to run boundaries.
+    scaling: axesScale({ x: [0.4, 2.5] }),
+    slots: [
+      { name: "posts", default: WOOD_DARK },
+      { name: "rails", default: WOOD },
+    ],
+    build: () => {
+      const W = 1.8;
+      return [
+        box("posts", [0.1, 1.2, 0.1], [-W / 2 + 0.05, 0.6, 0]),
+        box("posts", [0.1, 1.2, 0.1], [W / 2 - 0.05, 0.6, 0]),
+        box("rails", [W, 0.08, 0.04], [0, 0.4, 0]),
+        box("rails", [W, 0.08, 0.04], [0, 0.9, 0]),
+        box("rails", [0.08, 1.0, 0.03], [-W / 4, 0.55, 0]),
+        box("rails", [0.08, 1.0, 0.03], [0, 0.55, 0]),
+        box("rails", [0.08, 1.0, 0.03], [W / 4, 0.55, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.04, 0, w / 2 - 0.04, 0, "run")}
+        {gl(-w / 4, -d / 2, -w / 4, d / 2, "p1")}
+        {gl(0, -d / 2, 0, d / 2, "p2")}
+        {gl(w / 4, -d / 2, w / 4, d / 2, "p3")}
       </>
     ),
   },

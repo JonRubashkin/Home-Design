@@ -32,6 +32,7 @@ export const CATEGORIES: Category[] = [
   "bathroom",
   "office",
   "utility",
+  "outdoor",
 ];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
@@ -41,6 +42,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   bathroom: "Bathroom",
   office: "Office",
   utility: "Utility",
+  outdoor: "Outdoor",
 };
 
 // The primary slot (used by the Paint tool's one-click recolor).

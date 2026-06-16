@@ -15,9 +15,9 @@ import { Furniture3D } from "./Furniture3D";
 import { Staircases3D } from "./Staircases3D";
 
 // Collidable footprints on a level (collidable furniture + all staircases), then
-// the ids overlapping another — shared by furniture and stairs so the warning
-// tint is consistent.
-function warnedIdsFor(level: Level): Set<string> {
+// the ids overlapping another item, a wall, or a stairwell opening (the floor
+// hole from `below`'s staircases) — shared by furniture and stairs.
+function warnedIdsFor(level: Level, below: Level | undefined): Set<string> {
   const items: CollisionItem[] = [];
   for (const item of level.furniture) {
     const entry = getCatalogEntry(item.catalogId);
@@ -45,7 +45,20 @@ function warnedIdsFor(level: Level): Set<string> {
       },
     });
   }
-  return collidingMovableIds(items, level.walls.map(wallFootprint));
+  const barriers = [
+    ...level.walls.map(wallFootprint),
+    ...(below
+      ? below.staircases.map((s) => {
+          const g = computeStair(s, below.wallHeight + FLOOR_SLAB_THICKNESS);
+          return {
+            center: s.position,
+            rotation: s.rotation,
+            footprint: { width: s.width, depth: g.runLength },
+          };
+        })
+      : []),
+  ];
+  return collidingMovableIds(items, barriers);
 }
 
 // Stairwell opening rectangles a level's staircases cut from the floor ABOVE.
@@ -75,7 +88,7 @@ export function Building3D({
   const warnedByLevel = useMemo(() => {
     const m = new Map<string, Set<string>>();
     if (collisionMode !== "off")
-      for (const l of levels) m.set(l.id, warnedIdsFor(l));
+      levels.forEach((l, i) => m.set(l.id, warnedIdsFor(l, levels[i - 1])));
     return m;
   }, [levels, collisionMode]);
 
@@ -97,7 +110,11 @@ export function Building3D({
               isUpperSlab={isUpperSlab}
               openings={openings}
             />
-            <Walls3D level={level} elevation={level.elevation} />
+            <Walls3D
+              level={level}
+              elevation={level.elevation}
+              skirt={isUpperSlab ? FLOOR_SLAB_THICKNESS : 0}
+            />
             <Staircases3D
               level={level}
               elevation={level.elevation}

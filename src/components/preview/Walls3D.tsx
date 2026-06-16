@@ -12,9 +12,11 @@ import { Wall3D } from "./Wall3D";
 export function Walls3D({
   level,
   elevation,
+  skirt = 0,
 }: {
   level: Level;
   elevation: number;
+  skirt?: number;
 }) {
   const selection = useStore((s) => s.selection);
   const viewMode = useStore((s) => s.viewMode);
@@ -57,6 +59,7 @@ export function Walls3D({
             selected={selection?.id === w.id}
             stub={viewMode === "stubs"}
             ghost={isHidden && cutawayStyle === "ghost"}
+            skirt={skirt}
           />
         );
       })}

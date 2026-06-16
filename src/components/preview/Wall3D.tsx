@@ -55,6 +55,10 @@ interface Props {
   selected: boolean;
   stub: boolean;
   ghost: boolean;
+  // Extend the wall downward by this much (the floor-slab thickness) so an upper
+  // level's walls meet the lower level's wall tops — no floor band shows between
+  // storeys. 0 = no skirt (ground level / stubs).
+  skirt?: number;
 }
 
 // One box face: solid or world-anchored pattern, built by the shared factory.
@@ -150,7 +154,14 @@ function WallBox({
   );
 }
 
-export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
+export function Wall3D({
+  wall,
+  elevation,
+  selected,
+  stub,
+  ghost,
+  skirt = 0,
+}: Props) {
   const boxes = useMemo(() => {
     if (stub) {
       // Stubs render every wall at 10% height; windows never show here.
@@ -162,9 +173,19 @@ export function Wall3D({ wall, elevation, selected, stub, ghost }: Props) {
     return wallToBoxes(wall, elevation);
   }, [wall, elevation, stub]);
 
+  // A solid band below the floor (full wall footprint, no openings) that bridges
+  // the slab gap to the lower level's wall tops. Skipped in stub mode.
+  const skirtBoxes = useMemo(() => {
+    if (stub || skirt <= 0) return [];
+    return wallToBoxes(
+      { ...wall, height: skirt, windows: [], doors: [] },
+      elevation - skirt,
+    );
+  }, [wall, elevation, stub, skirt]);
+
   return (
     <group renderOrder={ghost ? 2 : 0}>
-      {boxes.map((b, i) => (
+      {[...boxes, ...skirtBoxes].map((b, i) => (
         <WallBox
           key={i}
           box={b}

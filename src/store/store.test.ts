@@ -730,3 +730,17 @@ describe("furniture vs wall collision (hard mode)", () => {
     state().setCollisionMode("soft");
   });
 });
+
+describe("furniture vs stairwell opening (hard mode)", () => {
+  it("blocks furniture placed over the floor hole on the level above", () => {
+    state().placeStaircase({ x: 2, y: 2 }, 0); // ground; auto-creates upper level
+    const upperId = state().design.levels[1]!.id;
+    state().setCurrentLevel(upperId);
+    state().setCollisionMode("hard");
+    state().placeFurniture("sofa-3seat", { x: 2, y: 2 }, 0); // over the opening
+    expect(selectCurrentLevel(useStore.getState()).furniture).toHaveLength(0);
+    state().placeFurniture("sofa-3seat", { x: 12, y: 12 }, 0); // clear
+    expect(selectCurrentLevel(useStore.getState()).furniture).toHaveLength(1);
+    state().setCollisionMode("soft");
+  });
+});

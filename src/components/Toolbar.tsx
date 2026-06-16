@@ -139,10 +139,10 @@ const TOOLS: ToolDef[] = [
   { tool: "wall", label: "Wall", shortcut: "W", icon: WallIcon },
   { tool: "window", label: "Window", shortcut: "N", icon: WindowIcon },
   { tool: "door", label: "Door", shortcut: "D", icon: DoorIcon },
-  { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
-  { tool: "fill", label: "Fill", shortcut: "G", icon: FillIcon },
   { tool: "stair", label: "Stair", shortcut: "S", icon: StairIcon },
   { tool: "floor", label: "Floor", shortcut: "F", icon: FloorIcon },
+  { tool: "paint", label: "Paint", shortcut: "P", icon: PaintIcon },
+  { tool: "fill", label: "Fill", shortcut: "G", icon: FillIcon },
   { tool: "furniture", label: "Furniture", shortcut: "U", icon: FurnitureIcon },
 ];
 

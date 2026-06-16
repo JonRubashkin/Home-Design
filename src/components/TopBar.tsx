@@ -3,6 +3,7 @@ import { useStore } from "../store/store";
 import { exportDesignToFile, parseImportedDesign } from "../persistence/io";
 import { LayoutToggle } from "./LayoutToggle";
 import { SettingsDialog } from "./SettingsDialog";
+import { ResizeAreaDialog } from "./ResizeAreaDialog";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -28,6 +29,7 @@ export function TopBar() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [resizeOpen, setResizeOpen] = useState(false);
 
   const onImportClick = () => {
     setError(null);
@@ -89,6 +91,13 @@ export function TopBar() {
           {GearIcon}
         </button>
         <span className="topbar-divider" />
+        <button
+          type="button"
+          onClick={() => setResizeOpen(true)}
+          title="Resize the work area"
+        >
+          Resize area
+        </button>
         <button type="button" onClick={onNew} title="New design">
           New
         </button>
@@ -129,6 +138,7 @@ export function TopBar() {
       )}
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
     </header>
   );
 }

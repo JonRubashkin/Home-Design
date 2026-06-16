@@ -136,12 +136,19 @@ body {
 /* --- toolbar --- */
 .toolbar {
   width: 80px;
+  flex: none;
   background: var(--chrome-bg);
   border-right: 1px solid var(--chrome-border);
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 8px;
+  /* Scroll the tool list when the viewport is too short to show every button. */
+  overflow-y: auto;
+  min-height: 0;
+}
+.tool-button {
+  flex: none;
 }
 .tool-button {
   position: relative;

@@ -54,7 +54,6 @@ import {
   fitView,
   type Bounds,
 } from "../geometry/planview";
-import { ResizeAreaDialog } from "./ResizeAreaDialog";
 import { LevelsPanel } from "./LevelsPanel";
 import {
   getCatalogEntry,
@@ -215,7 +214,6 @@ export function PlanEditor() {
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
   const fillTarget = useStore((s) => s.fillTarget);
-  const [resizeOpen, setResizeOpen] = useState(false);
   const [floorsOpen, setFloorsOpen] = useState(false);
   const [fillMessage, setFillMessage] = useState<string | null>(null);
 
@@ -1611,14 +1609,6 @@ export function PlanEditor() {
         <button
           type="button"
           className="plan-control-button"
-          title="Resize the work area"
-          onClick={() => setResizeOpen(true)}
-        >
-          Resize area
-        </button>
-        <button
-          type="button"
-          className="plan-control-button"
           title="Frame the work area and everything drawn"
           onClick={fitToContent}
         >
@@ -1631,8 +1621,6 @@ export function PlanEditor() {
       </div>
 
       {fillMessage && <div className="fill-message">{fillMessage}</div>}
-
-      {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
     </div>
   );
 }

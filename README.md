@@ -58,7 +58,7 @@ npm run format   # Prettier
 
 ### Multiple levels / storeys (phase 3c)
 
-- **Level list** (in the **Floors** dropdown beside Resize Area / Fit View, ground
+- **Level list** (in the **Floors** dropdown beside Fit View, ground
   floor at the bottom): add a floor above, rename inline, delete (with confirm; the
   last level can't be removed), and click a row to make it the **active** (editable)
   level. The dropdown also holds the underlay toggle. All level changes are
@@ -85,7 +85,7 @@ npm run format   # Prettier
   (origin at the top-left corner). The 2D plan shades it, labels its dimensions,
   and de-emphasizes the grid outside it; the 3D ground shows it as a lighter lot.
   The boundary is never enforced — you can draw and place outside it.
-- **Resize area** (plan button) grows or shrinks the site (preset or custom)
+- **Resize area** (top-bar button, left of New) grows or shrinks the site (preset or custom)
   without moving or deleting anything — it's a normal undoable action, so items
   left outside a shrink stay put.
 - **Fit view** in the 2D plan (sibling of the 3D one) frames the site plus

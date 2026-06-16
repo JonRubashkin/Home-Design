@@ -72,7 +72,9 @@ npm run format   # Prettier
   toggle to focus. Floor regions become real slabs. In **Cutaway** and **Stubs**,
   upper floor slabs are suppressed (Invisible/Ghost, like walls) so you can see
   the walls, floors, and furniture of **every** storey while orbiting; the ground
-  slab stays solid. Fit view frames the whole building.
+  slab stays solid. Walls connect between storeys (each upper level's walls extend
+  down through the slab band) so no floor strip shows between levels. Fit view
+  frames the whole building.
 
 ### Welcome screen & work area (phase 3b)
 
@@ -207,8 +209,10 @@ npm run format   # Prettier
   participates in undo/redo, and round-trips through Export/Import.
 - **Collision** (Settings → gear in the top bar, by Undo/Redo) — **Off** / **Soft** (default) /
   **Hard**. Bulky items collide by 2D footprint on the same level — with each
-  other, with staircases, and **with walls** (so furniture can't be pushed through
-  a wall); flat/decor items (rugs, lamps, plant, microwave, mirror…) never collide.
+  other, with staircases, **with walls** (so furniture can't be pushed through a
+  wall), and **with stairwell openings** (so furniture can't float over the floor
+  hole a staircase rises through); flat/decor items (rugs, lamps, plant,
+  microwave, mirror…) never collide.
   Soft tints
   overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an
   overlapping placement, reverts a drag to its last clear spot, and undoes a

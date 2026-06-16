@@ -88,13 +88,29 @@ function levelCollidables(
   return out;
 }
 
+// Stairwell opening footprints cut into a level's floor by the staircases on the
+// level BELOW it — barriers so furniture can't be placed over the hole.
+function belowStairFootprints(
+  design: Design,
+  levelId: string,
+): OrientedFootprint[] {
+  const idx = design.levels.findIndex((l) => l.id === levelId);
+  const below = idx > 0 ? design.levels[idx - 1] : undefined;
+  return below
+    ? below.staircases.map((s) => stairOrientedFootprint(s, below))
+    : [];
+}
+
 // Does a candidate footprint overlap any OTHER collidable thing on the level
-// (other furniture/staircases) or a wall? Walls act as barriers.
+// (other furniture/staircases), a wall, or a stairwell opening (the hole from a
+// staircase on the level below)? Walls and openings act as barriers.
 function collidesOnLevel(
-  level: Level,
+  design: Design,
+  levelId: string,
   candidateId: string,
   candidate: OrientedFootprint,
 ): boolean {
+  const level = levelOf(design, levelId);
   for (const other of levelCollidables(level)) {
     if (other.id === candidateId) continue;
     if (footprintsOverlap(candidate, other.footprint)) return true;
@@ -102,14 +118,21 @@ function collidesOnLevel(
   for (const wall of level.walls) {
     if (footprintsOverlap(candidate, wallFootprint(wall))) return true;
   }
+  for (const opening of belowStairFootprints(design, levelId)) {
+    if (footprintsOverlap(candidate, opening)) return true;
+  }
   return false;
 }
 
 // Would this (collidable) furniture item overlap anything else? Used by Hard mode.
-function itemCollides(level: Level, item: FurnitureItem): boolean {
+function itemCollides(
+  design: Design,
+  levelId: string,
+  item: FurnitureItem,
+): boolean {
   const entry = getCatalogEntry(item.catalogId);
   if (!entry?.collidable) return false;
-  return collidesOnLevel(level, item.id, orientedFootprint(item, entry));
+  return collidesOnLevel(design, levelId, item.id, orientedFootprint(item, entry));
 }
 
 export type Tool =
@@ -859,8 +882,7 @@ export const useStore = create<AppState>((set, get) => {
       // Hard mode: refuse to place a collidable item onto another (no-op so the
       // caller's warning ghost stays and the click simply doesn't place).
       if (get().collisionMode === "hard") {
-        const level = levelOf(get().design, get().currentLevelId);
-        if (itemCollides(level, item)) return;
+        if (itemCollides(get().design, get().currentLevelId, item)) return;
       }
       pushHistory();
       set((s) => {
@@ -890,8 +912,13 @@ export const useStore = create<AppState>((set, get) => {
       deg = (Math.round(deg / 15) * 15) % 360;
       // Hard mode: revert (keep current rotation) if rotating into an overlap.
       if (get().collisionMode === "hard") {
-        const level = levelOf(get().design, get().currentLevelId);
-        if (itemCollides(level, { ...item, rotation: deg })) return;
+        if (
+          itemCollides(get().design, get().currentLevelId, {
+            ...item,
+            rotation: deg,
+          })
+        )
+          return;
       }
       get().updateFurniture(id, { rotation: deg });
     },
@@ -923,8 +950,13 @@ export const useStore = create<AppState>((set, get) => {
       const clamped = entry ? clampScale(entry.scaling, scale) : scale;
       // Hard mode: revert (keep current scale) if scaling into an overlap.
       if (get().collisionMode === "hard") {
-        const level = levelOf(get().design, get().currentLevelId);
-        if (itemCollides(level, { ...existing, scale: clamped })) return;
+        if (
+          itemCollides(get().design, get().currentLevelId, {
+            ...existing,
+            scale: clamped,
+          })
+        )
+          return;
       }
       // Coalesce slider drags into one undo step (like paint/material edits).
       commitCoalesced(`furn-scale:${id}`, (design) => {
@@ -969,7 +1001,14 @@ export const useStore = create<AppState>((set, get) => {
       const level = levelOf(get().design, get().currentLevelId);
       // Hard mode: refuse to place onto another collidable thing (no-op).
       if (get().collisionMode === "hard") {
-        if (collidesOnLevel(level, stair.id, stairOrientedFootprint(stair, level)))
+        if (
+          collidesOnLevel(
+            get().design,
+            get().currentLevelId,
+            stair.id,
+            stairOrientedFootprint(stair, level),
+          )
+        )
           return;
       }
       pushHistory();
@@ -1006,7 +1045,14 @@ export const useStore = create<AppState>((set, get) => {
       if (get().collisionMode === "hard") {
         const level = levelOf(get().design, get().currentLevelId);
         const hypo = { ...stair, rotation: deg };
-        if (collidesOnLevel(level, id, stairOrientedFootprint(hypo, level)))
+        if (
+          collidesOnLevel(
+            get().design,
+            get().currentLevelId,
+            id,
+            stairOrientedFootprint(hypo, level),
+          )
+        )
           return;
       }
       get().updateStaircase(id, { rotation: deg });

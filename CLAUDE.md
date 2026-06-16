@@ -209,12 +209,14 @@ in code under `src/catalog/`:
   Separating Axis Theorem in pure tested `footprintsOverlap` / `collidingIds`
   (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
   chair tucked under a table reads as a collision (expected; Soft handles it).
-- **Walls are barriers too:** a collidable item overlapping a wall (each wall is
-  an oriented length×thickness footprint via `wallFootprint`) collides, per the
-  same mode — so furniture can't be pushed through walls in Hard (and warns in
-  Soft). `collidingMovableIds` checks movables vs other movables + wall barriers;
-  the store's `collidesOnLevel` (Hard guards) does the same. Wall-huggers sit
-  flush to the face (≈0 overlap, within tolerance) so they don't trip it.
+- **Walls and stairwell openings are barriers too:** a collidable item overlapping
+  a wall (each wall is an oriented length×thickness footprint via `wallFootprint`)
+  OR a stairwell opening (the floor hole on this level from a staircase on the
+  level **below**) collides, per the same mode — so furniture can't be pushed
+  through walls or float over the stair hole (Hard blocks, Soft warns).
+  `collidingMovableIds` checks movables vs other movables + barriers; the store's
+  `collidesOnLevel` (Hard guards) does the same. Wall-huggers sit flush to the
+  face (≈0 overlap, within tolerance) so they don't trip it.
 - **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
   set from the **Settings** dialog (gear in the top bar, next to Undo/Redo):
   **Off** (no checks),
@@ -346,6 +348,10 @@ in code under `src/catalog/`:
   every storey. Reuses the existing cutaway/ghost machinery and shared material
   helper. **Fit view frames the whole building.** Picking an item on a non-active
   level switches the active level to it (so the plan/panel act on it).
+- **Walls connect between storeys:** in the stacked view each upper level's walls
+  render a `skirt` (a solid band of `FLOOR_SLAB_THICKNESS` below the floor, full
+  footprint, no openings) so they meet the lower level's wall tops — no floor band
+  shows between levels. Skipped on the ground level, in Stubs, and in active-only.
 
 ## Staircases (Phase 3d — straight stairs only)
 

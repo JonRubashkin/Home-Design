@@ -47,6 +47,7 @@ import {
   wallFootprint,
   type Footprint,
   type CollisionItem,
+  type OrientedFootprint,
 } from "../geometry/furniture";
 import {
   boundsOfPoints,
@@ -229,6 +230,19 @@ export function PlanEditor() {
           computeStair(s, belowLevel.wallHeight + FLOOR_SLAB_THICKNESS).opening,
       )
     : [];
+  // The same openings as oriented footprints — collision barriers so furniture
+  // can't sit over the stairwell hole on this level.
+  const belowOpeningFootprints: OrientedFootprint[] = belowLevel
+    ? belowLevel.staircases.map((s) => ({
+        center: s.position,
+        rotation: s.rotation,
+        footprint: {
+          width: s.width,
+          depth: computeStair(s, belowLevel.wallHeight + FLOOR_SLAB_THICKNESS)
+            .runLength,
+        },
+      }))
+    : [];
 
   const [view, setView] = useState<View>({
     pan: { x: 160, y: 160 },
@@ -348,9 +362,12 @@ export function PlanEditor() {
   // the warning tint).
   const collisionSet = useMemo(() => {
     if (collisionMode === "off") return new Set<string>();
-    return collidingMovableIds(collidablesOf(level), walls.map(wallFootprint));
+    return collidingMovableIds(collidablesOf(level), [
+      ...walls.map(wallFootprint),
+      ...belowOpeningFootprints,
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [furniture, staircases, walls, collisionMode]);
+  }, [furniture, staircases, walls, belowLevel, collisionMode]);
 
   // Does a candidate footprint overlap any OTHER collidable thing on the active
   // level, or a wall? Reads fresh state so it's valid mid-drag.
@@ -358,13 +375,31 @@ export function PlanEditor() {
     candidate: { center: Vec2; rotation: number; footprint: Footprint },
     excludeId: string,
   ): boolean => {
-    const lvl = selectCurrentLevel(useStore.getState());
+    const st = useStore.getState();
+    const lvl = selectCurrentLevel(st);
     for (const o of collidablesOf(lvl)) {
       if (o.id === excludeId || !o.collidable) continue;
       if (footprintsOverlap(candidate, o.footprint)) return true;
     }
     for (const w of lvl.walls) {
       if (footprintsOverlap(candidate, wallFootprint(w))) return true;
+    }
+    // Stairwell openings from the level below (the floor hole on this level).
+    const idx = st.design.levels.findIndex((l) => l.id === st.currentLevelId);
+    const below = idx > 0 ? st.design.levels[idx - 1] : undefined;
+    if (below) {
+      for (const s of below.staircases) {
+        const fp: OrientedFootprint = {
+          center: s.position,
+          rotation: s.rotation,
+          footprint: {
+            width: s.width,
+            depth: computeStair(s, below.wallHeight + FLOOR_SLAB_THICKNESS)
+              .runLength,
+          },
+        };
+        if (footprintsOverlap(candidate, fp)) return true;
+      }
     }
     return false;
   };

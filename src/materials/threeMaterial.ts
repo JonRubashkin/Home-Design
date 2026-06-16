@@ -65,6 +65,40 @@ function buildKey(ref: MaterialRef, opts: MaterialBuildOptions): string {
   return `${base}|s${opts.side ?? THREE.FrontSide}|r${opts.roughness ?? 0.92}`;
 }
 
+// Apply selection/hover/warn/ghost/depth styling onto an existing material in
+// place (no rebuild). Extracted from the hook so the transparency-recompile
+// invariant can be unit-tested.
+export function applyMaterialStyle(
+  material: THREE.MeshStandardMaterial,
+  style: MaterialStyle,
+): void {
+  const selected = style.selected ?? false;
+  const hovered = style.hovered ?? false;
+  const warned = style.warned ?? false;
+  const ghost = style.ghost ?? false;
+  material.emissive.set(
+    selected || hovered ? SELECT_EMISSIVE : warned ? WARN_EMISSIVE : "#000000",
+  );
+  material.emissiveIntensity = selected ? 0.4 : warned ? 0.35 : hovered ? 0.18 : 0;
+  // three.js bakes `transparent` into the compiled program, so flipping it on a
+  // live material (e.g. a wall becoming a ghost when cutaway turns on, or after
+  // a floor switch) needs an explicit recompile — otherwise the change is
+  // ignored until the mesh remounts.
+  if (material.transparent !== ghost) {
+    material.transparent = ghost;
+    material.needsUpdate = true;
+  }
+  material.opacity = ghost ? 0.15 : 1;
+  material.depthWrite = !ghost;
+
+  // Bias coplanar surfaces toward the camera by their level so a higher level
+  // (a more recently drawn floor) wins over a lower one without z-fighting.
+  const bias = style.depthBias ?? 0;
+  material.polygonOffset = bias > 0;
+  material.polygonOffsetFactor = -bias;
+  material.polygonOffsetUnits = -bias;
+}
+
 // A memoized THREE material that is rebuilt — and the previous one disposed —
 // only when its build identity changes. Switching solid <-> pattern therefore
 // yields a brand-new, correctly-compiled material (three.js needs a recompile
@@ -80,23 +114,6 @@ export function useThreeMaterial(
   const material = useMemo(() => materialRefToThreeMaterial(ref, opts), [key]);
   useEffect(() => () => material.dispose(), [material]);
 
-  const selected = style.selected ?? false;
-  const hovered = style.hovered ?? false;
-  const warned = style.warned ?? false;
-  const ghost = style.ghost ?? false;
-  material.emissive.set(
-    selected || hovered ? SELECT_EMISSIVE : warned ? WARN_EMISSIVE : "#000000",
-  );
-  material.emissiveIntensity = selected ? 0.4 : warned ? 0.35 : hovered ? 0.18 : 0;
-  material.transparent = ghost;
-  material.opacity = ghost ? 0.15 : 1;
-  material.depthWrite = !ghost;
-
-  // Bias coplanar surfaces toward the camera by their level so a higher level
-  // (a more recently drawn floor) wins over a lower one without z-fighting.
-  const bias = style.depthBias ?? 0;
-  material.polygonOffset = bias > 0;
-  material.polygonOffsetFactor = -bias;
-  material.polygonOffsetUnits = -bias;
+  applyMaterialStyle(material, style);
   return material;
 }

@@ -7,6 +7,8 @@ import {
   computeStackBaseLifts,
   footprintsOverlap,
   collidingIds,
+  collidingMovableIds,
+  wallFootprint,
   type Footprint,
   type StackItem,
   type OrientedFootprint,
@@ -262,5 +264,49 @@ describe("collidingIds", () => {
   it("ignores well-separated items", () => {
     const ids = collidingIds([item("a", 0, true), item("b", 5, true)]);
     expect(ids.size).toBe(0);
+  });
+});
+
+describe("wallFootprint + collidingMovableIds (furniture vs walls)", () => {
+  const movable = (
+    id: string,
+    x: number,
+    y: number,
+    w = 2,
+    d = 1,
+  ): CollisionItem => ({
+    id,
+    collidable: true,
+    footprint: { center: { x, y }, rotation: 0, footprint: { width: w, depth: d } },
+  });
+
+  it("wallFootprint is length × thickness, centered, rotated to the wall", () => {
+    const h = wallFootprint(createWall({ x: 0, y: 0 }, { x: 4, y: 0 }));
+    expect(h.center).toEqual({ x: 2, y: 0 });
+    expect(h.rotation).toBeCloseTo(0);
+    expect(h.footprint.width).toBeCloseTo(4);
+    expect(h.footprint.depth).toBeCloseTo(0.15);
+    const v = wallFootprint(createWall({ x: 0, y: 0 }, { x: 0, y: 3 }));
+    expect(v.rotation).toBeCloseTo(90);
+    expect(v.footprint.width).toBeCloseTo(3);
+  });
+
+  it("flags a movable item that overlaps a wall but not one flush against it", () => {
+    const wall = wallFootprint(createWall({ x: 0, y: 0 }, { x: 10, y: 0 }));
+    // sofa centered ON the wall line -> overlaps deeply
+    const through = collidingMovableIds([movable("sofa", 5, 0)], [wall]);
+    expect(through.has("sofa")).toBe(true);
+    // sofa resting just below the wall face (flush, depth 1 -> center at 0.5+~) — clear
+    const flush = collidingMovableIds([movable("sofa", 5, 0.6)], [wall]);
+    expect(flush.has("sofa")).toBe(false);
+  });
+
+  it("still flags movable-vs-movable overlaps and ignores non-collidable", () => {
+    const a = movable("a", 0, 0);
+    const b = movable("b", 1, 0);
+    const ids = collidingMovableIds([a, b], []);
+    expect(ids).toEqual(new Set(["a", "b"]));
+    const rug = { ...movable("rug", 0, 0), collidable: false };
+    expect(collidingMovableIds([a, rug], []).has("rug")).toBe(false);
   });
 });

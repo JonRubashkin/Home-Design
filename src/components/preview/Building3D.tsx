@@ -2,7 +2,11 @@ import { useMemo, type RefObject } from "react";
 import type { Level, Vec2 } from "../../model/types";
 import { useStore } from "../../store/store";
 import { getCatalogEntry, effectiveDimensions } from "../../catalog";
-import { collidingIds, type CollisionItem } from "../../geometry/furniture";
+import {
+  collidingMovableIds,
+  wallFootprint,
+  type CollisionItem,
+} from "../../geometry/furniture";
 import { computeStair } from "../../geometry/stair";
 import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
 import { Walls3D } from "./Walls3D";
@@ -41,7 +45,7 @@ function warnedIdsFor(level: Level): Set<string> {
       },
     });
   }
-  return collidingIds(items);
+  return collidingMovableIds(items, level.walls.map(wallFootprint));
 }
 
 // Stairwell opening rectangles a level's staircases cut from the floor ABOVE.

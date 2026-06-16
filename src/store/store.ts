@@ -21,6 +21,7 @@ import {
 } from "../catalog";
 import {
   footprintsOverlap,
+  wallFootprint,
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
@@ -87,7 +88,8 @@ function levelCollidables(
   return out;
 }
 
-// Does a candidate footprint overlap any OTHER collidable thing on the level?
+// Does a candidate footprint overlap any OTHER collidable thing on the level
+// (other furniture/staircases) or a wall? Walls act as barriers.
 function collidesOnLevel(
   level: Level,
   candidateId: string,
@@ -96,6 +98,9 @@ function collidesOnLevel(
   for (const other of levelCollidables(level)) {
     if (other.id === candidateId) continue;
     if (footprintsOverlap(candidate, other.footprint)) return true;
+  }
+  for (const wall of level.walls) {
+    if (footprintsOverlap(candidate, wallFootprint(wall))) return true;
   }
   return false;
 }

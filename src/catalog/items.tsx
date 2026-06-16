@@ -601,6 +601,99 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>{gr(-w / 2 + 0.06, -d / 2 + 0.02, w - 0.12, d - 0.04, "glass")}</>
     ),
   },
+  {
+    id: "vanity-table",
+    name: "Dressing table",
+    category: "bedroom",
+    footprint: { width: 1.1, depth: 0.5 },
+    height: 1.4,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.8,
+    scaling: axesScale({ x: [0.6, 1.6] }),
+    slots: [
+      { name: "surface", default: WOOD_LIGHT },
+      { name: "legs", default: WOOD_DARK },
+      { name: "mirror", default: GLASS },
+      { name: "stool", default: FABRIC2 },
+    ],
+    build: () => {
+      const W = 1.1,
+        D = 0.5;
+      return [
+        box("surface", [W, 0.05, D], [0, 0.77, 0]),
+        ...legs("legs", W, D, 0.75, 0.05, 0.04),
+        box("mirror", [0.7, 0.62, 0.03], [0, 1.1, -D / 2 + 0.03]),
+        box("stool", [0.42, 0.45, 0.34], [0, 0.225, 0.06]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.12, -d / 2 + 0.05, w / 2 - 0.12, -d / 2 + 0.05, "mirror")}
+        {gr(-0.21, 0.02, 0.42, 0.16, "stool")}
+      </>
+    ),
+  },
+  {
+    id: "bed-bench",
+    name: "Bed bench",
+    category: "bedroom",
+    footprint: { width: 1.2, depth: 0.4 },
+    height: 0.48,
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.48,
+    scaling: axesScale({ x: [0.5, 2.0] }),
+    slots: [
+      { name: "seat", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 1.2,
+        D = 0.4;
+      return [
+        rbox("seat", [W, 0.16, D], 0.05, [0, 0.4, 0]),
+        ...legs("legs", W, D, 0.34, 0.05, 0.04),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.06, -d / 2 + 0.06, w - 0.12, d - 0.12, "seat")}</>
+    ),
+  },
+  {
+    id: "crib",
+    name: "Crib",
+    category: "bedroom",
+    footprint: { width: 1.3, depth: 0.7 },
+    height: 0.9,
+    wallHugger: true,
+    collidable: true,
+    // Cribs are a fairly standard size — only a tight tolerance.
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "frame", default: WOOD },
+      { name: "mattress", default: MATTRESS },
+    ],
+    build: () => {
+      const W = 1.3,
+        D = 0.7;
+      return [
+        box("frame", [W, 0.5, 0.05], [0, 0.55, D / 2 - 0.025]),
+        box("frame", [W, 0.5, 0.05], [0, 0.55, -D / 2 + 0.025]),
+        box("frame", [0.05, 0.5, D], [-W / 2 + 0.025, 0.55, 0]),
+        box("frame", [0.05, 0.5, D], [W / 2 - 0.025, 0.55, 0]),
+        box("mattress", [W - 0.12, 0.12, D - 0.12], [0, 0.42, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "mattress")}
+        {gl(-w / 4, -d / 2 + 0.05, -w / 4, d / 2 - 0.05, "s1")}
+        {gl(0, -d / 2 + 0.05, 0, d / 2 - 0.05, "s2")}
+        {gl(w / 4, -d / 2 + 0.05, w / 4, d / 2 - 0.05, "s3")}
+      </>
+    ),
+  },
 
   // ---------------- KITCHEN / DINING ----------------
   {

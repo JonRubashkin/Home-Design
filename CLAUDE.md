@@ -325,8 +325,10 @@ in code under `src/catalog/`:
   rename inline, delete (confirm; never the last level), click to set active. All
   structural changes are undoable store actions (`addLevelAbove`, `deleteLevel`,
   `renameLevel`, `setCurrentLevel`). It lives in the **Floors dropdown** (a button
-  beside Fit View in the plan controls), which also holds the underlay toggle.
-  (The toolbar scrolls vertically when the viewport is too short for every tool.)
+  beside Fit View in the plan controls), which also holds the underlay toggle. In
+  the **3D-only** layout (no plan visible) the same dropdown appears in the 3D view
+  bar so you can still switch floors. (The toolbar scrolls vertically when the
+  viewport is too short for every tool.)
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
   from the Floors dropdown (only when not on the ground floor).

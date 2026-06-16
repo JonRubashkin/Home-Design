@@ -1323,4 +1323,68 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       </>
     ),
   },
+
+  // ---------------- UTILITY / LAUNDRY ----------------
+  {
+    id: "washing-machine",
+    name: "Washing machine",
+    category: "utility",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: PORCELAIN },
+      { name: "door", default: solid("#7d8794") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [W - 0.1, 0.08, 0.04], [0, H - 0.08, D / 2 - 0.02]), // panel
+        cyl("door", 0.2, 0.04, [0, 0.42, D / 2 - 0.01], [Math.PI / 2, 0, 0]),
+        cyl("door", 0.13, 0.03, [0, 0.42, D / 2 + 0.005], [Math.PI / 2, 0, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.04, w / 4, "porthole")}
+        {gr(-w / 2 + 0.06, -d / 2 + 0.06, 0.16, 0.08, "drawer")}
+      </>
+    ),
+  },
+  {
+    id: "dryer",
+    name: "Dryer",
+    category: "utility",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: PORCELAIN },
+      { name: "door", default: solid("#9aa0a6") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [W - 0.1, 0.08, 0.04], [0, H - 0.08, D / 2 - 0.02]), // panel
+        cyl("door", 0.22, 0.04, [0, 0.4, D / 2 - 0.01], [Math.PI / 2, 0, 0]),
+        cyl("door", 0.15, 0.03, [0, 0.4, D / 2 + 0.005], [Math.PI / 2, 0, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.02, w / 4 + 0.02, "porthole")}
+        {gl(-w / 4, d / 2 - 0.08, w / 4, d / 2 - 0.08, "vent")}
+      </>
+    ),
+  },
 ];

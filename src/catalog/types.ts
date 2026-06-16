@@ -6,7 +6,8 @@ export type Category =
   | "bedroom"
   | "kitchen"
   | "bathroom"
-  | "office";
+  | "office"
+  | "utility";
 
 // Local space for builders & glyphs: x = width (right), y/up in 3D, z = depth
 // with +z the item's FRONT. The 2D glyph uses (x = width, y = depth, +y front).

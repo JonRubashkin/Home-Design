@@ -896,6 +896,130 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "seat")}</>
     ),
   },
+  {
+    id: "stove",
+    name: "Stove",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.9,
+    wallHugger: true,
+    collidable: true,
+    // Standard range — a tight uniform tolerance only.
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "cooktop", default: SCREEN },
+      { name: "controls", default: solid("#3a3d44") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6;
+      return [
+        box("body", [W, 0.84, D], [0, 0.42, 0]),
+        box("cooktop", [W, 0.04, D], [0, 0.86, 0]),
+        cyl("cooktop", 0.1, 0.02, [-0.14, 0.89, -0.14]),
+        cyl("cooktop", 0.1, 0.02, [0.14, 0.89, -0.14]),
+        cyl("cooktop", 0.1, 0.02, [-0.14, 0.89, 0.14]),
+        cyl("cooktop", 0.1, 0.02, [0.14, 0.89, 0.14]),
+        box("controls", [W - 0.06, 0.08, 0.03], [0, 0.78, D / 2 - 0.02]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(-w / 4, -d / 4, 0.1, "b1")}
+        {gc(w / 4, -d / 4, 0.1, "b2")}
+        {gc(-w / 4, d / 4, 0.1, "b3")}
+        {gc(w / 4, d / 4, 0.1, "b4")}
+      </>
+    ),
+  },
+  {
+    id: "dishwasher",
+    name: "Dishwasher",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "door", default: solid("#c2c6cc") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("door", [W - 0.06, 0.66, 0.03], [0, 0.4, D / 2 - 0.005]),
+        box("door", [0.4, 0.04, 0.04], [0, 0.78, D / 2 + 0.005]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.08, w - 0.12, d - 0.16, "door")}
+        {gl(-0.18, -d / 2 + 0.1, 0.18, -d / 2 + 0.1, "handle")}
+      </>
+    ),
+  },
+  {
+    id: "pantry-cabinet",
+    name: "Pantry cabinet",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 2.1,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ y: [0.8, 1.2] }),
+    slots: [{ name: "body", default: solid("#d7d2c8") }],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 2.1;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [0.02, H - 0.1, 0.02], [0, H / 2, D / 2 - 0.005]),
+        box("body", [0.04, 0.3, 0.03], [-0.06, 1.0, D / 2 - 0.005]),
+        box("body", [0.04, 0.3, 0.03], [0.06, 1.1, D / 2 - 0.005]),
+      ];
+    },
+    glyph: (_w, d): ReactNode => (
+      <>
+        {gl(0, -d / 2 + 0.05, 0, d / 2 - 0.05, "split")}
+        {gc(-0.06, 0, 0.025, "h1")}
+        {gc(0.06, 0, 0.025, "h2")}
+      </>
+    ),
+  },
+  {
+    id: "kitchen-island",
+    name: "Kitchen island",
+    category: "kitchen",
+    footprint: { width: 1.4, depth: 0.9 },
+    height: 0.9,
+    // A free-standing centerpiece — never hugs a wall.
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.9,
+    scaling: axesScale({ x: [0.6, 2.0], z: [0.6, 1.6] }),
+    slots: [
+      { name: "cabinet", default: solid("#d7d2c8") },
+      { name: "countertop", default: STONE },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.9;
+      return [
+        box("cabinet", [W, 0.84, D], [0, 0.42, 0]),
+        box("cabinet", [0.02, 0.7, 0.02], [0, 0.45, D / 2 - 0.005]),
+        box("countertop", [W + 0.1, 0.06, D + 0.1], [0, 0.87, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}</>
+    ),
+  },
 
   // ---------------- BATHROOM ----------------
   {

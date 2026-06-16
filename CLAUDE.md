@@ -148,11 +148,22 @@ type MaterialRef =
   | { kind: "solid"; color: string }                              // hex
   | { kind: "pattern"; pattern: PatternId; colorA: string; colorB: string };
 
-type PatternId = "checker" | "planks" | "tile" | "stripes";
+type PatternId =
+  | "checker" | "planks" | "tile" | "stripes"   // interior, two-tone
+  | "grass" | "water" | "gravel";               // outdoor landscape (Phase 4b)
 ```
 
 Pattern textures are generated procedurally at runtime onto small offscreen
-canvases and used as repeating Three.js textures. No image assets.
+canvases and used as repeating Three.js textures. No image assets. The interior
+patterns are two-tone (each pixel is exactly colorA or colorB); the landscape
+patterns **blend** between the two colors for a noisy/rippled look (grass =
+blades + speckle, water = sine ripples, gravel = speckled stones) and are drawn
+as ordinary floor regions (a lawn/pond/path is just a floor polygon). All are
+periodic with the tile size so they tile seamlessly, and **water is OPAQUE** —
+its watery look is faked with the texture + a slight sheen, never real
+transparency (real transparency would reawaken the cutaway material-hiding bug).
+Adding `PatternId` values is additive (no schema bump); the importer's pattern
+allowlist derives from `PATTERN_IDS` so new ids are never rejected.
 
 ## Furniture catalog (Phase 2b)
 
@@ -160,8 +171,8 @@ Furniture instances reference a **catalog id**, never geometry. The catalog live
 in code under `src/catalog/`:
 
 - Each `CatalogEntry` declares `id`, `name`, `category`
-  (`living | bedroom | kitchen | bathroom | office | utility`), `footprint`
-  (width × depth, meters),
+  (`living | bedroom | kitchen | bathroom | office | utility | outdoor`),
+  `footprint` (width × depth, meters),
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
   `stackable` (small item that auto-climbs onto a surface), a `scaling` policy
@@ -199,7 +210,7 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
   `CATALOG_ITEMS`, so new items appear there automatically).
-- **Catalog inventory (Phase 4a).** 49 items across six categories:
+- **Catalog inventory (Phase 4a/4b).** 60 items across seven categories:
   *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
   lamp, potted plant); *Bedroom* (double/single bed, nightstand, wardrobe,
@@ -208,7 +219,11 @@ in code under `src/catalog/`:
   stove, dishwasher, microwave, dining table/chair, bar stool, bench);
   *Bathroom* (toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
   bathroom cabinet); *Office* (desk, office chair, filing cabinet, desk lamp —
-  the bookshelf is reused, not duplicated); *Utility* (washing machine, dryer).
+  the bookshelf is reused, not duplicated); *Utility* (washing machine, dryer);
+  *Outdoor* (patio table, patio chair, sun lounger, parasol, BBQ grill, garden
+  bench, planter box, fire pit, tree, hedge, fence panel — all free-standing and
+  collidable; placed on the ground level; decking/paving use the existing
+  planks/tile floor patterns, not new items).
   **Deferred** to a future wall-mount / vertical-stacking pass (do NOT add as
   floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
   shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances.

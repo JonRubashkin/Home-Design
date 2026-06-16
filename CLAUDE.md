@@ -209,6 +209,12 @@ in code under `src/catalog/`:
   Separating Axis Theorem in pure tested `footprintsOverlap` / `collidingIds`
   (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
   chair tucked under a table reads as a collision (expected; Soft handles it).
+- **Walls are barriers too:** a collidable item overlapping a wall (each wall is
+  an oriented length×thickness footprint via `wallFootprint`) collides, per the
+  same mode — so furniture can't be pushed through walls in Hard (and warns in
+  Soft). `collidingMovableIds` checks movables vs other movables + wall barriers;
+  the store's `collidesOnLevel` (Hard guards) does the same. Wall-huggers sit
+  flush to the face (≈0 overlap, within tolerance) so they don't trip it.
 - **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
   set from the **Settings** dialog (gear in the top bar, next to Undo/Redo):
   **Off** (no checks),

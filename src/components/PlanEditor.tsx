@@ -43,7 +43,8 @@ import {
   wallHuggerSnap,
   footprintCorners,
   footprintsOverlap,
-  collidingIds,
+  collidingMovableIds,
+  wallFootprint,
   type Footprint,
   type CollisionItem,
 } from "../geometry/furniture";
@@ -343,22 +344,27 @@ export function PlanEditor() {
     return items;
   };
 
-  // Ids of collidable things currently overlapping another (for the warning tint).
+  // Ids of collidable things currently overlapping another item OR a wall (for
+  // the warning tint).
   const collisionSet = useMemo(() => {
     if (collisionMode === "off") return new Set<string>();
-    return collidingIds(collidablesOf(level));
+    return collidingMovableIds(collidablesOf(level), walls.map(wallFootprint));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [furniture, staircases, collisionMode]);
+  }, [furniture, staircases, walls, collisionMode]);
 
   // Does a candidate footprint overlap any OTHER collidable thing on the active
-  // level? Reads fresh state so it's valid mid-drag.
+  // level, or a wall? Reads fresh state so it's valid mid-drag.
   const overlapsCollidable = (
     candidate: { center: Vec2; rotation: number; footprint: Footprint },
     excludeId: string,
   ): boolean => {
-    for (const o of collidablesOf(selectCurrentLevel(useStore.getState()))) {
+    const lvl = selectCurrentLevel(useStore.getState());
+    for (const o of collidablesOf(lvl)) {
       if (o.id === excludeId || !o.collidable) continue;
       if (footprintsOverlap(candidate, o.footprint)) return true;
+    }
+    for (const w of lvl.walls) {
+      if (footprintsOverlap(candidate, wallFootprint(w))) return true;
     }
     return false;
   };

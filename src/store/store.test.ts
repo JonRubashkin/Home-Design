@@ -717,3 +717,16 @@ describe("fillRoom", () => {
     expect(painted).toBe(true);
   });
 });
+
+describe("furniture vs wall collision (hard mode)", () => {
+  beforeEach(() => state().setCollisionMode("hard"));
+
+  it("blocks placing furniture overlapping a wall, allows a clear spot", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().placeFurniture("sofa-3seat", { x: 2, y: 0 }, 0); // on the wall
+    expect(selectCurrentLevel(useStore.getState()).furniture).toHaveLength(0);
+    state().placeFurniture("sofa-3seat", { x: 2, y: 2 }, 0); // clear of the wall
+    expect(selectCurrentLevel(useStore.getState()).furniture).toHaveLength(1);
+    state().setCollisionMode("soft");
+  });
+});

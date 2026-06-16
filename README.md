@@ -206,8 +206,10 @@ npm run format   # Prettier
   the 3D mesh, the plan symbol, and hit-testing / wall-hugger snapping alike,
   participates in undo/redo, and round-trips through Export/Import.
 - **Collision** (Settings → gear in the top bar, by Undo/Redo) — **Off** / **Soft** (default) /
-  **Hard**. Bulky items collide by 2D footprint on the same level; flat/decor
-  items (rugs, lamps, plant, microwave, mirror…) never collide. Soft tints
+  **Hard**. Bulky items collide by 2D footprint on the same level — with each
+  other, with staircases, and **with walls** (so furniture can't be pushed through
+  a wall); flat/decor items (rugs, lamps, plant, microwave, mirror…) never collide.
+  Soft tints
   overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an
   overlapping placement, reverts a drag to its last clear spot, and undoes a
   rotate/scale that would overlap. (Footprint-only — no place-on-surface yet, so a

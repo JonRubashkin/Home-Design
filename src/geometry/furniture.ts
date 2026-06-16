@@ -1,6 +1,6 @@
 import type { Vec2, Wall } from "../model/types";
 import { add, dot, scale, sub } from "./vec";
-import { wallDirection, wallLength, wallNormal } from "./wall";
+import { wallDirection, wallLength, wallMidpoint, wallNormal } from "./wall";
 
 export interface Footprint {
   width: number; // local x extent (meters)
@@ -229,6 +229,40 @@ export function collidingIds(
       if (footprintsOverlap(c[i]!.footprint, c[j]!.footprint, tolerance)) {
         hits.add(c[i]!.id);
         hits.add(c[j]!.id);
+      }
+    }
+  }
+  return hits;
+}
+
+// A wall as an oriented footprint (length × thickness, centered on its midpoint),
+// so furniture/staircases can be collision-tested against it as a barrier. Walls
+// are barriers only — they're never collision "subjects" themselves.
+export function wallFootprint(wall: Wall): OrientedFootprint {
+  const rot =
+    (Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x) * 180) /
+    Math.PI;
+  return {
+    center: wallMidpoint(wall),
+    rotation: rot,
+    footprint: { width: wallLength(wall), depth: wall.thickness },
+  };
+}
+
+// Ids of collidable movable items (furniture/stairs) overlapping another movable
+// OR a barrier (a wall). Barriers are not added to the result.
+export function collidingMovableIds(
+  movables: CollisionItem[],
+  barriers: OrientedFootprint[],
+  tolerance = 0.02,
+): Set<string> {
+  const hits = collidingIds(movables, tolerance);
+  for (const m of movables) {
+    if (!m.collidable || hits.has(m.id)) continue;
+    for (const b of barriers) {
+      if (footprintsOverlap(m.footprint, b, tolerance)) {
+        hits.add(m.id);
+        break;
       }
     }
   }

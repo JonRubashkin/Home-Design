@@ -1168,4 +1168,29 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>{gl(0, -d / 2 + 0.03, 0, d / 2 - 0.03, "split")}</>
     ),
   },
+  {
+    id: "bidet",
+    name: "Bidet",
+    category: "bathroom",
+    footprint: { width: 0.38, depth: 0.6 },
+    height: 0.4,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.85, 1.15),
+    slots: [{ name: "body", default: PORCELAIN }],
+    build: () => {
+      const D = 0.6;
+      return [
+        box("body", [0.18, 0.36, 0.2], [0, 0.18, -D / 2 + 0.12]), // pedestal
+        cyl("body", 0.16, 0.34, [0, 0.2, 0.06]), // bowl
+        cyl("body", 0.17, 0.04, [0, 0.39, 0.06]), // rim
+      ];
+    },
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0.06, w / 2 - 0.04, "bowl")}
+        {gc(0, 0.06, 0.05, "jet")}
+      </>
+    ),
+  },
 ];

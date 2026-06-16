@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { CATALOG_ITEMS, getCatalogEntry, primarySlot } from "./index";
 
 describe("catalog", () => {
-  it("has 31 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(31);
+  it("has 35 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(35);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(31);
+    expect(new Set(ids).size).toBe(35);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -73,6 +73,9 @@ describe("catalog", () => {
     expect(huggers.sort()).toEqual(
       [
         "sofa-3seat",
+        "sofa-sectional",
+        "sofa-2seat",
+        "fireplace",
         "tv-stand",
         "bookshelf",
         "console-table",

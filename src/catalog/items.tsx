@@ -295,6 +295,121 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       </>
     ),
   },
+  {
+    id: "sofa-sectional",
+    name: "Sectional sofa",
+    category: "living",
+    footprint: { width: 2.4, depth: 1.6 },
+    height: 0.8,
+    wallHugger: true,
+    collidable: true,
+    // L-shaped: width and the return depth both flex.
+    scaling: axesScale({ x: [0.7, 1.6], z: [0.7, 1.4] }),
+    slots: [
+      { name: "body", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 2.4,
+        D = 1.6;
+      return [
+        box("body", [W, 0.34, 0.8], [0, 0.32, D / 2 - 0.4]), // front seat row
+        box("body", [0.8, 0.34, D - 0.8], [-W / 2 + 0.4, 0.32, -0.4]), // chaise
+        box("body", [W, 0.5, 0.16], [0, 0.5, -D / 2 + 0.08]), // back (long)
+        box("body", [0.16, 0.5, D], [-W / 2 + 0.08, 0.5, 0]), // back (side)
+        box("legs", [W - 0.1, 0.14, 0.7], [0, 0.07, D / 2 - 0.4]),
+        box("legs", [0.7, 0.14, D - 0.9], [-W / 2 + 0.4, 0.07, -0.45]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.05, w - 0.12, 0.16, "back")}
+        {gr(-w / 2 + 0.05, -d / 2 + 0.05, 0.16, d - 0.1, "side")}
+      </>
+    ),
+  },
+  {
+    id: "sofa-2seat",
+    name: "Loveseat",
+    category: "living",
+    footprint: { width: 1.5, depth: 0.9 },
+    height: 0.8,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ x: [0.7, 1.5] }),
+    slots: [
+      { name: "body", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 1.5,
+        D = 0.9;
+      return [
+        box("body", [W, 0.32, D - 0.18], [0, 0.32, 0.09]),
+        box("body", [W, 0.5, 0.18], [0, 0.5, -D / 2 + 0.09]),
+        box("body", [0.18, 0.42, D], [-W / 2 + 0.09, 0.37, 0]),
+        box("body", [0.18, 0.42, D], [W / 2 - 0.09, 0.37, 0]),
+        ...legs("legs", W, D, 0.16),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.06, w - 0.16, 0.16, "back")}
+        {gl(0, -d / 2 + 0.24, 0, d / 2 - 0.08, "div")}
+      </>
+    ),
+  },
+  {
+    id: "ottoman",
+    name: "Ottoman",
+    category: "living",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.42,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.6, 1.8),
+    slots: [{ name: "body", default: FABRIC2 }],
+    build: () => [
+      box("body", [0.5, 0.06, 0.5], [0, 0.03, 0]),
+      box("body", [0.54, 0.24, 0.54], [0, 0.2, 0]),
+      rbox("body", [0.58, 0.16, 0.58], 0.07, [0, 0.36, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0, Math.min(w, d) / 2 - 0.05, "o")}
+        {gc(0, 0, 0.05, "tuft")}
+      </>
+    ),
+  },
+  {
+    id: "fireplace",
+    name: "Fireplace",
+    category: "living",
+    footprint: { width: 1.4, depth: 0.4 },
+    height: 1.2,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ x: [0.6, 1.8] }),
+    slots: [
+      { name: "surround", default: solid("#cfcac0") },
+      { name: "firebox", default: SCREEN },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.4,
+        H = 1.2;
+      return [
+        box("surround", [0.26, H, D], [-W / 2 + 0.13, H / 2, 0]),
+        box("surround", [0.26, H, D], [W / 2 - 0.13, H / 2, 0]),
+        box("surround", [W, 0.2, D + 0.06], [0, H - 0.1, 0]),
+        box("surround", [W, 0.18, D], [0, 0.09, 0]),
+        box("firebox", [W - 0.5, H - 0.38, D - 0.08], [0, H / 2, 0.03]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.28, -d / 2 + 0.08, w - 0.56, d - 0.16, "firebox")}</>
+    ),
+  },
 
   // ---------------- BEDROOM ----------------
   {

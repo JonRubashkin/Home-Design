@@ -25,9 +25,9 @@ export function restackElevations(levels: Level[]): void {
   });
 }
 
-// Default name for the level at a given index (0 = ground).
+// Default name for the level at a given index (American convention: the bottom
+// level is the First floor — no "Ground floor").
 const ORDINALS = [
-  "Ground",
   "First",
   "Second",
   "Third",
@@ -41,7 +41,6 @@ const ORDINALS = [
 ];
 
 export function defaultLevelName(index: number): string {
-  if (index === 0) return "Ground floor";
-  const ordinal = ORDINALS[index] ?? `${index}th`;
+  const ordinal = ORDINALS[index] ?? `${index + 1}th`;
   return `${ordinal} floor`;
 }

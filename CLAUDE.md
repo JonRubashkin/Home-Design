@@ -75,7 +75,7 @@ interface Site {            // SOFT work-area boundary — never enforced.
 
 interface Level {
   id: string;
-  name: string;             // "Ground floor"
+  name: string;             // "First floor" (American naming; bottom = First floor)
   elevation: number;        // world Y of this level's floor, meters. 0 for level 0.
   wallHeight: number;       // default height for new walls on this level (2.4)
   walls: Wall[];
@@ -328,18 +328,20 @@ in code under `src/catalog/`:
   `model/defaults.ts`). `restackElevations` writes it back after any add/remove,
   so `level.elevation` always matches. No schema change (levels/elevation already
   existed); existing single-level designs open as the ground floor.
-- **Level management** (`LevelsPanel`): a vertical list, **ground at the bottom**,
-  upper floors above. Add floor above (empty, default-named "First floor"…),
-  rename inline, delete (confirm; never the last level), click to set active. All
-  structural changes are undoable store actions (`addLevelAbove`, `deleteLevel`,
-  `renameLevel`, `setCurrentLevel`). It lives in the **Floors dropdown** (a button
-  beside Fit View in the plan controls), which also holds the underlay toggle. In
+- **Level management** (`LevelsPanel`): a vertical list, **bottom floor at the
+  bottom**, upper floors above. Levels are named by the **American convention**
+  (`defaultLevelName`: bottom = "First floor", then "Second floor"… — no "Ground
+  floor"). Add floor above (empty), rename inline, delete (confirm; never the last
+  level), click to set active. All structural changes are undoable store actions
+  (`addLevelAbove`, `deleteLevel`, `renameLevel`, `setCurrentLevel`). It lives in
+  the **Floors dropdown** (a button beside Fit View in the plan controls), which
+  also holds the underlay toggle; clicking a floor row collapses the dropdown. In
   the **3D-only** layout (no plan visible) the same dropdown appears in the 3D view
   bar so you can still switch floors. (The toolbar scrolls vertically when the
   viewport is too short for every tool.)
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
-  from the Floors dropdown (only when not on the ground floor).
+  from the Floors dropdown (only when not on the bottom floor).
 - **3D:** `Building3D` stacks every level at its elevation; an "Active level only"
   toggle isolates the active one. Floor regions render as **real slabs**
   (`Floors3D`, extruded `FLOOR_SLAB_THICKNESS`, walking surface at the elevation).

@@ -22,10 +22,10 @@ describe("computeElevations", () => {
 });
 
 describe("defaultLevelName", () => {
-  it("names ground and upper floors", () => {
-    expect(defaultLevelName(0)).toBe("Ground floor");
-    expect(defaultLevelName(1)).toBe("First floor");
-    expect(defaultLevelName(2)).toBe("Second floor");
-    expect(defaultLevelName(11)).toBe("11th floor");
+  it("names floors by the American convention (no ground floor)", () => {
+    expect(defaultLevelName(0)).toBe("First floor");
+    expect(defaultLevelName(1)).toBe("Second floor");
+    expect(defaultLevelName(2)).toBe("Third floor");
+    expect(defaultLevelName(10)).toBe("11th floor");
   });
 });

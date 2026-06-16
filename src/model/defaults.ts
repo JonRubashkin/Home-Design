@@ -151,7 +151,7 @@ export function createStaircase(
   };
 }
 
-export function createLevel(name = "Ground floor"): Level {
+export function createLevel(name = "First floor"): Level {
   return {
     id: makeId("level"),
     name,

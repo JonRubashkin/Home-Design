@@ -160,7 +160,8 @@ Furniture instances reference a **catalog id**, never geometry. The catalog live
 in code under `src/catalog/`:
 
 - Each `CatalogEntry` declares `id`, `name`, `category`
-  (`living | bedroom | kitchen | bathroom`), `footprint` (width × depth, meters),
+  (`living | bedroom | kitchen | bathroom | office | utility`), `footprint`
+  (width × depth, meters),
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
   `stackable` (small item that auto-climbs onto a surface), a `scaling` policy
@@ -196,7 +197,21 @@ in code under `src/catalog/`:
   are pure functions in `src/geometry/furniture.ts` (tested) and operate on the
   scaled footprint.
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
-  `#catalog` in the URL opens a dev-only 3D QA line-up of every item.
+  `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
+  `CATALOG_ITEMS`, so new items appear there automatically).
+- **Catalog inventory (Phase 4a).** 49 items across six categories:
+  *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
+  table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
+  lamp, potted plant); *Bedroom* (double/single bed, nightstand, wardrobe,
+  dresser, dressing table, bed bench, crib, bedside lamp, full-length mirror);
+  *Kitchen* (counter, upper cabinet, pantry cabinet, kitchen island, fridge,
+  stove, dishwasher, microwave, dining table/chair, bar stool, bench);
+  *Bathroom* (toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
+  bathroom cabinet); *Office* (desk, office chair, filing cabinet, desk lamp —
+  the bookshelf is reused, not duplicated); *Utility* (washing machine, dryer).
+  **Deferred** to a future wall-mount / vertical-stacking pass (do NOT add as
+  floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
+  shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances.
 
 ## Furniture collision (Phase 3c.2 — footprint only, no vertical stacking)
 

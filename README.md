@@ -227,16 +227,25 @@ npm run format   # Prettier
   item. **Schema v4** adds per-item `scale` (v3 adds `furniture`); older designs
   migrate automatically.
 
-**Catalog (31):**
+**Catalog (49):**
 
-- _Living:_ 3-seat sofa, armchair, coffee table, TV stand, rug, bookshelf, floor
-  lamp, side table, console table, potted plant.
-- _Bedroom:_ double bed, single bed, nightstand, wardrobe, dresser, bedside lamp,
-  full-length mirror.
-- _Kitchen / dining:_ counter unit, upper cabinet, fridge, microwave, dining
-  table, dining chair, bar stool, bench.
-- _Bathroom:_ toilet, sink vanity, bathtub, shower stall, towel rack, bathroom
-  cabinet.
+- _Living:_ 3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
+  table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
+  lamp, potted plant.
+- _Bedroom:_ double bed, single bed, nightstand, wardrobe, dresser, dressing
+  table, bed bench, crib, bedside lamp, full-length mirror.
+- _Kitchen / dining:_ counter unit, upper cabinet, pantry cabinet, kitchen
+  island, fridge, stove, dishwasher, microwave, dining table, dining chair, bar
+  stool, bench.
+- _Bathroom:_ toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
+  bathroom cabinet.
+- _Office:_ desk, office chair, filing cabinet, desk lamp (the bookshelf is
+  reused for the office too).
+- _Utility / laundry:_ washing machine, dryer.
+
+_Deferred to a future wall-mount / vertical-stacking pass (not yet available as
+floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
+shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances._
 
 ## Controls & keyboard shortcuts
 
@@ -285,7 +294,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 31 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 49 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

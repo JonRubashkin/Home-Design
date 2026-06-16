@@ -1,11 +1,12 @@
 import { useStore } from "../store/store";
 import { formatMeters } from "../lib/format";
 
-// Vertical level list docked over the workspace, ground floor at the BOTTOM and
-// upper floors stacked above (matching physical stacking). Click a row to make it
-// the active (editable) level; rename inline; delete (with confirm); add a floor
-// on top. All structural changes are undoable store actions.
-export function LevelsPanel() {
+// Vertical level list, bottom floor at the BOTTOM and upper floors stacked above
+// (matching physical stacking). Click a row to make it the active (editable)
+// level; rename inline; delete (with confirm); add a floor on top. All structural
+// changes are undoable store actions. `onSelectLevel` (used when shown in a
+// dropdown) fires after a row is clicked so the dropdown can collapse.
+export function LevelsPanel({ onSelectLevel }: { onSelectLevel?: () => void }) {
   const levels = useStore((s) => s.design.levels);
   const currentLevelId = useStore((s) => s.currentLevelId);
   const setCurrentLevel = useStore((s) => s.setCurrentLevel);
@@ -55,7 +56,10 @@ export function LevelsPanel() {
               <li
                 key={level.id}
                 className={`level-row${active ? " active" : ""}`}
-                onPointerDown={() => setCurrentLevel(level.id)}
+                onPointerDown={() => {
+                  setCurrentLevel(level.id);
+                  onSelectLevel?.();
+                }}
               >
                 <span className="level-indicator" aria-hidden="true" />
                 <input

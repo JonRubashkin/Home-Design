@@ -58,13 +58,14 @@ npm run format   # Prettier
 
 ### Multiple levels / storeys (phase 3c)
 
-- **Level list** (in the **Floors** dropdown beside Fit View, ground
-  floor at the bottom): add a floor above, rename inline, delete (with confirm; the
-  last level can't be removed), and click a row to make it the **active** (editable)
-  level. The dropdown also holds the underlay toggle. All level changes are
-  undoable; the active level persists across reloads.
-- **Auto-stacked elevations:** a level's height is derived — ground sits at 0 and
-  each floor above sits at the previous one's wall height + a 0.2 m floor slab.
+- **Level list** (in the **Floors** dropdown beside Fit View, bottom floor at the
+  bottom): add a floor above, rename inline, delete (with confirm; the last level
+  can't be removed), and click a row to make it the **active** (editable) level —
+  which collapses the dropdown. Floors use American naming (First floor, Second
+  floor, … — no ground floor). The dropdown also holds the underlay toggle. All
+  level changes are undoable; the active level persists across reloads.
+- **Auto-stacked elevations:** a level's height is derived — the bottom floor sits
+  at 0 and each floor above sits at the previous one's wall height + a 0.2 m slab.
 - **Edit one level at a time** — the plan edits the active level; the level
   directly below shows as a faint, non-interactive **underlay** (toggle in the
   plan controls) so you can align to it.

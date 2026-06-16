@@ -464,8 +464,8 @@ describe("levels", () => {
   it("adds a floor above, names + stacks it, and makes it active", () => {
     state().addLevelAbove();
     expect(levels()).toHaveLength(2);
-    expect(levels()[1]!.name).toBe("First floor");
-    // ground at 0, first floor at wallHeight (2.4) + slab (0.2)
+    expect(levels()[1]!.name).toBe("Second floor");
+    // bottom floor at 0, the floor above at wallHeight (2.4) + slab (0.2)
     expect(levels()[0]!.elevation).toBe(0);
     expect(levels()[1]!.elevation).toBeCloseTo(2.6);
     expect(state().currentLevelId).toBe(levels()[1]!.id);
@@ -495,7 +495,7 @@ describe("levels", () => {
     state().renameLevel(id, "Basement");
     expect(levels()[0]!.name).toBe("Basement");
     state().undo();
-    expect(levels()[0]!.name).toBe("Ground floor");
+    expect(levels()[0]!.name).toBe("First floor");
   });
 
   it("makes add/delete undoable", () => {

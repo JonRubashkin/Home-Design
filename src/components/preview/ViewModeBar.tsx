@@ -79,7 +79,7 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
           </button>
           {floorsOpen && (
             <div className="floors-dropdown">
-              <LevelsPanel />
+              <LevelsPanel onSelectLevel={() => setFloorsOpen(false)} />
             </div>
           )}
         </div>

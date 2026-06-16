@@ -1193,4 +1193,134 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       </>
     ),
   },
+
+  // ---------------- OFFICE ----------------
+  {
+    id: "desk",
+    name: "Desk",
+    category: "office",
+    footprint: { width: 1.4, depth: 0.7 },
+    height: 0.75,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.75,
+    scaling: axesScale({ x: [0.6, 1.8] }),
+    slots: [
+      { name: "top", default: WOOD_LIGHT },
+      { name: "legs", default: METAL },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.7;
+      return [
+        box("top", [W, 0.05, D], [0, 0.72, 0]),
+        ...legs("legs", W, D, 0.7, 0.06, 0.05),
+        box("legs", [W - 0.2, 0.3, 0.03], [0, 0.52, -D / 2 + 0.05]), // modesty
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}
+        {gl(-w / 2 + 0.1, -d / 2 + 0.07, w / 2 - 0.1, -d / 2 + 0.07, "back")}
+      </>
+    ),
+  },
+  {
+    id: "office-chair",
+    name: "Office chair",
+    category: "office",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 1.0,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "seat", default: FABRIC2 },
+      { name: "back", default: FABRIC2 },
+      { name: "base", default: solid("#2b2e35") },
+    ],
+    build: () => {
+      const D = 0.6;
+      return [
+        box("seat", [0.48, 0.1, 0.46], [0, 0.48, 0.04]),
+        box("back", [0.46, 0.5, 0.07], [0, 0.74, -D / 2 + 0.06]),
+        cyl("base", 0.03, 0.42, [0, 0.26, 0]), // gas column
+        cyl("base", 0.28, 0.04, [0, 0.04, 0]), // 5-star base
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.04, 0.18, "seat")}
+        {gl(-0.18, -d / 2 + 0.07, 0.18, -d / 2 + 0.07, "back")}
+        {gl(-w / 2 + 0.08, -d / 2 + 0.08, w / 2 - 0.08, d / 2 - 0.08, "x1")}
+        {gl(-w / 2 + 0.08, d / 2 - 0.08, w / 2 - 0.08, -d / 2 + 0.08, "x2")}
+      </>
+    ),
+  },
+  {
+    id: "filing-cabinet",
+    name: "Filing cabinet",
+    category: "office",
+    footprint: { width: 0.45, depth: 0.6 },
+    height: 0.72,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.72,
+    // Two-drawer up to a tall multi-drawer unit — height flexes.
+    scaling: axesScale({ y: [0.8, 2.0] }),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "drawers", default: solid("#b0b4ba") },
+    ],
+    build: () => {
+      const W = 0.45,
+        D = 0.6,
+        H = 0.72;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("drawers", [W - 0.06, 0.3, 0.02], [0, 0.52, D / 2 - 0.005]),
+        box("drawers", [W - 0.06, 0.3, 0.02], [0, 0.19, D / 2 - 0.005]),
+        box("drawers", [0.14, 0.03, 0.03], [0, 0.52, D / 2 + 0.005]),
+        box("drawers", [0.14, 0.03, 0.03], [0, 0.19, D / 2 + 0.005]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.06, -d / 6, w / 2 - 0.06, -d / 6, "d1")}
+        {gl(-w / 2 + 0.06, d / 6, w / 2 - 0.06, d / 6, "d2")}
+        {gc(0, -d / 6 + 0.09, 0.022, "h1")}
+        {gc(0, d / 6 + 0.09, 0.022, "h2")}
+      </>
+    ),
+  },
+  {
+    id: "desk-lamp",
+    name: "Desk lamp",
+    category: "office",
+    footprint: { width: 0.25, depth: 0.25 },
+    height: 0.5,
+    wallHugger: false,
+    // Decor/surface item like the other lamps — never collides; rests on desks.
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.4),
+    slots: [
+      { name: "base", default: METAL },
+      { name: "arm", default: METAL },
+      { name: "shade", default: SHADE },
+    ],
+    build: () => [
+      cyl("base", 0.09, 0.03, [0, 0.015, 0]),
+      cyl("arm", 0.015, 0.4, [0, 0.22, 0]),
+      cyl("arm", 0.015, 0.2, [0.07, 0.43, 0], [0, 0, -Math.PI / 4]),
+      cyl("shade", 0.07, 0.1, [0.15, 0.46, 0], [Math.PI / 2, 0, Math.PI / 4]),
+    ],
+    glyph: (): ReactNode => (
+      <>
+        {gc(0, 0, 0.08, "base")}
+        {gc(0.06, -0.03, 0.05, "shade")}
+        {gl(0, 0, 0.06, -0.03, "arm")}
+      </>
+    ),
+  },
 ];

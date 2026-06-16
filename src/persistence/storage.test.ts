@@ -76,6 +76,22 @@ describe("validateDesign — windows, floors, materials", () => {
     expect(validateDesign(d).ok).toBe(true);
   });
 
+  it("accepts the landscape patterns (grass, water, gravel) on a floor", () => {
+    for (const pattern of ["grass", "water", "gravel"] as const) {
+      const d = base();
+      d.levels[0]!.floors.push({
+        id: `f-${pattern}`,
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 5, y: 0 },
+          { x: 5, y: 5 },
+        ],
+        material: { kind: "pattern", pattern, colorA: "#123456", colorB: "#abcdef" },
+      });
+      expect(validateDesign(d).ok).toBe(true);
+    }
+  });
+
   it("rejects a malformed window", () => {
     const d = base();
     d.levels[0]!.walls.push({

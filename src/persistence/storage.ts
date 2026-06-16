@@ -1,5 +1,6 @@
 import type { Design } from "../model/types";
 import { LATEST_SCHEMA_VERSION, migrateToLatest } from "../model/migrations";
+import { PATTERN_IDS } from "../materials/patterns";
 
 const STORAGE_KEY = "home-design:design:v1";
 
@@ -9,7 +10,9 @@ export type ValidationResult =
   | { ok: true; design: Design }
   | { ok: false; error: string };
 
-const PATTERNS = ["checker", "planks", "tile", "stripes"];
+// Derived from the single source of truth so new pattern ids never get rejected
+// by the importer (grass/water/gravel included automatically).
+const PATTERNS: string[] = PATTERN_IDS;
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;

@@ -7,10 +7,10 @@ import {
 } from "./index";
 
 describe("catalog", () => {
-  it("has 49 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(49);
+  it("has 60 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(60);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(49);
+    expect(new Set(ids).size).toBe(60);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -118,6 +118,15 @@ describe("catalog", () => {
     // Every advertised category has at least one item (no empty palette group).
     for (const c of CATEGORIES) {
       expect(CATALOG_ITEMS.some((e) => e.category === c)).toBe(true);
+    }
+  });
+
+  it("outdoor items are free-standing and collidable", () => {
+    const outdoor = CATALOG_ITEMS.filter((e) => e.category === "outdoor");
+    expect(outdoor).toHaveLength(11);
+    for (const e of outdoor) {
+      expect(e.wallHugger).toBe(false); // built around the lot, not walls
+      expect(e.collidable).toBe(true);
     }
   });
 

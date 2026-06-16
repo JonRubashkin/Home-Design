@@ -44,6 +44,22 @@ export function cyl(
     : { slot, primitive, position };
 }
 
+// A truncated cone (radiusBottom != radiusTop). Used for canopies/foliage; a
+// near-zero top radius gives a point (parasol). Maps to a cylinder primitive.
+export function cone(
+  slot: string,
+  radiusBottom: number,
+  radiusTop: number,
+  height: number,
+  position: Vec3,
+): Part {
+  return {
+    slot,
+    primitive: { kind: "cylinder", radiusTop, radiusBottom, height },
+    position,
+  };
+}
+
 // Four identical legs inset from the footprint corners, from the floor to `top`.
 export function legs(
   slot: string,

@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  hexToRgb,
-  patternPixel,
-  renderPatternRGBA,
-  PATTERN_IDS,
-  type RGB,
-} from "./patterns";
+import { hexToRgb, patternPixel, renderPatternRGBA, type RGB } from "./patterns";
 
 const A: RGB = [10, 20, 30];
 const B: RGB = [200, 210, 220];
@@ -26,9 +20,13 @@ describe("hexToRgb", () => {
   });
 });
 
+// Interior patterns are two-tone (exactly A or B); landscape patterns blend.
+const TWO_TONE = ["checker", "planks", "tile", "stripes"] as const;
+const LANDSCAPE = ["grass", "water", "gravel"] as const;
+
 describe("patternPixel", () => {
-  it("only ever returns one of the two colors", () => {
-    for (const p of PATTERN_IDS) {
+  it("two-tone patterns only ever return one of the two colors", () => {
+    for (const p of TWO_TONE) {
       for (let y = 0; y < SIZE; y += 13) {
         for (let x = 0; x < SIZE; x += 13) {
           const px = patternPixel(p, x, y, SIZE, A, B);
@@ -36,6 +34,43 @@ describe("patternPixel", () => {
         }
       }
     }
+  });
+
+  it("landscape patterns blend within the A..B range per channel", () => {
+    const lo = [Math.min(A[0], B[0]), Math.min(A[1], B[1]), Math.min(A[2], B[2])];
+    const hi = [Math.max(A[0], B[0]), Math.max(A[1], B[1]), Math.max(A[2], B[2])];
+    for (const p of LANDSCAPE) {
+      for (let y = 0; y < SIZE; y += 17) {
+        for (let x = 0; x < SIZE; x += 17) {
+          const px = patternPixel(p, x, y, SIZE, A, B);
+          for (let c = 0; c < 3; c++) {
+            expect(px[c]!).toBeGreaterThanOrEqual(lo[c]! - 1e-9);
+            expect(px[c]!).toBeLessThanOrEqual(hi[c]! + 1e-9);
+          }
+        }
+      }
+    }
+  });
+
+  it("landscape patterns tile seamlessly (periodic with size)", () => {
+    const pts: [number, number][] = [
+      [0, 0],
+      [37, 5],
+      [128, 200],
+      [255, 17],
+    ];
+    // Sine-based ripples drift by float rounding across the seam, so compare
+    // per-channel within a tolerance rather than exact equality.
+    const near = (p: (typeof LANDSCAPE)[number], x: number, y: number) => {
+      const base = patternPixel(p, x, y, SIZE, A, B);
+      const dx = patternPixel(p, x + SIZE, y, SIZE, A, B);
+      const dy = patternPixel(p, x, y + SIZE, SIZE, A, B);
+      for (let c = 0; c < 3; c++) {
+        expect(Math.abs(dx[c]! - base[c]!)).toBeLessThan(1e-3);
+        expect(Math.abs(dy[c]! - base[c]!)).toBeLessThan(1e-3);
+      }
+    };
+    for (const p of LANDSCAPE) for (const [x, y] of pts) near(p, x, y);
   });
 
   it("checker alternates by quadrant", () => {

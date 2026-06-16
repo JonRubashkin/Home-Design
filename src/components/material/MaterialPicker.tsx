@@ -30,6 +30,10 @@ const DEFAULT_PATTERN_COLORS: Record<PatternId, { a: string; b: string }> = {
   planks: { a: "#b9966b", b: "#7a5a35" },
   tile: { a: "#e8e8e8", b: "#9aa0a6" },
   stripes: { a: "#3b5b87", b: "#ffffff" },
+  // Landscape surfaces for outdoor floor regions (lawn, pond/river, path).
+  grass: { a: "#4f7a3a", b: "#6f9a4e" },
+  water: { a: "#2f6f9e", b: "#5fa8d6" },
+  gravel: { a: "#8d8a84", b: "#bdb9b1" },
 };
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

@@ -169,8 +169,13 @@ npm run format   # Prettier
   are rejected. Floors fill the plan beneath walls and render as flat meshes in
   3D in all view modes.
 - **Material picker** — preset swatches, a color wheel + hex input for solids,
-  and four procedural patterns (checker, planks, tile, stripes) with two colors
-  each; patterns render as textures in both the plan and 3D.
+  and seven procedural patterns with two colors each; patterns render as textures
+  in both the plan and 3D. The interior patterns (checker, planks, tile, stripes)
+  are two-tone; the **landscape** patterns (**grass, water, gravel**) blend the
+  two colors for a noisy/rippled look and are meant for outdoor floor regions
+  (a lawn, pond, river, or path is just a floor polygon). **Water is opaque** —
+  the watery look comes from the texture + sheen, not transparency. (Wood decking
+  and stone paving use the existing planks / tile patterns.)
 
 ### Doors (phase 2a)
 
@@ -227,7 +232,7 @@ npm run format   # Prettier
   item. **Schema v4** adds per-item `scale` (v3 adds `furniture`); older designs
   migrate automatically.
 
-**Catalog (49):**
+**Catalog (60):**
 
 - _Living:_ 3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
@@ -242,6 +247,8 @@ npm run format   # Prettier
 - _Office:_ desk, office chair, filing cabinet, desk lamp (the bookshelf is
   reused for the office too).
 - _Utility / laundry:_ washing machine, dryer.
+- _Outdoor:_ patio table, patio chair, sun lounger, parasol, BBQ grill, garden
+  bench, planter box, fire pit, tree, hedge, fence panel.
 
 _Deferred to a future wall-mount / vertical-stacking pass (not yet available as
 floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
@@ -294,7 +301,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 49 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 60 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

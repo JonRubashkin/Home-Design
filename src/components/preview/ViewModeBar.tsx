@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useStore } from "../../store/store";
 import type { ViewMode } from "../../persistence/viewPrefs";
+import { LevelsPanel } from "../LevelsPanel";
 
 const MODE_LABELS: { mode: ViewMode; label: string; title: string }[] = [
   { mode: "full", label: "Full", title: "Show all walls" },
@@ -19,6 +21,10 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
   const activeLevelOnly = useStore((s) => s.activeLevelOnly);
   const setActiveLevelOnly = useStore((s) => s.setActiveLevelOnly);
   const multiLevel = useStore((s) => s.design.levels.length > 1);
+  // Only the 3D pane is visible in the "3d" layout, where the plan's Floors
+  // dropdown isn't available — offer a floor picker here instead.
+  const planHidden = useStore((s) => s.layout === "3d");
+  const [floorsOpen, setFloorsOpen] = useState(false);
 
   return (
     <div className="viewbar">
@@ -57,6 +63,25 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
           >
             Ghost
           </button>
+        </div>
+      )}
+
+      {planHidden && multiLevel && (
+        <div className="floors-menu">
+          <button
+            type="button"
+            className={`viewbar-fit${floorsOpen ? " active" : ""}`}
+            aria-expanded={floorsOpen}
+            title="Choose which floor to view / edit"
+            onClick={() => setFloorsOpen((v) => !v)}
+          >
+            Floors ▾
+          </button>
+          {floorsOpen && (
+            <div className="floors-dropdown">
+              <LevelsPanel />
+            </div>
+          )}
         </div>
       )}
 

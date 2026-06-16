@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 import type { MaterialRef } from "../model/types";
 
-export type Category = "living" | "bedroom" | "kitchen" | "bathroom";
+export type Category =
+  | "living"
+  | "bedroom"
+  | "kitchen"
+  | "bathroom"
+  | "office"
+  | "utility";
 
 // Local space for builders & glyphs: x = width (right), y/up in 3D, z = depth
 // with +z the item's FRONT. The 2D glyph uses (x = width, y = depth, +y front).

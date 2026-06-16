@@ -295,6 +295,121 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       </>
     ),
   },
+  {
+    id: "sofa-sectional",
+    name: "Sectional sofa",
+    category: "living",
+    footprint: { width: 2.4, depth: 1.6 },
+    height: 0.8,
+    wallHugger: true,
+    collidable: true,
+    // L-shaped: width and the return depth both flex.
+    scaling: axesScale({ x: [0.7, 1.6], z: [0.7, 1.4] }),
+    slots: [
+      { name: "body", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 2.4,
+        D = 1.6;
+      return [
+        box("body", [W, 0.34, 0.8], [0, 0.32, D / 2 - 0.4]), // front seat row
+        box("body", [0.8, 0.34, D - 0.8], [-W / 2 + 0.4, 0.32, -0.4]), // chaise
+        box("body", [W, 0.5, 0.16], [0, 0.5, -D / 2 + 0.08]), // back (long)
+        box("body", [0.16, 0.5, D], [-W / 2 + 0.08, 0.5, 0]), // back (side)
+        box("legs", [W - 0.1, 0.14, 0.7], [0, 0.07, D / 2 - 0.4]),
+        box("legs", [0.7, 0.14, D - 0.9], [-W / 2 + 0.4, 0.07, -0.45]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.05, w - 0.12, 0.16, "back")}
+        {gr(-w / 2 + 0.05, -d / 2 + 0.05, 0.16, d - 0.1, "side")}
+      </>
+    ),
+  },
+  {
+    id: "sofa-2seat",
+    name: "Loveseat",
+    category: "living",
+    footprint: { width: 1.5, depth: 0.9 },
+    height: 0.8,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ x: [0.7, 1.5] }),
+    slots: [
+      { name: "body", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 1.5,
+        D = 0.9;
+      return [
+        box("body", [W, 0.32, D - 0.18], [0, 0.32, 0.09]),
+        box("body", [W, 0.5, 0.18], [0, 0.5, -D / 2 + 0.09]),
+        box("body", [0.18, 0.42, D], [-W / 2 + 0.09, 0.37, 0]),
+        box("body", [0.18, 0.42, D], [W / 2 - 0.09, 0.37, 0]),
+        ...legs("legs", W, D, 0.16),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.06, w - 0.16, 0.16, "back")}
+        {gl(0, -d / 2 + 0.24, 0, d / 2 - 0.08, "div")}
+      </>
+    ),
+  },
+  {
+    id: "ottoman",
+    name: "Ottoman",
+    category: "living",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.42,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.6, 1.8),
+    slots: [{ name: "body", default: FABRIC2 }],
+    build: () => [
+      box("body", [0.5, 0.06, 0.5], [0, 0.03, 0]),
+      box("body", [0.54, 0.24, 0.54], [0, 0.2, 0]),
+      rbox("body", [0.58, 0.16, 0.58], 0.07, [0, 0.36, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0, Math.min(w, d) / 2 - 0.05, "o")}
+        {gc(0, 0, 0.05, "tuft")}
+      </>
+    ),
+  },
+  {
+    id: "fireplace",
+    name: "Fireplace",
+    category: "living",
+    footprint: { width: 1.4, depth: 0.4 },
+    height: 1.2,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ x: [0.6, 1.8] }),
+    slots: [
+      { name: "surround", default: solid("#cfcac0") },
+      { name: "firebox", default: SCREEN },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.4,
+        H = 1.2;
+      return [
+        box("surround", [0.26, H, D], [-W / 2 + 0.13, H / 2, 0]),
+        box("surround", [0.26, H, D], [W / 2 - 0.13, H / 2, 0]),
+        box("surround", [W, 0.2, D + 0.06], [0, H - 0.1, 0]),
+        box("surround", [W, 0.18, D], [0, 0.09, 0]),
+        box("firebox", [W - 0.5, H - 0.38, D - 0.08], [0, H / 2, 0.03]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.28, -d / 2 + 0.08, w - 0.56, d - 0.16, "firebox")}</>
+    ),
+  },
 
   // ---------------- BEDROOM ----------------
   {
@@ -484,6 +599,99 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     },
     glyph: (w, d): ReactNode => (
       <>{gr(-w / 2 + 0.06, -d / 2 + 0.02, w - 0.12, d - 0.04, "glass")}</>
+    ),
+  },
+  {
+    id: "vanity-table",
+    name: "Dressing table",
+    category: "bedroom",
+    footprint: { width: 1.1, depth: 0.5 },
+    height: 1.4,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.8,
+    scaling: axesScale({ x: [0.6, 1.6] }),
+    slots: [
+      { name: "surface", default: WOOD_LIGHT },
+      { name: "legs", default: WOOD_DARK },
+      { name: "mirror", default: GLASS },
+      { name: "stool", default: FABRIC2 },
+    ],
+    build: () => {
+      const W = 1.1,
+        D = 0.5;
+      return [
+        box("surface", [W, 0.05, D], [0, 0.77, 0]),
+        ...legs("legs", W, D, 0.75, 0.05, 0.04),
+        box("mirror", [0.7, 0.62, 0.03], [0, 1.1, -D / 2 + 0.03]),
+        box("stool", [0.42, 0.45, 0.34], [0, 0.225, 0.06]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.12, -d / 2 + 0.05, w / 2 - 0.12, -d / 2 + 0.05, "mirror")}
+        {gr(-0.21, 0.02, 0.42, 0.16, "stool")}
+      </>
+    ),
+  },
+  {
+    id: "bed-bench",
+    name: "Bed bench",
+    category: "bedroom",
+    footprint: { width: 1.2, depth: 0.4 },
+    height: 0.48,
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.48,
+    scaling: axesScale({ x: [0.5, 2.0] }),
+    slots: [
+      { name: "seat", default: FABRIC },
+      { name: "legs", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 1.2,
+        D = 0.4;
+      return [
+        rbox("seat", [W, 0.16, D], 0.05, [0, 0.4, 0]),
+        ...legs("legs", W, D, 0.34, 0.05, 0.04),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.06, -d / 2 + 0.06, w - 0.12, d - 0.12, "seat")}</>
+    ),
+  },
+  {
+    id: "crib",
+    name: "Crib",
+    category: "bedroom",
+    footprint: { width: 1.3, depth: 0.7 },
+    height: 0.9,
+    wallHugger: true,
+    collidable: true,
+    // Cribs are a fairly standard size — only a tight tolerance.
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "frame", default: WOOD },
+      { name: "mattress", default: MATTRESS },
+    ],
+    build: () => {
+      const W = 1.3,
+        D = 0.7;
+      return [
+        box("frame", [W, 0.5, 0.05], [0, 0.55, D / 2 - 0.025]),
+        box("frame", [W, 0.5, 0.05], [0, 0.55, -D / 2 + 0.025]),
+        box("frame", [0.05, 0.5, D], [-W / 2 + 0.025, 0.55, 0]),
+        box("frame", [0.05, 0.5, D], [W / 2 - 0.025, 0.55, 0]),
+        box("mattress", [W - 0.12, 0.12, D - 0.12], [0, 0.42, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "mattress")}
+        {gl(-w / 4, -d / 2 + 0.05, -w / 4, d / 2 - 0.05, "s1")}
+        {gl(0, -d / 2 + 0.05, 0, d / 2 - 0.05, "s2")}
+        {gl(w / 4, -d / 2 + 0.05, w / 4, d / 2 - 0.05, "s3")}
+      </>
     ),
   },
 
@@ -688,6 +896,130 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "seat")}</>
     ),
   },
+  {
+    id: "stove",
+    name: "Stove",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.9,
+    wallHugger: true,
+    collidable: true,
+    // Standard range — a tight uniform tolerance only.
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "cooktop", default: SCREEN },
+      { name: "controls", default: solid("#3a3d44") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6;
+      return [
+        box("body", [W, 0.84, D], [0, 0.42, 0]),
+        box("cooktop", [W, 0.04, D], [0, 0.86, 0]),
+        cyl("cooktop", 0.1, 0.02, [-0.14, 0.89, -0.14]),
+        cyl("cooktop", 0.1, 0.02, [0.14, 0.89, -0.14]),
+        cyl("cooktop", 0.1, 0.02, [-0.14, 0.89, 0.14]),
+        cyl("cooktop", 0.1, 0.02, [0.14, 0.89, 0.14]),
+        box("controls", [W - 0.06, 0.08, 0.03], [0, 0.78, D / 2 - 0.02]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(-w / 4, -d / 4, 0.1, "b1")}
+        {gc(w / 4, -d / 4, 0.1, "b2")}
+        {gc(-w / 4, d / 4, 0.1, "b3")}
+        {gc(w / 4, d / 4, 0.1, "b4")}
+      </>
+    ),
+  },
+  {
+    id: "dishwasher",
+    name: "Dishwasher",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "door", default: solid("#c2c6cc") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("door", [W - 0.06, 0.66, 0.03], [0, 0.4, D / 2 - 0.005]),
+        box("door", [0.4, 0.04, 0.04], [0, 0.78, D / 2 + 0.005]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.06, -d / 2 + 0.08, w - 0.12, d - 0.16, "door")}
+        {gl(-0.18, -d / 2 + 0.1, 0.18, -d / 2 + 0.1, "handle")}
+      </>
+    ),
+  },
+  {
+    id: "pantry-cabinet",
+    name: "Pantry cabinet",
+    category: "kitchen",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 2.1,
+    wallHugger: true,
+    collidable: true,
+    scaling: axesScale({ y: [0.8, 1.2] }),
+    slots: [{ name: "body", default: solid("#d7d2c8") }],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 2.1;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [0.02, H - 0.1, 0.02], [0, H / 2, D / 2 - 0.005]),
+        box("body", [0.04, 0.3, 0.03], [-0.06, 1.0, D / 2 - 0.005]),
+        box("body", [0.04, 0.3, 0.03], [0.06, 1.1, D / 2 - 0.005]),
+      ];
+    },
+    glyph: (_w, d): ReactNode => (
+      <>
+        {gl(0, -d / 2 + 0.05, 0, d / 2 - 0.05, "split")}
+        {gc(-0.06, 0, 0.025, "h1")}
+        {gc(0.06, 0, 0.025, "h2")}
+      </>
+    ),
+  },
+  {
+    id: "kitchen-island",
+    name: "Kitchen island",
+    category: "kitchen",
+    footprint: { width: 1.4, depth: 0.9 },
+    height: 0.9,
+    // A free-standing centerpiece — never hugs a wall.
+    wallHugger: false,
+    collidable: true,
+    surfaceTop: 0.9,
+    scaling: axesScale({ x: [0.6, 2.0], z: [0.6, 1.6] }),
+    slots: [
+      { name: "cabinet", default: solid("#d7d2c8") },
+      { name: "countertop", default: STONE },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.9;
+      return [
+        box("cabinet", [W, 0.84, D], [0, 0.42, 0]),
+        box("cabinet", [0.02, 0.7, 0.02], [0, 0.45, D / 2 - 0.005]),
+        box("countertop", [W + 0.1, 0.06, D + 0.1], [0, 0.87, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}</>
+    ),
+  },
 
   // ---------------- BATHROOM ----------------
   {
@@ -834,6 +1166,225 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     },
     glyph: (_w, d): ReactNode => (
       <>{gl(0, -d / 2 + 0.03, 0, d / 2 - 0.03, "split")}</>
+    ),
+  },
+  {
+    id: "bidet",
+    name: "Bidet",
+    category: "bathroom",
+    footprint: { width: 0.38, depth: 0.6 },
+    height: 0.4,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.85, 1.15),
+    slots: [{ name: "body", default: PORCELAIN }],
+    build: () => {
+      const D = 0.6;
+      return [
+        box("body", [0.18, 0.36, 0.2], [0, 0.18, -D / 2 + 0.12]), // pedestal
+        cyl("body", 0.16, 0.34, [0, 0.2, 0.06]), // bowl
+        cyl("body", 0.17, 0.04, [0, 0.39, 0.06]), // rim
+      ];
+    },
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0.06, w / 2 - 0.04, "bowl")}
+        {gc(0, 0.06, 0.05, "jet")}
+      </>
+    ),
+  },
+
+  // ---------------- OFFICE ----------------
+  {
+    id: "desk",
+    name: "Desk",
+    category: "office",
+    footprint: { width: 1.4, depth: 0.7 },
+    height: 0.75,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.75,
+    scaling: axesScale({ x: [0.6, 1.8] }),
+    slots: [
+      { name: "top", default: WOOD_LIGHT },
+      { name: "legs", default: METAL },
+    ],
+    build: () => {
+      const W = 1.4,
+        D = 0.7;
+      return [
+        box("top", [W, 0.05, D], [0, 0.72, 0]),
+        ...legs("legs", W, D, 0.7, 0.06, 0.05),
+        box("legs", [W - 0.2, 0.3, 0.03], [0, 0.52, -D / 2 + 0.05]), // modesty
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}
+        {gl(-w / 2 + 0.1, -d / 2 + 0.07, w / 2 - 0.1, -d / 2 + 0.07, "back")}
+      </>
+    ),
+  },
+  {
+    id: "office-chair",
+    name: "Office chair",
+    category: "office",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 1.0,
+    wallHugger: false,
+    collidable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "seat", default: FABRIC2 },
+      { name: "back", default: FABRIC2 },
+      { name: "base", default: solid("#2b2e35") },
+    ],
+    build: () => {
+      const D = 0.6;
+      return [
+        box("seat", [0.48, 0.1, 0.46], [0, 0.48, 0.04]),
+        box("back", [0.46, 0.5, 0.07], [0, 0.74, -D / 2 + 0.06]),
+        cyl("base", 0.03, 0.42, [0, 0.26, 0]), // gas column
+        cyl("base", 0.28, 0.04, [0, 0.04, 0]), // 5-star base
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.04, 0.18, "seat")}
+        {gl(-0.18, -d / 2 + 0.07, 0.18, -d / 2 + 0.07, "back")}
+        {gl(-w / 2 + 0.08, -d / 2 + 0.08, w / 2 - 0.08, d / 2 - 0.08, "x1")}
+        {gl(-w / 2 + 0.08, d / 2 - 0.08, w / 2 - 0.08, -d / 2 + 0.08, "x2")}
+      </>
+    ),
+  },
+  {
+    id: "filing-cabinet",
+    name: "Filing cabinet",
+    category: "office",
+    footprint: { width: 0.45, depth: 0.6 },
+    height: 0.72,
+    wallHugger: true,
+    collidable: true,
+    surfaceTop: 0.72,
+    // Two-drawer up to a tall multi-drawer unit — height flexes.
+    scaling: axesScale({ y: [0.8, 2.0] }),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "drawers", default: solid("#b0b4ba") },
+    ],
+    build: () => {
+      const W = 0.45,
+        D = 0.6,
+        H = 0.72;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("drawers", [W - 0.06, 0.3, 0.02], [0, 0.52, D / 2 - 0.005]),
+        box("drawers", [W - 0.06, 0.3, 0.02], [0, 0.19, D / 2 - 0.005]),
+        box("drawers", [0.14, 0.03, 0.03], [0, 0.52, D / 2 + 0.005]),
+        box("drawers", [0.14, 0.03, 0.03], [0, 0.19, D / 2 + 0.005]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.06, -d / 6, w / 2 - 0.06, -d / 6, "d1")}
+        {gl(-w / 2 + 0.06, d / 6, w / 2 - 0.06, d / 6, "d2")}
+        {gc(0, -d / 6 + 0.09, 0.022, "h1")}
+        {gc(0, d / 6 + 0.09, 0.022, "h2")}
+      </>
+    ),
+  },
+  {
+    id: "desk-lamp",
+    name: "Desk lamp",
+    category: "office",
+    footprint: { width: 0.25, depth: 0.25 },
+    height: 0.5,
+    wallHugger: false,
+    // Decor/surface item like the other lamps — never collides; rests on desks.
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.4),
+    slots: [
+      { name: "base", default: METAL },
+      { name: "arm", default: METAL },
+      { name: "shade", default: SHADE },
+    ],
+    build: () => [
+      cyl("base", 0.09, 0.03, [0, 0.015, 0]),
+      cyl("arm", 0.015, 0.4, [0, 0.22, 0]),
+      cyl("arm", 0.015, 0.2, [0.07, 0.43, 0], [0, 0, -Math.PI / 4]),
+      cyl("shade", 0.07, 0.1, [0.15, 0.46, 0], [Math.PI / 2, 0, Math.PI / 4]),
+    ],
+    glyph: (): ReactNode => (
+      <>
+        {gc(0, 0, 0.08, "base")}
+        {gc(0.06, -0.03, 0.05, "shade")}
+        {gl(0, 0, 0.06, -0.03, "arm")}
+      </>
+    ),
+  },
+
+  // ---------------- UTILITY / LAUNDRY ----------------
+  {
+    id: "washing-machine",
+    name: "Washing machine",
+    category: "utility",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: PORCELAIN },
+      { name: "door", default: solid("#7d8794") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [W - 0.1, 0.08, 0.04], [0, H - 0.08, D / 2 - 0.02]), // panel
+        cyl("door", 0.2, 0.04, [0, 0.42, D / 2 - 0.01], [Math.PI / 2, 0, 0]),
+        cyl("door", 0.13, 0.03, [0, 0.42, D / 2 + 0.005], [Math.PI / 2, 0, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.04, w / 4, "porthole")}
+        {gr(-w / 2 + 0.06, -d / 2 + 0.06, 0.16, 0.08, "drawer")}
+      </>
+    ),
+  },
+  {
+    id: "dryer",
+    name: "Dryer",
+    category: "utility",
+    footprint: { width: 0.6, depth: 0.6 },
+    height: 0.85,
+    wallHugger: true,
+    collidable: true,
+    scaling: uniformScale(0.9, 1.1),
+    slots: [
+      { name: "body", default: PORCELAIN },
+      { name: "door", default: solid("#9aa0a6") },
+    ],
+    build: () => {
+      const W = 0.6,
+        D = 0.6,
+        H = 0.85;
+      return [
+        box("body", [W, H, D], [0, H / 2, 0]),
+        box("body", [W - 0.1, 0.08, 0.04], [0, H - 0.08, D / 2 - 0.02]), // panel
+        cyl("door", 0.22, 0.04, [0, 0.4, D / 2 - 0.01], [Math.PI / 2, 0, 0]),
+        cyl("door", 0.15, 0.03, [0, 0.4, D / 2 + 0.005], [Math.PI / 2, 0, 0]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gc(0, 0.02, w / 4 + 0.02, "porthole")}
+        {gl(-w / 4, d / 2 - 0.08, w / 4, d / 2 - 0.08, "vent")}
+      </>
     ),
   },
 ];

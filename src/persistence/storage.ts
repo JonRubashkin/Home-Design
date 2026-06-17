@@ -112,6 +112,7 @@ function structuralError(obj: Record<string, unknown>): string | null {
         !isVec2(item.position) ||
         !isNum(item.rotation) ||
         !isVec3(item.scale) ||
+        (item.variant !== undefined && !isStr(item.variant)) ||
         !isObj(item.materials)
       )
         return "A furniture item is malformed.";

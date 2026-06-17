@@ -88,6 +88,10 @@ export interface FurnitureItem {
   position: Vec2; // plan coords of footprint CENTER
   rotation: number; // degrees; UI rotates in 15° steps
   scale: Vec3; // per-axis multipliers (x=width, y=height, z=depth), default 1
+  // Phase 4c: shape variant id for entries that declare `variants` (e.g. trees,
+  // shrubs). Optional/undefined resolves to the entry's default variant — so
+  // pre-4c saved items load unchanged. Ignored by entries without variants.
+  variant?: string;
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
@@ -111,7 +115,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 6;
+  schemaVersion: 7;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

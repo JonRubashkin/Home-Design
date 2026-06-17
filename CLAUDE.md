@@ -50,10 +50,11 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 6;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 7;         // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
-                            // v6 = staircases. Migrations in
-                            // src/model/migrations.ts upgrade older saved designs.
+                            // v6 = staircases; v7 = furniture shape variants.
+                            // Migrations in src/model/migrations.ts upgrade older
+                            // saved designs.
   name: string;
   site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
@@ -90,6 +91,9 @@ interface FurnitureItem {   // Phase 2b. References a catalog id — never geome
   rotation: number;         // degrees; UI rotates in 15° steps
   scale: Vec3;              // Phase 2c. per-axis multiplier, default {1,1,1};
                             // clamped to the catalog entry's `scaling` policy.
+  variant?: string;         // Phase 4c. shape-variant id for entries that declare
+                            // `variants` (trees, shrubs); undefined → the entry's
+                            // default variant, so pre-v7 items load unchanged.
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
@@ -177,10 +181,24 @@ in code under `src/catalog/`:
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
   `stackable` (small item that auto-climbs onto a surface), a `scaling` policy
   (see below), ordered named material `slots`
-  (slot[0] is the primary slot the Paint tool recolors), a pure `build()` that
-  returns `Part[]` (composed from shared `box` / `roundedBox` / `cylinder`
-  primitives in local space, y up from the floor, +z = front), and a `glyph(w,d)`
-  that returns the distinguishing 2D plan marks.
+  (slot[0] is the primary slot the Paint tool recolors), a pure `build(variant?)`
+  that returns `Part[]` (composed from shared `box` / `roundedBox` / `cylinder`
+  primitives in local space, y up from the floor, +z = front), and a
+  `glyph(w,d,variant?)` that returns the distinguishing 2D plan marks.
+- **Shape variants (Phase 4c).** An entry may declare `variants: CatalogVariant[]`
+  (`{ id, name }`); `build`/`glyph` switch on the resolved variant id and the
+  footprint/height/slots/scaling are shared across an entry's variants.
+  `variants[0]` is the default. A `FurnitureItem.variant` (optional; undefined →
+  default, so pre-v7 items load unchanged) picks one; `resolveVariantId(entry,
+  requested)` (in `src/catalog/index.ts`) is the single source of truth every
+  `build()`/`glyph()` call site uses to coerce a missing/invalid id to a valid
+  one. Variants are exposed as **one palette button per variant** (placement sets
+  `placingVariant`) AND a **Variant selector in the properties panel** (switches a
+  placed item in place via `updateFurniture`, undoable). Trees (Broadleaf /
+  Conifer / Ornamental) and shrubs (Spreading / Rounded / Columnar) use this;
+  collision is unaffected (footprint is variant-independent). Adding a variant is
+  additive (no schema bump); adding the field was the v6→v7 migration (pre-4c
+  `tree`→Broadleaf, `hedge`→Spreading shrub, widened to keep its old footprint).
 - **Scaling (Phase 2c).** `scaling: CatalogScaling` is `{ mode: "none" }`
   (fixed size), `{ mode: "uniform"; uniform: [min,max] }` (one multiplier on every
   axis), or `{ mode: "axes"; axes: { x?,y?,z?: [min,max] } }` (per-axis ranges;
@@ -221,9 +239,10 @@ in code under `src/catalog/`:
   bathroom cabinet); *Office* (desk, office chair, filing cabinet, desk lamp —
   the bookshelf is reused, not duplicated); *Utility* (washing machine, dryer);
   *Outdoor* (patio table, patio chair, sun lounger, parasol, BBQ grill, garden
-  bench, planter box, fire pit, tree, hedge, fence panel — all free-standing and
+  bench, planter box, fire pit, tree, shrub, fence panel — all free-standing and
   collidable; placed on the ground level; decking/paving use the existing
-  planks/tile floor patterns, not new items).
+  planks/tile floor patterns, not new items). The `tree` and `shrub` (id `hedge`)
+  entries each carry three shape **variants** (Phase 4c, above).
   **Deferred** to a future wall-mount / vertical-stacking pass (do NOT add as
   floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
   shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances.

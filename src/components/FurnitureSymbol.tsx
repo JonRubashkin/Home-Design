@@ -1,6 +1,6 @@
 import type { MaterialRef, Vec3 } from "../model/types";
 import type { CatalogEntry } from "../catalog";
-import { UNIT_SCALE } from "../catalog";
+import { UNIT_SCALE, resolveVariantId } from "../catalog";
 import { representativeColor } from "../materials/textures";
 
 // The 2D plan symbol for a furniture item: footprint outline (filled with the
@@ -13,6 +13,7 @@ export function FurnitureSymbolShape({
   position,
   rotation,
   scale = UNIT_SCALE,
+  variant,
   materials,
   className,
 }: {
@@ -20,6 +21,7 @@ export function FurnitureSymbolShape({
   position: { x: number; y: number };
   rotation: number;
   scale?: Vec3;
+  variant?: string;
   materials: Record<string, MaterialRef>;
   className: string;
 }) {
@@ -27,6 +29,7 @@ export function FurnitureSymbolShape({
   const d = entry.footprint.depth;
   const primary = entry.slots[0]!;
   const fill = representativeColor(materials[primary.name] ?? primary.default);
+  const variantId = resolveVariantId(entry, variant);
   return (
     <g
       className={className}
@@ -41,7 +44,7 @@ export function FurnitureSymbolShape({
         fill={fill}
         vectorEffect="non-scaling-stroke"
       />
-      <g className="furn-glyph">{entry.glyph(w, d)}</g>
+      <g className="furn-glyph">{entry.glyph(w, d, variantId)}</g>
     </g>
   );
 }
@@ -49,9 +52,11 @@ export function FurnitureSymbolShape({
 // A small standalone thumbnail of a catalog item's plan symbol for the palette.
 export function FurnitureThumb({
   entry,
+  variant,
   size = 46,
 }: {
   entry: CatalogEntry;
+  variant?: string;
   size?: number;
 }) {
   const pad = 0.18;
@@ -69,6 +74,7 @@ export function FurnitureThumb({
         entry={entry}
         position={{ x: 0, y: 0 }}
         rotation={0}
+        variant={variant}
         materials={{}}
         className="furn"
       />

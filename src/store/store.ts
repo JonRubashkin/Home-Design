@@ -295,8 +295,10 @@ interface AppState {
   // hover and the properties-panel side chips). Not persisted, not in history.
   sideHighlight: { wallId: string; side: WallSide } | null;
   // The catalog item currently being placed by the Furniture tool (a ghost
-  // follows the cursor). Transient UI state.
+  // follows the cursor). Transient UI state. `placingVariant` is the chosen
+  // shape variant for variant-bearing items (null = the entry's default).
   placingCatalogId: string | null;
+  placingVariant: string | null;
   // Fill Room tool: what to fill (floor / walls / both). Transient UI state.
   fillTarget: FillTarget;
 
@@ -330,7 +332,10 @@ interface AppState {
   setSideHighlight: (
     highlight: { wallId: string; side: WallSide } | null,
   ) => void;
-  setPlacingCatalogId: (catalogId: string | null) => void;
+  setPlacingCatalogId: (
+    catalogId: string | null,
+    variant?: string | null,
+  ) => void;
   setFillTarget: (target: FillTarget) => void;
   // Fill the enclosed room around `point` on the active level (floor + interior
   // wall paint) with the current material. One undo step. Returns false (no
@@ -376,7 +381,12 @@ interface AppState {
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
   setFloorMaterial: (id: string, material: MaterialRef) => void;
   deleteFloor: (id: string) => void;
-  placeFurniture: (catalogId: string, position: Vec2, rotation: number) => void;
+  placeFurniture: (
+    catalogId: string,
+    position: Vec2,
+    rotation: number,
+    variant?: string | null,
+  ) => void;
   updateFurniture: (
     id: string,
     patch: Partial<Omit<FurnitureItem, "id" | "catalogId">>,
@@ -487,6 +497,7 @@ export const useStore = create<AppState>((set, get) => {
     hasSavedDesign: false,
     sideHighlight: null,
     placingCatalogId: null,
+    placingVariant: null,
     fillTarget: "both",
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
@@ -504,7 +515,8 @@ export const useStore = create<AppState>((set, get) => {
     setActiveTool: (tool) => set({ activeTool: tool }),
     setSelection: (selection) => set({ selection }),
     setSideHighlight: (sideHighlight) => set({ sideHighlight }),
-    setPlacingCatalogId: (placingCatalogId) => set({ placingCatalogId }),
+    setPlacingCatalogId: (placingCatalogId, placingVariant = null) =>
+      set({ placingCatalogId, placingVariant }),
     setFillTarget: (fillTarget) => set({ fillTarget }),
 
     fillRoom: (point, target) => {
@@ -877,8 +889,11 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
-    placeFurniture: (catalogId, position, rotation) => {
-      const item = createFurniture(catalogId, position, { rotation });
+    placeFurniture: (catalogId, position, rotation, variant) => {
+      const item = createFurniture(catalogId, position, {
+        rotation,
+        ...(variant ? { variant } : {}),
+      });
       // Hard mode: refuse to place a collidable item onto another (no-op so the
       // caller's warning ghost stays and the click simply doesn't place).
       if (get().collisionMode === "hard") {

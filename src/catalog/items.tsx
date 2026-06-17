@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { CatalogEntry, CatalogScaling, ScaleAxes } from "./types";
+import type { CatalogEntry, CatalogScaling, Part, ScaleAxes } from "./types";
 import { box, cyl, cone, rbox, legs, solid } from "./parts";
 
 // Muted, consistent palette.
@@ -1630,51 +1630,149 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 3.0,
     wallHugger: false,
     collidable: true,
-    // Size variety matters for trees — a wide uniform range.
+    // Size variety matters for trees — a wide uniform range (on top of variant).
     scaling: uniformScale(0.5, 2.5),
+    // Three shape variants behind one id; broadleaf is the pre-4c look (default).
+    variants: [
+      { id: "broadleaf", name: "Broadleaf" },
+      { id: "conifer", name: "Conifer" },
+      { id: "ornamental", name: "Ornamental" },
+    ],
     slots: [
       { name: "trunk", default: solid("#6e4e34") },
       { name: "canopy", default: solid("#4e6b42") },
     ],
-    build: () => [
-      cyl("trunk", 0.12, 1.4, [0, 0.7, 0]),
-      rbox("canopy", [1.3, 1.4, 1.3], 0.55, [0, 2.0, 0]),
-      rbox("canopy", [0.9, 0.8, 0.9], 0.4, [0, 2.7, 0]),
-    ],
-    glyph: (w): ReactNode => (
-      <>
-        {gc(0, 0, w / 2 - 0.05, "canopy")}
-        {gc(0, 0, 0.08, "trunk")}
-      </>
-    ),
+    build: (variant): Part[] => {
+      if (variant === "conifer") {
+        // Narrow trunk + stacked evergreen cones, tapering to a point.
+        return [
+          cyl("trunk", 0.09, 1.0, [0, 0.5, 0]),
+          cone("canopy", 0.7, 0.34, 1.0, [0, 1.3, 0]),
+          cone("canopy", 0.5, 0.22, 0.9, [0, 2.0, 0]),
+          cone("canopy", 0.32, 0.0, 0.8, [0, 2.6, 0]),
+        ];
+      }
+      if (variant === "ornamental") {
+        // Slender trunk + a small oval canopy (a decorative tree).
+        return [
+          cyl("trunk", 0.07, 1.2, [0, 0.6, 0]),
+          rbox("canopy", [0.85, 1.0, 0.85], 0.42, [0, 1.7, 0]),
+        ];
+      }
+      // broadleaf (default): single trunk + rounded canopy (the pre-4c look).
+      return [
+        cyl("trunk", 0.12, 1.4, [0, 0.7, 0]),
+        rbox("canopy", [1.3, 1.4, 1.3], 0.55, [0, 2.0, 0]),
+        rbox("canopy", [0.9, 0.8, 0.9], 0.4, [0, 2.7, 0]),
+      ];
+    },
+    glyph: (w, _d, variant): ReactNode => {
+      if (variant === "conifer") {
+        // Spoked circle reads as a needled/evergreen canopy from above.
+        const r = w / 2 - 0.05;
+        const spokes = Array.from({ length: 8 }, (_unused, i) => {
+          const a = (i / 8) * Math.PI * 2;
+          return gl(
+            Math.cos(a) * r * 0.45,
+            Math.sin(a) * r * 0.45,
+            Math.cos(a) * r,
+            Math.sin(a) * r,
+            `s${i}`,
+          );
+        });
+        return (
+          <>
+            {gc(0, 0, r, "canopy")}
+            {spokes}
+            {gc(0, 0, 0.07, "trunk")}
+          </>
+        );
+      }
+      if (variant === "ornamental") {
+        // Smaller double-ring canopy.
+        return (
+          <>
+            {gc(0, 0, w / 2 - 0.18, "canopy")}
+            {gc(0, 0, w / 2 - 0.32, "inner")}
+            {gc(0, 0, 0.06, "trunk")}
+          </>
+        );
+      }
+      // broadleaf
+      return (
+        <>
+          {gc(0, 0, w / 2 - 0.05, "canopy")}
+          {gc(0, 0, 0.08, "trunk")}
+        </>
+      );
+    },
   },
   {
     id: "hedge",
-    name: "Hedge",
+    name: "Shrub",
     category: "outdoor",
-    footprint: { width: 1.5, depth: 0.5 },
+    // Square base so a dome / column read right; the spreading variant stretches
+    // along its length (x) into a hedge via scaling.
+    footprint: { width: 0.8, depth: 0.8 },
     height: 1.0,
     wallHugger: false,
     collidable: true,
-    // Stretches in length to work as a garden divider.
-    scaling: axesScale({ x: [0.4, 3.0] }),
+    // Stretches in length to work as a garden divider/hedge.
+    scaling: axesScale({ x: [0.4, 4.0] }),
+    // spreading is the pre-4c "hedge" look (default; migration maps it here).
+    variants: [
+      { id: "spreading", name: "Spreading" },
+      { id: "rounded", name: "Rounded" },
+      { id: "columnar", name: "Columnar" },
+    ],
     slots: [{ name: "foliage", default: solid("#4e6b42") }],
-    build: () => {
-      const W = 1.5,
-        D = 0.5;
+    build: (variant): Part[] => {
+      if (variant === "rounded") {
+        // Compact dome.
+        return [
+          rbox("foliage", [0.78, 0.8, 0.78], 0.36, [0, 0.42, 0]),
+          rbox("foliage", [0.5, 0.3, 0.5], 0.22, [0, 0.78, 0]),
+        ];
+      }
+      if (variant === "columnar") {
+        // Tall, narrow upright shrub.
+        return [
+          rbox("foliage", [0.5, 1.5, 0.5], 0.2, [0, 0.75, 0]),
+          rbox("foliage", [0.36, 0.3, 0.36], 0.16, [0, 1.55, 0]),
+        ];
+      }
+      // spreading (default): low, flat-topped mound; stretch x for a hedge run.
       return [
-        rbox("foliage", [W, 0.9, D], 0.12, [0, 0.45, 0]),
-        rbox("foliage", [W - 0.05, 0.2, D - 0.05], 0.1, [0, 0.95, 0]),
+        rbox("foliage", [0.8, 0.55, 0.8], 0.14, [0, 0.28, 0]),
+        rbox("foliage", [0.72, 0.18, 0.72], 0.1, [0, 0.6, 0]),
       ];
     },
-    glyph: (w, d): ReactNode => (
-      <>
-        {gr(-w / 2 + 0.04, -d / 2 + 0.04, w - 0.08, d - 0.08, "hedge")}
-        {gc(-w / 4, 0, 0.08, "b1")}
-        {gc(0, 0, 0.08, "b2")}
-        {gc(w / 4, 0, 0.08, "b3")}
-      </>
-    ),
+    glyph: (w, d, variant): ReactNode => {
+      if (variant === "rounded") {
+        // A single dome circle.
+        return <>{gc(0, 0, w / 2 - 0.04, "dome")}</>;
+      }
+      if (variant === "columnar") {
+        // A small centred square + cross reads as an upright column.
+        const s = Math.min(w, d) * 0.32;
+        return (
+          <>
+            {gr(-s, -s, s * 2, s * 2, "col")}
+            {gl(-s, 0, s, 0, "h")}
+            {gl(0, -s, 0, s, "v")}
+          </>
+        );
+      }
+      // spreading: a row of bushes inside the footprint.
+      return (
+        <>
+          {gr(-w / 2 + 0.04, -d / 2 + 0.04, w - 0.08, d - 0.08, "hedge")}
+          {gc(-w / 4, 0, 0.08, "b1")}
+          {gc(0, 0, 0.08, "b2")}
+          {gc(w / 4, 0, 0.08, "b3")}
+        </>
+      );
+    },
   },
   {
     id: "fence-panel",

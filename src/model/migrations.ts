@@ -69,6 +69,32 @@ const migrations: Migration[] = [
     design.schemaVersion = 6;
     return design;
   },
+  // v6 -> v7: tree/shrub variants. Pre-4c trees and hedges become the default
+  // variant matching their old look. The shrub footprint shrank from 1.5x0.5 to
+  // a 0.8 square, so existing hedges get their length (x scale) widened to keep
+  // their real-world width. Values are frozen here so this migration is stable.
+  (design) => {
+    const HEDGE_WIDTH_FACTOR = 1.5 / 0.8; // old footprint width / new
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const furniture = (level.furniture as RawDesign[] | undefined) ?? [];
+      for (const item of furniture) {
+        if (item.catalogId === "tree" && item.variant === undefined) {
+          item.variant = "broadleaf";
+        } else if (item.catalogId === "hedge" && item.variant === undefined) {
+          item.variant = "spreading";
+          const scale = item.scale as RawDesign | undefined;
+          if (scale && typeof scale.x === "number") {
+            // Preserve the old width; clamp to the new x range [0.4, 4.0].
+            const x = scale.x * HEDGE_WIDTH_FACTOR;
+            scale.x = Math.max(0.4, Math.min(4.0, x));
+          }
+        }
+      }
+    }
+    design.schemaVersion = 7;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

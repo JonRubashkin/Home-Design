@@ -4,6 +4,8 @@ import {
   CATEGORIES,
   getCatalogEntry,
   primarySlot,
+  resolveVariantId,
+  defaultVariantId,
 } from "./index";
 
 describe("catalog", () => {
@@ -128,6 +130,63 @@ describe("catalog", () => {
       expect(e.wallHugger).toBe(false); // built around the lot, not walls
       expect(e.collidable).toBe(true);
     }
+  });
+
+  it("trees and shrubs each declare three shape variants", () => {
+    for (const id of ["tree", "hedge"]) {
+      const e = getCatalogEntry(id)!;
+      expect(e.variants).toBeDefined();
+      expect(e.variants!).toHaveLength(3);
+      const ids = e.variants!.map((v) => v.id);
+      expect(new Set(ids).size).toBe(3);
+    }
+    expect(getCatalogEntry("tree")!.variants!.map((v) => v.id)).toEqual([
+      "broadleaf",
+      "conifer",
+      "ornamental",
+    ]);
+    expect(getCatalogEntry("hedge")!.variants!.map((v) => v.id)).toEqual([
+      "spreading",
+      "rounded",
+      "columnar",
+    ]);
+  });
+
+  it("each variant builds a distinct, valid part list", () => {
+    for (const id of ["tree", "hedge"]) {
+      const e = getCatalogEntry(id)!;
+      const slotNames = new Set(e.slots.map((s) => s.name));
+      const signatures = new Set<string>();
+      for (const v of e.variants!) {
+        const parts = e.build(v.id);
+        expect(parts.length).toBeGreaterThanOrEqual(1);
+        expect(parts.length).toBeLessThanOrEqual(8);
+        for (const p of parts) expect(slotNames.has(p.slot)).toBe(true);
+        signatures.add(JSON.stringify(parts));
+      }
+      // All three variants differ in geometry.
+      expect(signatures.size).toBe(3);
+    }
+  });
+
+  it("build() with no variant matches the default variant", () => {
+    for (const id of ["tree", "hedge"]) {
+      const e = getCatalogEntry(id)!;
+      expect(JSON.stringify(e.build())).toBe(
+        JSON.stringify(e.build(defaultVariantId(e))),
+      );
+    }
+  });
+
+  it("resolveVariantId falls back to the default for missing/invalid ids", () => {
+    const tree = getCatalogEntry("tree")!;
+    expect(resolveVariantId(tree, "conifer")).toBe("conifer");
+    expect(resolveVariantId(tree, "bogus")).toBe("broadleaf");
+    expect(resolveVariantId(tree, undefined)).toBe("broadleaf");
+    // entries without variants resolve to undefined
+    const sofa = getCatalogEntry("sofa-3seat")!;
+    expect(resolveVariantId(sofa, "anything")).toBeUndefined();
+    expect(defaultVariantId(sofa)).toBeUndefined();
   });
 
   it("looks up by id and exposes the primary slot", () => {

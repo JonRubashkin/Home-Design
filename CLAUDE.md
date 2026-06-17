@@ -388,8 +388,16 @@ in code under `src/catalog/`:
   a box under the sill, a box above the window head, and full-height boxes between
   openings. One pure function computes the sub-box list for a wall:
   `wallToBoxes(wall): Box3Spec[]` — unit test it heavily.
-- **Corners:** simple overlap where thick walls meet is acceptable for now. Do not
-  attempt mitering/joinery. (Future phase.)
+- **Corners (Phase 5d — corner posts, NOT mitering):** thick walls overlap where
+  they meet; a small **corner post** fills each junction so corners read clean.
+  Pure tested `cornerPosts(walls)` (`src/geometry/cornerPosts.ts`) groups walls by
+  coincident endpoint (and detects T-junctions where an endpoint snapped onto a
+  wall's segment); at each junction of 2+ walls it emits a full-height box sized to
+  the thickest wall there, centered on the shared point, with the meeting wall ids.
+  `CornerPosts3D` renders them (neutral tone via the shared material helper) and
+  honors the level's view mode: Stubs at 10%, and Cutaway suppresses a post only
+  when ALL its walls are front-facing (so corners with a visible rear wall stay
+  solid). Render-side only; no schema change. Still no true mitering/joinery.
 - Walls are line segments with thickness; render each sub-box as a `BoxGeometry`
   oriented along the wall direction.
 - Side A/B paint maps to the box faces facing left/right of the wall direction.

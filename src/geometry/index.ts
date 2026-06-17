@@ -9,3 +9,4 @@ export * from "./doors";
 export * from "./polygon";
 export * from "./furniture";
 export * from "./wallMount";
+export * from "./cornerPosts";

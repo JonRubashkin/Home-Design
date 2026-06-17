@@ -30,6 +30,13 @@ npm run format   # Prettier
 
 ## Features
 
+### Corner posts (phase 5d)
+
+- Junctions where thick walls meet get a small **corner post** so corners read
+  clean in 3D (no notch/overlap artifact) — not true mitering. Pure tested
+  `cornerPosts(walls)` finds L-corners, T-junctions, and multi-wall junctions; the
+  posts honor the level's **Cutaway/Stubs** view mode like walls.
+
 ### Wall dimensions (phase 5c)
 
 - **Dimensions** toggle (plan controls, persisted) shows a **length label on every

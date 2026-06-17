@@ -11,6 +11,7 @@ import type {
   Vec2,
   Vec3,
   Wall,
+  WallMount,
   WindowOpening,
 } from "../model/types";
 import {
@@ -39,6 +40,7 @@ import {
   createLevel,
   createStaircase,
   createWall,
+  createWallMount,
   createWindow,
   makeId,
   FLOOR_SLAB_THICKNESS,
@@ -151,6 +153,7 @@ export type Selection =
   | { kind: "wall"; id: string }
   | { kind: "window"; wallId: string; id: string }
   | { kind: "door"; wallId: string; id: string }
+  | { kind: "wallMount"; wallId: string; id: string }
   | { kind: "floor"; id: string }
   | { kind: "furniture"; id: string }
   | { kind: "staircase"; id: string }
@@ -178,6 +181,7 @@ function cloneWallWithNewIds(wall: Wall): Wall {
   copy.id = makeId("wall");
   copy.windows = copy.windows.map((w) => ({ ...w, id: makeId("win") }));
   copy.doors = copy.doors.map((d) => ({ ...d, id: makeId("door") }));
+  copy.mounts = copy.mounts.map((m) => ({ ...m, id: makeId("mount") }));
   return copy;
 }
 
@@ -218,6 +222,15 @@ function findDoor(
   doorId: string,
 ): DoorOpening | undefined {
   return findWall(design, levelId, wallId)?.doors.find((d) => d.id === doorId);
+}
+
+function findWallMount(
+  design: Design,
+  levelId: string,
+  wallId: string,
+  mountId: string,
+): WallMount | undefined {
+  return findWall(design, levelId, wallId)?.mounts.find((m) => m.id === mountId);
 }
 
 function findFloor(
@@ -274,6 +287,8 @@ function selectionExists(
     return !!findWindow(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "door")
     return !!findDoor(design, levelId, sel.wallId, sel.id);
+  if (sel.kind === "wallMount")
+    return !!findWallMount(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
   if (sel.kind === "staircase") return !!findStaircase(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
@@ -377,6 +392,20 @@ interface AppState {
   ) => void;
   setDoorMaterial: (wallId: string, id: string, material: MaterialRef) => void;
   deleteDoor: (wallId: string, id: string) => void;
+  addWallMount: (wallId: string, mount: Omit<WallMount, "id">) => void;
+  updateWallMount: (
+    wallId: string,
+    id: string,
+    patch: Partial<Omit<WallMount, "id" | "catalogId">>,
+  ) => void;
+  setWallMountMaterial: (
+    wallId: string,
+    id: string,
+    slot: string,
+    material: MaterialRef,
+  ) => void;
+  setWallMountScale: (wallId: string, id: string, scale: Vec3) => void;
+  deleteWallMount: (wallId: string, id: string) => void;
   addFloor: (polygon: Vec2[], material: MaterialRef) => void;
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
   setFloorMaterial: (id: string, material: MaterialRef) => void;
@@ -825,6 +854,74 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const w = findWall(design, s.currentLevelId, wallId);
         if (w) w.doors = w.doors.filter((d) => d.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
+    addWallMount: (wallId, mount) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      const made = createWallMount(mount.catalogId, mount);
+      set((s) => {
+        const design = clone(s.design);
+        findWall(design, s.currentLevelId, wallId)?.mounts.push(made);
+        return {
+          design,
+          selection: { kind: "wallMount", wallId, id: made.id },
+        };
+      });
+    },
+
+    updateWallMount: (wallId, id, patch) => {
+      if (!findWallMount(get().design, get().currentLevelId, wallId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const mount = findWallMount(design, s.currentLevelId, wallId, id);
+        if (mount) Object.assign(mount, patch);
+        return { design };
+      });
+    },
+
+    setWallMountMaterial: (wallId, id, slot, material) => {
+      if (!findWallMount(get().design, get().currentLevelId, wallId, id)) return;
+      commitCoalesced(`mount-mat:${wallId}:${id}:${slot}`, (design) => {
+        const mount = findWallMount(design, get().currentLevelId, wallId, id);
+        if (mount)
+          mount.materials = { ...mount.materials, [slot]: clone(material) };
+      });
+    },
+
+    setWallMountScale: (wallId, id, scale) => {
+      const existing = findWallMount(
+        get().design,
+        get().currentLevelId,
+        wallId,
+        id,
+      );
+      if (!existing) return;
+      const entry = getCatalogEntry(existing.catalogId);
+      const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      commitCoalesced(`mount-scale:${wallId}:${id}`, (design) => {
+        const mount = findWallMount(design, get().currentLevelId, wallId, id);
+        if (mount) mount.scale = clamped;
+      });
+    },
+
+    deleteWallMount: (wallId, id) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const w = findWall(design, s.currentLevelId, wallId);
+        if (w) w.mounts = w.mounts.filter((m) => m.id !== id);
         const stillThere = selectionExists(
           design,
           s.currentLevelId,

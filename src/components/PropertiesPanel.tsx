@@ -177,6 +177,7 @@ function FillRoomPanel() {
 type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
+  | { kind: "mountMat"; wallId: string; id: string; slot: string }
   | { kind: "furnSlot"; id: string; slot: string }
   | { kind: "stairMat"; id: string }
   | { kind: "floor"; id: string };
@@ -445,6 +446,10 @@ export function PropertiesPanel() {
   const updateDoor = useStore((s) => s.updateDoor);
   const deleteDoor = useStore((s) => s.deleteDoor);
   const setDoorMaterial = useStore((s) => s.setDoorMaterial);
+  const updateWallMount = useStore((s) => s.updateWallMount);
+  const setWallMountMaterial = useStore((s) => s.setWallMountMaterial);
+  const setWallMountScale = useStore((s) => s.setWallMountScale);
+  const deleteWallMount = useStore((s) => s.deleteWallMount);
   const paintWallSide = useStore((s) => s.paintWallSide);
   const setFloorMaterial = useStore((s) => s.setFloorMaterial);
   const deleteFloor = useStore((s) => s.deleteFloor);
@@ -942,6 +947,104 @@ export function PropertiesPanel() {
           onClick={() => deleteDoor(wall.id, door.id)}
         >
           Delete door
+        </button>
+      </aside>
+    );
+  }
+
+  // --- wall mount selected ---
+  if (selection?.kind === "wallMount") {
+    const wall = level.walls.find((w) => w.id === selection.wallId);
+    const mount = wall?.mounts.find((m) => m.id === selection.id);
+    const entry = mount ? getCatalogEntry(mount.catalogId) : undefined;
+    if (!wall || !mount || !entry)
+      return <aside className="properties">{EMPTY_TIPS}</aside>;
+    const L = wallLength(wall);
+
+    if (edit?.kind === "mountMat") {
+      const slot = edit.slot;
+      const slotDef = entry.slots.find((s) => s.name === slot)!;
+      const value = mount.materials[slot] ?? slotDef.default;
+      return (
+        <aside className="properties" aria-label="Wall mount material">
+          <PickerHeader title={titleCase(slot)} onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={value}
+            onChange={(m) => setWallMountMaterial(wall.id, mount.id, slot, m)}
+          />
+        </aside>
+      );
+    }
+
+    // Keep the center strictly inside the wall ends.
+    const setAlong = (meters: number) => {
+      const t = L > 0 ? Math.min(0.999, Math.max(0.001, meters / L)) : 0.5;
+      updateWallMount(wall.id, mount.id, { t });
+    };
+
+    return (
+      <aside className="properties" aria-label="Wall mount">
+        <h2 className="properties-title">{entry.name}</h2>
+        <p className="properties-hint">Mounted on the wall; moves with it.</p>
+        <div className="properties-fields">
+          <NumberField
+            label="Position"
+            value={mount.t * L}
+            min={0}
+            step={0.1}
+            onCommit={setAlong}
+          />
+          <NumberField
+            label="Height"
+            value={mount.heightUpWall}
+            min={0}
+            step={0.1}
+            onCommit={(v) =>
+              updateWallMount(wall.id, mount.id, { heightUpWall: v })
+            }
+          />
+        </div>
+        <ToggleField
+          label="Face"
+          value={mount.face}
+          options={[
+            { value: "A", label: "Side A" },
+            { value: "B", label: "Side B" },
+          ]}
+          onChange={(v) => updateWallMount(wall.id, mount.id, { face: v })}
+        />
+        <FurnitureScaleControls
+          entry={entry}
+          scale={mount.scale}
+          onScale={(s) => setWallMountScale(wall.id, mount.id, s)}
+          onReset={() =>
+            setWallMountScale(wall.id, mount.id, { x: 1, y: 1, z: 1 })
+          }
+        />
+        <h3 className="properties-subhead">Materials</h3>
+        <div className="chip-row chip-wrap">
+          {entry.slots.map((s) => (
+            <MaterialChip
+              key={s.name}
+              material={mount.materials[s.name] ?? s.default}
+              label={titleCase(s.name)}
+              onClick={() =>
+                setEdit({
+                  kind: "mountMat",
+                  wallId: wall.id,
+                  id: mount.id,
+                  slot: s.name,
+                })
+              }
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteWallMount(wall.id, mount.id)}
+        >
+          Delete item
         </button>
       </aside>
     );

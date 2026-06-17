@@ -9,10 +9,10 @@ import {
 } from "./index";
 
 describe("catalog", () => {
-  it("has 65 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(65);
+  it("has 71 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(71);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(65);
+    expect(new Set(ids).size).toBe(71);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -44,6 +44,13 @@ describe("catalog", () => {
       "toaster",
       "coffee-maker",
       "computer",
+      // Phase 4d Part B: wall-mounted items (never floor-collide).
+      "wall-art",
+      "wall-tv",
+      "floating-shelf",
+      "wall-sconce",
+      "wall-mirror",
+      "range-hood",
     ]);
     for (const e of CATALOG_ITEMS) {
       expect(e.collidable).toBe(!nonCollidable.has(e.id));
@@ -193,6 +200,27 @@ describe("catalog", () => {
     const sofa = getCatalogEntry("sofa-3seat")!;
     expect(resolveVariantId(sofa, "anything")).toBeUndefined();
     expect(defaultVariantId(sofa)).toBeUndefined();
+  });
+
+  it("wall-mounted items declare mount:wall, a default height, and are non-collidable", () => {
+    const wallIds = [
+      "wall-art",
+      "wall-tv",
+      "floating-shelf",
+      "wall-sconce",
+      "wall-mirror",
+      "range-hood",
+    ];
+    for (const id of wallIds) {
+      const e = getCatalogEntry(id)!;
+      expect(e.mount).toBe("wall");
+      expect(typeof e.defaultMountHeight).toBe("number");
+      expect(e.defaultMountHeight!).toBeGreaterThan(0);
+      expect(e.collidable).toBe(false);
+      expect(e.wallHugger).toBe(false);
+    }
+    // Floor items default to no explicit mount (or "floor").
+    expect(getCatalogEntry("sofa-3seat")!.mount ?? "floor").toBe("floor");
   });
 
   it("looks up by id and exposes the primary slot", () => {

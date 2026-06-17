@@ -95,6 +95,18 @@ const migrations: Migration[] = [
     design.schemaVersion = 7;
     return design;
   },
+  // v7 -> v8: wall-mounted items. Every wall gains an empty `mounts` array.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const walls = (level.walls as RawDesign[] | undefined) ?? [];
+      for (const wall of walls) {
+        if (!Array.isArray(wall.mounts)) wall.mounts = [];
+      }
+    }
+    design.schemaVersion = 8;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

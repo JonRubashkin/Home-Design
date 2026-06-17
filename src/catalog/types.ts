@@ -78,6 +78,14 @@ export interface CatalogEntry {
   // overlap; false for flat/surface/decor items meant to sit on or under others
   // (rugs, lamps, plants, microwaves, mirrors…). Footprint-only, same level.
   collidable: boolean;
+  // Mounting (Phase 4d). "floor" (default) items stand on the floor and live in
+  // a level's `furniture`. "wall" items attach to a wall face as a `WallMount`
+  // child of the wall: `footprint` is interpreted as (width along the wall) ×
+  // (protrusion out from the wall), `height` is the vertical size, and
+  // `defaultMountHeight` is the placement height to the item's vertical center.
+  // Wall items are excluded from footprint collision and never wall-hug/stack.
+  mount?: "floor" | "wall";
+  defaultMountHeight?: number; // meters to vertical center (mount:"wall" only)
   scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
   // Optional shape variants (Phase 4c). When present, `build`/`glyph` receive the

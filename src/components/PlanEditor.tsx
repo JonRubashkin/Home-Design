@@ -17,6 +17,7 @@ import {
   DEFAULT_WINDOW_SILL_HEIGHT,
   DEFAULT_WINDOW_WIDTH,
   DEFAULT_STAIR_WIDTH,
+  DEFAULT_MOUNT_HEIGHT,
   FLOOR_SLAB_THICKNESS,
 } from "../model/defaults";
 import { computeStair } from "../geometry/stair";
@@ -49,6 +50,7 @@ import {
   type CollisionItem,
   type OrientedFootprint,
 } from "../geometry/furniture";
+import { wallMountPlanFootprint } from "../geometry/wallMount";
 import {
   boundsOfPoints,
   unionBounds,
@@ -67,7 +69,7 @@ import {
 import type { Vec3 } from "../model/types";
 import { FurnitureSymbolShape } from "./FurnitureSymbol";
 import { materialKey, materialDomId } from "../materials/key";
-import { patternDataUrl } from "../materials/textures";
+import { patternDataUrl, representativeColor } from "../materials/textures";
 import { PATTERN_TILE_METERS } from "../materials/patterns";
 import { useElementSize } from "../lib/useElementSize";
 import { formatMeters } from "../lib/format";
@@ -289,7 +291,18 @@ export function PlanEditor() {
     pos: Vec2;
     rotation: number;
   } | null>(null);
+  // Wall-mount placement ghost (the active placing item is a mount:"wall" entry).
+  const [mountGhost, setMountGhost] = useState<{
+    wall: Wall;
+    t: number;
+    face: WallSide;
+  } | null>(null);
   const lastWorldRef = useRef<Vec2>({ x: 0, y: 0 });
+  // The catalog entry being placed, and whether it attaches to a wall.
+  const placingEntry = placingCatalogId
+    ? getCatalogEntry(placingCatalogId)
+    : undefined;
+  const placingWallMount = placingEntry?.mount === "wall";
 
   const dragRef = useRef<DragState>({ kind: "none" });
   const shiftRef = useRef(false);
@@ -478,6 +491,26 @@ export function PlanEditor() {
     return undefined;
   };
 
+  // A wall mount whose plan marker (the rectangle on the wall face) is under the
+  // cursor, for select-tool picking. Mounts sit just off the wall face.
+  const mountUnderCursor = (
+    world: Vec2,
+  ): { wall: Wall; mountId: string } | undefined => {
+    for (let i = walls.length - 1; i >= 0; i--) {
+      const wall = walls[i]!;
+      for (let j = wall.mounts.length - 1; j >= 0; j--) {
+        const m = wall.mounts[j]!;
+        const entry = getCatalogEntry(m.catalogId);
+        if (!entry) continue;
+        const d = effectiveDimensions(entry, m.scale);
+        const fp = wallMountPlanFootprint(wall, m.t, m.face, d.width, d.depth);
+        if (pointInFootprint(world, fp.center, fp.rotation, fp.footprint))
+          return { wall, mountId: m.id };
+      }
+    }
+    return undefined;
+  };
+
   // Resolve where the placing ghost / a dragged item should sit: grid-snapped,
   // then wall-hugger soft-snap (flush + aligned) when applicable. The snap uses
   // the item's scaled footprint so the back edge lands flush at any size.
@@ -643,6 +676,7 @@ export function PlanEditor() {
     setFloorPts([]);
     setFloorCursor(null);
     setFurnGhost(null);
+    setMountGhost(null);
     setGhostRotation(0);
     useStore.getState().setSideHighlight(null);
     if (activeTool !== "furniture")
@@ -817,7 +851,22 @@ export function PlanEditor() {
     }
 
     if (activeTool === "furniture") {
-      if (placingCatalogId) {
+      if (placingCatalogId && placingWallMount) {
+        // Wall-attach placement (like the window/door tools).
+        const wall = wallUnderCursor(world);
+        if (wall) {
+          const t = projectPointToWallT(wall, world);
+          store.addWallMount(wall.id, {
+            catalogId: placingCatalogId,
+            t,
+            heightUpWall: placingEntry?.defaultMountHeight ?? DEFAULT_MOUNT_HEIGHT,
+            face: sideOf(wall, world),
+            scale: { ...UNIT_SCALE },
+            materials: {},
+          });
+        }
+        // tool stays active for repeat placement
+      } else if (placingCatalogId) {
         const placed = resolveFurniturePlacement(
           placingCatalogId,
           world,
@@ -947,6 +996,17 @@ export function PlanEditor() {
       return;
     }
 
+    const mountHit = mountUnderCursor(world);
+    if (mountHit) {
+      store.setSelection({
+        kind: "wallMount",
+        wallId: mountHit.wall.id,
+        id: mountHit.mountId,
+      });
+      dragRef.current = { kind: "none" };
+      return;
+    }
+
     const furnHit = furnitureUnderCursor(world);
     if (furnHit) {
       store.setSelection({ kind: "furniture", id: furnHit.id });
@@ -1036,7 +1096,14 @@ export function PlanEditor() {
     if (d.kind === "none") {
       const world = clientToWorld(e.clientX, e.clientY);
       lastWorldRef.current = world;
-      if (activeTool === "furniture" && placingCatalogId) {
+      if (activeTool === "furniture" && placingCatalogId && placingWallMount) {
+        const wall = wallUnderCursor(world);
+        setMountGhost(
+          wall
+            ? { wall, t: projectPointToWallT(wall, world), face: sideOf(wall, world) }
+            : null,
+        );
+      } else if (activeTool === "furniture" && placingCatalogId) {
         setFurnGhost(
           resolveFurniturePlacement(placingCatalogId, world, ghostRotation),
         );
@@ -1449,6 +1516,24 @@ export function PlanEditor() {
                     }
                   />
                 ))}
+                {w.mounts.map((m) => {
+                  const entry = getCatalogEntry(m.catalogId);
+                  if (!entry) return null;
+                  return (
+                    <WallMountSymbol
+                      key={m.id}
+                      wall={w}
+                      t={m.t}
+                      face={m.face}
+                      entry={entry}
+                      scale={m.scale}
+                      materials={m.materials}
+                      selected={
+                        selection?.kind === "wallMount" && selection.id === m.id
+                      }
+                    />
+                  );
+                })}
               </g>
             );
           })}
@@ -1512,6 +1597,22 @@ export function PlanEditor() {
                 />
               ) : null;
             })()}
+
+          {/* Wall-mount placement ghost. */}
+          {activeTool === "furniture" &&
+            placingWallMount &&
+            mountGhost &&
+            placingEntry && (
+              <WallMountSymbol
+                wall={mountGhost.wall}
+                t={mountGhost.t}
+                face={mountGhost.face}
+                entry={placingEntry}
+                scale={UNIT_SCALE}
+                materials={{}}
+                ghost
+              />
+            )}
 
           {/* Staircase placement ghost. */}
           {activeTool === "stair" &&
@@ -1744,6 +1845,57 @@ function WindowSymbol({
       {seg(A, B, "c")}
       {seg(add(A, o), sub(A, o), "ja")}
       {seg(add(B, o), sub(B, o), "jb")}
+    </g>
+  );
+}
+
+// Plan marker for a wall-mounted item: the item's oriented footprint rectangle
+// (width along the wall × protrusion) sitting just off the chosen wall face,
+// filled with its primary slot color, plus a tick joining it to the face. The
+// height up the wall isn't visible top-down, so only position/side are shown.
+function WallMountSymbol({
+  wall,
+  t,
+  face,
+  entry,
+  scale,
+  materials,
+  selected,
+  ghost,
+}: {
+  wall: Wall;
+  t: number;
+  face: WallSide;
+  entry: CatalogEntry;
+  scale: Vec3;
+  materials: Record<string, MaterialRef>;
+  selected?: boolean;
+  ghost?: boolean;
+}) {
+  if (wallLength(wall) === 0) return null;
+  const dims = effectiveDimensions(entry, scale);
+  const fp = wallMountPlanFootprint(wall, t, face, dims.width, dims.depth);
+  const corners = footprintCorners(fp.center, fp.rotation, fp.footprint);
+  const primary = entry.slots[0]!;
+  const fill = representativeColor(materials[primary.name] ?? primary.default);
+  const cls = ghost
+    ? "wall-mount-symbol ghost"
+    : `wall-mount-symbol${selected ? " selected" : ""}`;
+  return (
+    <g className={cls}>
+      <polygon
+        className="wall-mount-rect"
+        points={toPoints(corners)}
+        fill={fill}
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle
+        className="wall-mount-dot"
+        cx={fp.center.x}
+        cy={fp.center.y}
+        r={0.05}
+        vectorEffect="non-scaling-stroke"
+      />
     </g>
   );
 }

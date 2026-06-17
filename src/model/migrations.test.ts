@@ -128,6 +128,24 @@ describe("migrateToLatest", () => {
     expect(furn[2]!.variant).toBeUndefined();
   });
 
+  it("adds an empty mounts array to every wall (v7 -> v8)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.levels[0]!.walls[0]!.mounts).toEqual([]);
+  });
+
+  it("migrates a v7 design (variants present) to v8 with wall mounts", () => {
+    const v7 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v7.schemaVersion = 7;
+    const lvl = (v7.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    // a v7 wall already has windows/doors but no mounts
+    (lvl.walls as Record<string, unknown>[])[0]!.doors = [];
+    const out = migrateToLatest(v7);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.walls[0]!.mounts).toEqual([]);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

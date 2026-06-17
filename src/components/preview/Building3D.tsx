@@ -10,9 +10,12 @@ import {
 import { computeStair } from "../../geometry/stair";
 import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
 import { Walls3D } from "./Walls3D";
+import { CornerPosts3D } from "./CornerPosts3D";
 import { Floors3D } from "./Floors3D";
+import { Roof3D } from "./Roof3D";
 import { Furniture3D } from "./Furniture3D";
 import { Staircases3D } from "./Staircases3D";
+import { CeilingLights3D } from "./CeilingLights3D";
 
 // Collidable footprints on a level (collidable furniture + all staircases), then
 // the ids overlapping another item, a wall, or a stairwell opening (the floor
@@ -120,6 +123,11 @@ export function Building3D({
               elevation={level.elevation}
               skirt={isUpperSlab ? FLOOR_SLAB_THICKNESS : 0}
             />
+            <CornerPosts3D
+              level={level}
+              elevation={level.elevation}
+              skirt={isUpperSlab ? FLOOR_SLAB_THICKNESS : 0}
+            />
             <Staircases3D
               level={level}
               elevation={level.elevation}
@@ -132,9 +140,15 @@ export function Building3D({
               warnedSet={warned}
               pointerDownRef={pointerDownRef}
             />
+            <CeilingLights3D
+              level={level}
+              ceilingY={level.elevation + level.wallHeight}
+            />
           </group>
         );
       })}
+      {/* One roof over the whole top level (suppresses in Cutaway/Stubs). */}
+      <Roof3D />
     </group>
   );
 }

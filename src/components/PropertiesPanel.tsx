@@ -178,6 +178,7 @@ type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
   | { kind: "mountMat"; wallId: string; id: string; slot: string }
+  | { kind: "lightMat"; id: string; slot: string }
   | { kind: "furnSlot"; id: string; slot: string }
   | { kind: "stairMat"; id: string }
   | { kind: "floor"; id: string };
@@ -461,6 +462,10 @@ export function PropertiesPanel() {
   const deleteFurniture = useStore((s) => s.deleteFurniture);
   const updateStaircase = useStore((s) => s.updateStaircase);
   const deleteStaircase = useStore((s) => s.deleteStaircase);
+  const updateCeilingLight = useStore((s) => s.updateCeilingLight);
+  const setCeilingLightMaterial = useStore((s) => s.setCeilingLightMaterial);
+  const setCeilingLightScale = useStore((s) => s.setCeilingLightScale);
+  const deleteCeilingLight = useStore((s) => s.deleteCeilingLight);
   const setSideHighlight = useStore((s) => s.setSideHighlight);
 
   const [edit, setEdit] = useState<EditTarget | null>(null);
@@ -696,6 +701,93 @@ export function PropertiesPanel() {
           onClick={() => deleteStaircase(stair.id)}
         >
           Delete staircase
+        </button>
+      </aside>
+    );
+  }
+
+  // --- ceiling light selected ---
+  if (selection?.kind === "ceilingLight") {
+    const light = level.ceilingLights.find((l) => l.id === selection.id);
+    const entry = light ? getCatalogEntry(light.catalogId) : undefined;
+    if (!light || !entry)
+      return <aside className="properties">{EMPTY_TIPS}</aside>;
+
+    if (edit?.kind === "lightMat") {
+      const slot = edit.slot;
+      const slotDef = entry.slots.find((s) => s.name === slot)!;
+      const value = light.materials[slot] ?? slotDef.default;
+      return (
+        <aside className="properties" aria-label="Ceiling light material">
+          <PickerHeader title={titleCase(slot)} onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={value}
+            onChange={(m) => setCeilingLightMaterial(light.id, slot, m)}
+          />
+        </aside>
+      );
+    }
+
+    return (
+      <aside className="properties" aria-label="Ceiling light">
+        <h2 className="properties-title">{entry.name}</h2>
+        <p className="properties-hint">Hangs from this level's ceiling.</p>
+        <div className="properties-fields">
+          <NumberField
+            label="X"
+            value={light.position.x}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateCeilingLight(light.id, {
+                position: { x: v, y: light.position.y },
+              })
+            }
+          />
+          <NumberField
+            label="Y"
+            value={light.position.y}
+            min={-1e6}
+            step={0.1}
+            onCommit={(v) =>
+              updateCeilingLight(light.id, {
+                position: { x: light.position.x, y: v },
+              })
+            }
+          />
+          <NumberField
+            label="Drop"
+            value={light.drop}
+            min={0}
+            step={0.1}
+            onCommit={(v) => updateCeilingLight(light.id, { drop: v })}
+          />
+        </div>
+        <FurnitureScaleControls
+          entry={entry}
+          scale={light.scale}
+          onScale={(s) => setCeilingLightScale(light.id, s)}
+          onReset={() => setCeilingLightScale(light.id, { x: 1, y: 1, z: 1 })}
+        />
+        <h3 className="properties-subhead">Materials</h3>
+        <div className="chip-row chip-wrap">
+          {entry.slots.map((s) => (
+            <MaterialChip
+              key={s.name}
+              material={light.materials[s.name] ?? s.default}
+              label={titleCase(s.name)}
+              onClick={() =>
+                setEdit({ kind: "lightMat", id: light.id, slot: s.name })
+              }
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteCeilingLight(light.id)}
+        >
+          Delete light
         </button>
       </aside>
     );

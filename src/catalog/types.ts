@@ -84,14 +84,18 @@ export interface CatalogEntry {
   // collide even when footprints overlap (chairs tuck under tables/desks).
   legClearance?: number;
   tuckHeight?: number;
-  // Mounting (Phase 4d). "floor" (default) items stand on the floor and live in
-  // a level's `furniture`. "wall" items attach to a wall face as a `WallMount`
+  // Mounting (Phase 4d/5f). "floor" (default) items stand on the floor and live
+  // in a level's `furniture`. "wall" items attach to a wall face as a `WallMount`
   // child of the wall: `footprint` is interpreted as (width along the wall) ×
   // (protrusion out from the wall), `height` is the vertical size, and
   // `defaultMountHeight` is the placement height to the item's vertical center.
-  // Wall items are excluded from footprint collision and never wall-hug/stack.
-  mount?: "floor" | "wall";
+  // "ceiling" items hang from a level's ceiling as a `CeilingLight`: `build()`
+  // parts rise y-up from 0 (bulb) to `height` (canopy); `defaultDrop` is the
+  // placement drop below the ceiling. Wall/ceiling items are excluded from
+  // footprint collision and never wall-hug/stack.
+  mount?: "floor" | "wall" | "ceiling";
   defaultMountHeight?: number; // meters to vertical center (mount:"wall" only)
+  defaultDrop?: number; // meters below the ceiling (mount:"ceiling" only)
   scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
   // Optional shape variants (Phase 4c). When present, `build`/`glyph` receive the

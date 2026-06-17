@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateDesign } from "./storage";
+import { LATEST_SCHEMA_VERSION } from "../model/migrations";
 import { createDesign } from "../model/defaults";
 
 describe("validateDesign", () => {
@@ -93,6 +94,26 @@ describe("validateDesign — windows, floors, materials", () => {
     }
   });
 
+  it("accepts and round-trips a roof", () => {
+    const d = base();
+    d.roof = {
+      type: "gabled",
+      pitch: 30,
+      overhang: 0.4,
+      visible: true,
+      material: { kind: "solid", color: "#8a5a44" },
+    };
+    const r = validateDesign(JSON.parse(JSON.stringify(d)));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.design.roof).toEqual(d.roof);
+  });
+
+  it("rejects a malformed roof", () => {
+    const d = base() as unknown as Record<string, unknown>;
+    d.roof = { type: "mansard", pitch: 30, overhang: 0.4, visible: true };
+    expect(validateDesign(d).ok).toBe(false);
+  });
+
   it("rejects a malformed window", () => {
     const d = base();
     d.levels[0]!.walls.push({
@@ -169,7 +190,7 @@ describe("validateDesign — v1 migration on import", () => {
     const r = validateDesign(v1);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.design.schemaVersion).toBe(8);
+      expect(r.design.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
       expect(r.design.levels[0]!.walls[0]!.doors).toEqual([]);
       expect(r.design.levels[0]!.walls[0]!.mounts).toEqual([]);
       expect(r.design.levels[0]!.furniture).toEqual([]);

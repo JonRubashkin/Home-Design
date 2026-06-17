@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import type {
+  CeilingLight,
   Design,
   DoorOpening,
   FloorRegion,
   FurnitureItem,
   Level,
   MaterialRef,
+  Roof,
   Site,
   Staircase,
   Vec2,
@@ -36,11 +38,13 @@ import {
   unionBounds,
 } from "../geometry/planview";
 import {
+  createCeilingLight,
   createDesign,
   createDoor,
   createFloor,
   createFurniture,
   createLevel,
+  createRoof,
   createStaircase,
   createWall,
   createWallMount,
@@ -185,6 +189,7 @@ export type Selection =
   | { kind: "floor"; id: string }
   | { kind: "furniture"; id: string }
   | { kind: "staircase"; id: string }
+  | { kind: "ceilingLight"; id: string }
   | null;
 
 const HISTORY_CAP = 100;
@@ -285,6 +290,14 @@ function findStaircase(
   return levelOf(design, levelId).staircases.find((s) => s.id === stairId);
 }
 
+function findCeilingLight(
+  design: Design,
+  levelId: string,
+  lightId: string,
+): CeilingLight | undefined {
+  return levelOf(design, levelId).ceilingLights.find((l) => l.id === lightId);
+}
+
 // Storey height a staircase ascends (its level's wallHeight + slab).
 function storeyHeightOf(level: Level): number {
   return level.wallHeight + FLOOR_SLAB_THICKNESS;
@@ -319,6 +332,8 @@ function selectionExists(
     return !!findWallMount(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
   if (sel.kind === "staircase") return !!findStaircase(design, levelId, sel.id);
+  if (sel.kind === "ceilingLight")
+    return !!findCeilingLight(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
 }
 
@@ -333,6 +348,9 @@ interface AppState {
   // a saved design was found on load (set by main.tsx).
   started: boolean;
   hasSavedDesign: boolean;
+  // The id of the open library record (Phase 5b). Autosave writes the open design
+  // to this record. Null before a design is opened/created.
+  openDesignId: string | null;
 
   // Transient hover hint: which wall side to spotlight in the plan (paint tool
   // hover and the properties-panel side chips). Not persisted, not in history.
@@ -352,6 +370,8 @@ interface AppState {
   // Multi-level UI prefs (persisted, never in the Design).
   activeLevelOnly: boolean; // 3D: render only the active level
   showUnderlay: boolean; // 2D: ghost the level below the active one
+  // 2D: show a length label on every wall segment (persisted UI pref).
+  showDimensions: boolean;
   // Furniture collision prevention (persisted UI pref, never in the Design).
   collisionMode: CollisionMode;
 
@@ -390,6 +410,7 @@ interface AppState {
   setCurrentMaterial: (material: MaterialRef) => void;
   setActiveLevelOnly: (only: boolean) => void;
   setShowUnderlay: (show: boolean) => void;
+  setShowDimensions: (show: boolean) => void;
   setCollisionMode: (mode: CollisionMode) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
@@ -463,12 +484,38 @@ interface AppState {
   updateStaircase: (id: string, patch: Partial<Omit<Staircase, "id">>) => void;
   rotateStaircase: (id: string, deltaDeg: number) => void;
   deleteStaircase: (id: string) => void;
+  // Ceiling lights (Phase 5f). Hang from the active level's ceiling.
+  addCeilingLight: (
+    catalogId: string,
+    position: Vec2,
+    drop?: number,
+  ) => void;
+  updateCeilingLight: (
+    id: string,
+    patch: Partial<Omit<CeilingLight, "id" | "catalogId">>,
+  ) => void;
+  setCeilingLightMaterial: (
+    id: string,
+    slot: string,
+    material: MaterialRef,
+  ) => void;
+  setCeilingLightScale: (id: string, scale: Vec3) => void;
+  deleteCeilingLight: (id: string) => void;
   setSite: (site: Site) => void;
+  // Roof (Phase 5e): set/clear the whole roof, or patch fields. updateRoof starts
+  // from a default roof if none exists yet.
+  setRoof: (roof: Roof | null) => void;
+  updateRoof: (patch: Partial<Roof>) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
   // Welcome actions.
   continueDesign: () => void;
   startNewDesign: (site: Site) => void;
+  // Library (Phase 5b): open an existing record, rename the open design, or fork
+  // the open design into a new record (Save As).
+  openRecord: (id: string, design: Design) => void;
+  renameDesign: (name: string) => void;
+  saveAs: (name: string) => void;
 
   // --- drag session (transient until endDrag) ---
   beginDrag: () => void;
@@ -478,6 +525,7 @@ interface AppState {
   moveDoor: (wallId: string, id: string, t: number) => void;
   moveFurniture: (id: string, position: Vec2, rotation?: number) => void;
   moveStaircase: (id: string, position: Vec2, rotation?: number) => void;
+  moveCeilingLight: (id: string, position: Vec2) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -530,6 +578,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      showDimensions,
       collisionMode,
       currentLevelId,
     } = get();
@@ -540,6 +589,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      showDimensions,
       collisionMode,
       activeLevelId: currentLevelId,
     });
@@ -552,6 +602,7 @@ export const useStore = create<AppState>((set, get) => {
     selection: null,
     started: false,
     hasSavedDesign: false,
+    openDesignId: null,
     sideHighlight: null,
     placingCatalogId: null,
     placingVariant: null,
@@ -562,6 +613,7 @@ export const useStore = create<AppState>((set, get) => {
     currentMaterial: prefs.currentMaterial,
     activeLevelOnly: prefs.activeLevelOnly,
     showUnderlay: prefs.showUnderlay,
+    showDimensions: prefs.showDimensions,
     collisionMode: prefs.collisionMode,
     past: [],
     future: [],
@@ -634,6 +686,10 @@ export const useStore = create<AppState>((set, get) => {
     },
     setShowUnderlay: (showUnderlay) => {
       set({ showUnderlay });
+      persistViewPrefs();
+    },
+    setShowDimensions: (showDimensions) => {
+      set({ showDimensions });
       persistViewPrefs();
     },
     setCollisionMode: (collisionMode) => {
@@ -1212,6 +1268,70 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    addCeilingLight: (catalogId, position, drop) => {
+      const entry = getCatalogEntry(catalogId);
+      if (!entry || entry.mount !== "ceiling") return;
+      const light = createCeilingLight(catalogId, snapToGrid(position), {
+        drop: drop ?? entry.defaultDrop,
+      });
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        levelOf(design, s.currentLevelId).ceilingLights.push(light);
+        return {
+          design,
+          selection: { kind: "ceilingLight", id: light.id },
+        };
+      });
+    },
+
+    updateCeilingLight: (id, patch) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const light = findCeilingLight(design, s.currentLevelId, id);
+        if (light) Object.assign(light, patch);
+        return { design };
+      });
+    },
+
+    setCeilingLightMaterial: (id, slot, material) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      commitCoalesced(`light-mat:${id}:${slot}`, (design) => {
+        const light = findCeilingLight(design, get().currentLevelId, id);
+        if (light)
+          light.materials = { ...light.materials, [slot]: clone(material) };
+      });
+    },
+
+    setCeilingLightScale: (id, scale) => {
+      const existing = findCeilingLight(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      const entry = getCatalogEntry(existing.catalogId);
+      const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      commitCoalesced(`light-scale:${id}`, (design) => {
+        const light = findCeilingLight(design, get().currentLevelId, id);
+        if (light) light.scale = clamped;
+      });
+    },
+
+    deleteCeilingLight: (id) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        level.ceilingLights = level.ceilingLights.filter((l) => l.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     setSite: (site) => {
       // Soft boundary: resizing only changes the numbers — nothing is clamped,
       // moved, or deleted. Undoable.
@@ -1223,30 +1343,54 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
-    setDesign: (design) => {
+    // Import: load a design into a brand-new library record (fresh id) with a
+    // clean history, so an imported file becomes its own saved design.
+    setRoof: (roof) => {
       pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        design.roof = roof ? clone(roof) : null;
+        return { design };
+      });
+    },
+
+    updateRoof: (patch) => {
+      // Coalesce slider drags (pitch/overhang) into one undo step, like scaling.
+      const key = Object.keys(patch).join(",");
+      commitCoalesced(`roof:${key}`, (design) => {
+        const base = design.roof ?? createRoof();
+        design.roof = { ...base, ...patch };
+      });
+    },
+
+    setDesign: (design) => {
       const next = clone(design);
       set({
         design: next,
         currentLevelId: next.levels[0]!.id,
         selection: null,
+        past: [],
+        future: [],
+        openDesignId: makeId("design"),
       });
     },
 
     newDesign: () => {
-      pushHistory();
       const design = createDesign();
       set({
         design,
         currentLevelId: design.levels[0]!.id,
         selection: null,
+        past: [],
+        future: [],
+        openDesignId: makeId("design"),
       });
     },
 
     continueDesign: () => set({ started: true }),
 
     startNewDesign: (site) => {
-      // Fresh design with the chosen site and a clean history.
+      // Fresh design with the chosen site, a clean history, and a new record id.
       const design = createDesign(undefined, site);
       set({
         design,
@@ -1255,6 +1399,40 @@ export const useStore = create<AppState>((set, get) => {
         past: [],
         future: [],
         started: true,
+        openDesignId: makeId("design"),
+      });
+    },
+
+    // Open an existing library record into the editor.
+    openRecord: (id, design) => {
+      const next = clone(design);
+      set({
+        design: next,
+        currentLevelId: next.levels[0]!.id,
+        selection: null,
+        past: [],
+        future: [],
+        started: true,
+        openDesignId: id,
+      });
+    },
+
+    // Rename the open design (undoable, persisted by autosave).
+    renameDesign: (name) => {
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        design.name = name;
+        return { design };
+      });
+    },
+
+    // Save As: fork the open design into a new record under a new name.
+    saveAs: (name) => {
+      set((s) => {
+        const design = clone(s.design);
+        design.name = name;
+        return { design, openDesignId: makeId("design") };
       });
     },
 
@@ -1315,6 +1493,15 @@ export const useStore = create<AppState>((set, get) => {
         if (!stair) return {};
         stair.position = position;
         if (rotation !== undefined) stair.rotation = rotation;
+        return { design };
+      }),
+
+    moveCeilingLight: (id, position) =>
+      set((s) => {
+        const design = clone(s.design);
+        const light = findCeilingLight(design, s.currentLevelId, id);
+        if (!light) return {};
+        light.position = position;
         return { design };
       }),
 

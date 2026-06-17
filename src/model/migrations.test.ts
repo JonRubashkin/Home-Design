@@ -146,6 +146,41 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.walls[0]!.mounts).toEqual([]);
   });
 
+  it("adds a null roof to a design with none (v8 -> v9)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.roof).toBeNull();
+  });
+
+  it("keeps an existing roof when migrating", () => {
+    const v8 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v8.schemaVersion = 8;
+    (v8.levels as Record<string, unknown>[])[0]!.staircases = [];
+    (v8.levels as Record<string, unknown>[])[0]!.furniture = [];
+    const lvl = (v8.levels as Record<string, unknown>[])[0]!;
+    (lvl.walls as Record<string, unknown>[])[0]!.doors = [];
+    (lvl.walls as Record<string, unknown>[])[0]!.mounts = [];
+    v8.roof = {
+      type: "hipped",
+      pitch: 25,
+      overhang: 0.5,
+      visible: true,
+      material: { kind: "solid", color: "#8a5a44" },
+    };
+    const out = migrateToLatest(v8);
+    expect(out.roof).toEqual({
+      type: "hipped",
+      pitch: 25,
+      overhang: 0.5,
+      visible: true,
+      material: { kind: "solid", color: "#8a5a44" },
+    });
+  });
+
+  it("adds an empty ceilingLights array to every level (-> v10)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.levels[0]!.ceilingLights).toEqual([]);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

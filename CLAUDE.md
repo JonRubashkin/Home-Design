@@ -50,18 +50,28 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 8;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 10;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
-                            // v8 = wall-mounted items (Phase 4d).
-                            // Migrations in src/model/migrations.ts upgrade older
-                            // saved designs.
+                            // v8 = wall-mounted items (Phase 4d); v9 = roof
+                            // (Phase 5e); v10 = ceiling lights (Phase 5f).
+                            // Migrations in src/model/migrations.ts upgrade
+                            // older saved designs.
   name: string;
   site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
                             // migration. Never hardcode levels[0] outside of a
                             // single "current level" selector.
+  roof: Roof | null;        // Phase 5e: one roof over the top level (null = none)
+}
+
+interface Roof {            // Phase 5e. One roof over the highest level.
+  type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = shed/single-slope
+  pitch: number;            // slope in degrees (ignored for flat)
+  overhang: number;         // meters beyond the footprint bbox (eaves)
+  visible: boolean;         // hide-roof toggle (default true)
+  material: MaterialRef;    // default a roof-tile solid
 }
 
 interface Site {            // SOFT work-area boundary — never enforced.
@@ -83,6 +93,17 @@ interface Level {
   walls: Wall[];
   floors: FloorRegion[];
   furniture: FurnitureItem[]; // Phase 2b
+  staircases: Staircase[];    // Phase 3d
+  ceilingLights: CeilingLight[]; // Phase 5f
+}
+
+interface CeilingLight {    // Phase 5f. Hangs from THIS level's ceiling.
+  id: string;
+  catalogId: string;        // a catalog entry with mount: "ceiling"
+  position: Vec2;           // plan X/Z
+  drop: number;             // meters hanging below the ceiling
+  scale: Vec3;              // per the entry's scaling policy
+  materials: Record<string, MaterialRef>;
 }
 
 interface FurnitureItem {   // Phase 2b. References a catalog id — never geometry.
@@ -194,8 +215,9 @@ in code under `src/catalog/`:
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
   `stackable` (small item that auto-climbs onto a surface), an optional `mount`
-  (`"floor"` default | `"wall"`) with `defaultMountHeight` for wall items (Phase
-  4d — see "Wall-mounted items"), optional `legClearance` / `tuckHeight` for
+  (`"floor"` default | `"wall"` | `"ceiling"`) with `defaultMountHeight` for wall
+  items (Phase 4d) / `defaultDrop` for ceiling lights (Phase 5f — see "Wall-mounted
+  items" and "Ceiling lights"), optional `legClearance` / `tuckHeight` for
   height-aware collision (Phase 4d Part C — see "Furniture collision"), a `scaling`
   policy (see below), ordered named material `slots`
   (slot[0] is the primary slot the Paint tool recolors), a pure `build(variant?)`
@@ -245,7 +267,7 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
   `CATALOG_ITEMS`, so new items appear there automatically).
-- **Catalog inventory (Phase 4a/4b/4d).** 71 items across seven categories:
+- **Catalog inventory (Phase 4a/4b/4d/5f).** 74 items across seven categories:
   *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
   lamp, potted plant, **books**); *Bedroom* (double/single bed, nightstand,
@@ -264,11 +286,13 @@ in code under `src/catalog/`:
   (computer, kettle, toaster, coffee maker, books) — `stackable`, `collidable:
   false`, riding the existing auto-stacking. **Phase 4d Part B** adds six
   `mount:"wall"` items (see "Wall-mounted items"): framed wall art, wall-mounted
-  TV, floating shelf, wall sconce, wall mirror, range hood.
-  **Deferred** to a future ceiling-attach pass (do NOT add as floor/wall items):
-  curtains, pendant/ceiling lights. (Auto-stacking ONTO a wall shelf is also out
-  of scope — `computeStackBaseLifts` is plan-position based and can't know a
-  shelf's wall height; the floating shelf is decorative for now.)
+  TV, floating shelf, wall sconce, wall mirror, range hood. **Phase 5f** adds three
+  `mount:"ceiling"` lights (see "Ceiling lights"): pendant light, flush ceiling
+  light, chandelier.
+  **Deferred** (do NOT add): curtains (a future fabric pass); multi-section /
+  L-shaped roofs; auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is
+  plan-position based and can't know a shelf's wall height; the floating shelf is
+  decorative for now).
 
 ## Wall-mounted items (Phase 4d Part B)
 
@@ -350,10 +374,36 @@ in code under `src/catalog/`:
   shared or deep-cloned — design docs are small) pushed on each *committed* action.
   Mid-drag movements update a transient preview; history records only on commit
   (mouse-up). Ctrl+Z / Ctrl+Shift+Z (and Ctrl+Y). Cap history at 100 entries.
-- **Persistence:** autosave the `Design` JSON to localStorage (debounced), plus
-  explicit "Export JSON" (file download) and "Import JSON" (file picker). On load,
-  check `schemaVersion`; if it's a future unknown version, refuse with a friendly
-  message rather than corrupting data.
+- **Persistence (Phase 5b — design library):** designs live in an IndexedDB
+  library (`src/storage/library.ts`) of records `{ id, name, createdAt,
+  modifiedAt, thumbnail?, design }` — 100% local/offline, no backend (raw IDB, no
+  package). The store tracks the open record's id (`openDesignId`); debounced
+  autosave (`useAutosave`) writes the open design to its record via
+  `saveOpenDesign` and refreshes a small `captureView` thumbnail on save (NOT per
+  keystroke). On first run, `migrateLegacyAutosave` imports any old
+  single-slot localStorage autosave into the library (never lost) and clears it.
+  The welcome screen and the in-app **My Designs** menu list records (New / Open /
+  Duplicate / Rename / Delete; Continue = most recent; Save As forks a new record
+  via `saveAs`). Import (`setDesign`) and New (`newDesign`) start a fresh record
+  id. Still: explicit "Export JSON" / "Import JSON"; per-design `schemaVersion`
+  migrations run on open via `validateDesign`; a future unknown version is refused
+  rather than corrupting data.
+
+## Image export (Phase 5a)
+
+- Reusable capture utilities live in `src/lib/capture.ts`. `capture3D(handles,
+  {scale, transparent})` renders the live preview scene/camera to an offscreen
+  render target at `scale`× the on-screen size and returns a canvas; transparent
+  clears alpha to 0 and drops the scene background (real alpha, never blank), and
+  renderer state is restored afterwards. `captureView` is the small-thumbnail
+  wrapper reused by the design library (Phase 5b). `capturePlan(svg, bounds,
+  {scale, transparent})` clones the plan's `[data-plan-content]` group (dropping
+  its pan/zoom transform + screen-space dimming), frames it to the design bounds
+  via a viewBox, and rasterizes to a 2× canvas.
+- The 3D handles (`gl`/`scene`/`camera`/`size`) reach the export UI via a
+  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref.
+- UI: **Export 3D image** + a Transparent toggle in the 3D view bar; **Export
+  image** in the plan controls. Both download a PNG via `downloadCanvasPng`.
 
 ## Geometry rules
 
@@ -362,8 +412,16 @@ in code under `src/catalog/`:
   a box under the sill, a box above the window head, and full-height boxes between
   openings. One pure function computes the sub-box list for a wall:
   `wallToBoxes(wall): Box3Spec[]` — unit test it heavily.
-- **Corners:** simple overlap where thick walls meet is acceptable for now. Do not
-  attempt mitering/joinery. (Future phase.)
+- **Corners (Phase 5d — corner posts, NOT mitering):** thick walls overlap where
+  they meet; a small **corner post** fills each junction so corners read clean.
+  Pure tested `cornerPosts(walls)` (`src/geometry/cornerPosts.ts`) groups walls by
+  coincident endpoint (and detects T-junctions where an endpoint snapped onto a
+  wall's segment); at each junction of 2+ walls it emits a full-height box sized to
+  the thickest wall there, centered on the shared point, with the meeting wall ids.
+  `CornerPosts3D` renders them (neutral tone via the shared material helper) and
+  honors the level's view mode: Stubs at 10%, and Cutaway suppresses a post only
+  when ALL its walls are front-facing (so corners with a visible rear wall stay
+  solid). Render-side only; no schema change. Still no true mitering/joinery.
 - Walls are line segments with thickness; render each sub-box as a `BoxGeometry`
   oriented along the wall direction.
 - Side A/B paint maps to the box faces facing left/right of the wall direction.
@@ -452,6 +510,12 @@ in code under `src/catalog/`:
   the **3D-only** layout (no plan visible) the same dropdown appears in the 3D view
   bar so you can still switch floors. (The toolbar scrolls vertically when the
   viewport is too short for every tool.)
+- **Wall dimensions (Phase 5c):** a persisted UI pref `showDimensions`
+  (`setShowDimensions`, toggle in the plan controls) draws a length label on every
+  wall segment, not just while drawing. Labels render in **screen space** (constant
+  font at any zoom), rotated along the wall, flipped to avoid upside-down text,
+  offset slightly off the face; walls too short on screen are skipped (light
+  de-clutter, no full collision-avoidance). Plan-only; 3D unaffected.
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
   from the Floors dropdown (only when not on the bottom floor).
@@ -492,6 +556,58 @@ in code under `src/catalog/`:
   "open below" dashed void on the upper level (plus the stair through the
   underlay). Selectable/draggable/rotatable with a properties panel (width,
   rotation, position, material, delete). `Selection` gains `{ kind: "staircase" }`.
+
+## Roofs (Phase 5e — auto from footprint)
+
+- The design carries one `roof: Roof | null` over the **top** level (highest in
+  the ground-first `levels`), generated from that level's wall-footprint bounding
+  rectangle (the site rect as a fallback when there are no walls). Multi-section /
+  L-shaped / per-wing roofs are **deferred** — a single rectangular roof over the
+  bbox is correct for this phase.
+- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY)` in
+  `src/geometry/roof.ts` → `RoofPart[]` (planar world-space polygons): **flat** =
+  one slab at the wall-top height over (bbox + overhang); **pitched** = a single
+  shed slope eave-to-eave; **gabled** = ridge along the longer bbox axis, two
+  slopes + triangular gable ends; **hipped** = central inset ridge with four
+  slopes. `baseY = topLevel.elevation + topLevel.wallHeight`; the bbox is expanded
+  by `overhang`.
+- `Roof3D` fan-triangulates each part into a double-sided mesh (material via the
+  shared helper, planar UVs so patterns tile). **View-mode (critical):** the roof
+  suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)
+  so it never blocks the iso interior; solid in Full; kept solid in active-level-
+  only. PLUS the `roof.visible` hide toggle removes it in any mode.
+- UI: a Roof subsection in the **Floors dropdown** (`RoofPanel`) — type, pitch,
+  overhang, material, Show-roof toggle, Add/Remove. Edits are undoable store
+  actions (`setRoof` / `updateRoof`, the latter coalesced + auto-creating a
+  default roof). Adding a floor re-tops the roof onto the new top level
+  automatically (Roof3D always reads the last level). v8→v9 migration adds
+  `roof: null`; Export/Import round-trips it.
+
+## Ceiling lights (Phase 5f — fixtures only, ceiling-attach)
+
+- A `mount:"ceiling"` `CatalogEntry` hangs from a level's ceiling as a
+  `CeilingLight` (stored on the level). `build()` parts rise y-up from 0 (bulb)
+  to `height` (canopy); `defaultDrop` is the placement drop below the ceiling.
+  Fixtures only — NO real illumination; the shade reads "lit" via a warm
+  near-white default color (no scene light, no emissive material field).
+- The ceiling height for a level = `elevation + wallHeight`; a light hangs with
+  its canopy at `ceilingY - drop`, and `CeilingLight3D` draws the connecting cord
+  (length = drop) up to the ceiling. Excluded from collision (like wall mounts).
+- **Placement** reuses the Furniture tool: with a `mount:"ceiling"` item active a
+  ghost follows the cursor in the plan (X/Z, grid-snapped); click places at the
+  default drop; Esc cancels; the tool stays active. `addCeilingLight`.
+- **3D** (`CeilingLights3D` per level): hidden in **Stubs** (above stub height,
+  like windows); shown in **Full** and **Cutaway** (in Cutaway the ceiling/roof
+  above suppresses, so the lights become visible — correct). Materials via the
+  shared helper.
+- **2D plan:** a small selectable circle+cross marker at `position` (drop/height
+  aren't visible top-down). **Selection** kind `ceilingLight` is **plan-only** (no
+  3D picking); the properties panel edits X/Y, drop, Size, materials, Delete — all
+  undoable (`updateCeilingLight` / `setCeilingLightMaterial` /
+  `setCeilingLightScale` / `deleteCeilingLight`); draggable in the plan.
+- Schema bumped to **v10**; the v9→v10 migration gives every level
+  `ceilingLights: []` (fixture-tested). Export/Import round-trips them. Three
+  catalog items: pendant light, flush ceiling light, chandelier.
 
 ## 2D plan editor rules
 

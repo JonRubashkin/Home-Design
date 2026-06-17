@@ -19,6 +19,7 @@ export interface ViewPrefs {
   showUnderlay: boolean; // 2D: ghost the level below the active one
   activeLevelId: string | null; // restore the active level across reloads
   collisionMode: CollisionMode; // furniture collision prevention
+  showDimensions: boolean; // 2D: length label on every wall segment
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -30,6 +31,7 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   showUnderlay: true,
   activeLevelId: null,
   collisionMode: "soft",
+  showDimensions: false,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -93,6 +95,10 @@ export function loadViewPrefs(): ViewPrefs {
       collisionMode: COLLISION_MODES.includes(parsed.collisionMode as CollisionMode)
         ? (parsed.collisionMode as CollisionMode)
         : DEFAULT_VIEW_PREFS.collisionMode,
+      showDimensions:
+        typeof parsed.showDimensions === "boolean"
+          ? parsed.showDimensions
+          : DEFAULT_VIEW_PREFS.showDimensions,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

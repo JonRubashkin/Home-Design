@@ -30,6 +30,67 @@ npm run format   # Prettier
 
 ## Features
 
+### Ceiling lights (phase 5f)
+
+- Three **ceiling-attached fixtures** (pendant light, flush ceiling light,
+  chandelier) hang from a level's ceiling. Pick one in the **Furniture** palette
+  and click in the plan to place it; it hangs at the chosen **drop** below the
+  ceiling with a connecting cord. Edit position, drop, size, and materials in the
+  properties panel (all undoable); drag the plan marker to move it.
+- Fixtures only — no real illumination; the shade reads as "lit". Hidden in
+  **Stubs**, visible in **Cutaway** (the ceiling above is suppressed). Excluded
+  from collision. Schema v10; round-trips through Export/Import.
+
+### Roofs (phase 5e)
+
+- One **roof over the top level**, auto-generated from its wall footprint's
+  bounding rectangle: **flat**, **gabled**, **hipped**, or **pitched** (shed),
+  with adjustable **pitch** and **overhang** and a material. Edit it in the Roof
+  subsection of the **Floors** dropdown (all undoable).
+- In **Cutaway/Stubs** the roof suppresses like an upper floor slab so the
+  interior stays visible; in **Full** it's solid; a **Show roof** toggle hides it
+  in any mode. Adding a floor re-tops the roof onto the new top level. Pure tested
+  `computeRoof` in `src/geometry/roof.ts`; round-trips through Export/Import.
+
+### Corner posts (phase 5d)
+
+- Junctions where thick walls meet get a small **corner post** so corners read
+  clean in 3D (no notch/overlap artifact) — not true mitering. Pure tested
+  `cornerPosts(walls)` finds L-corners, T-junctions, and multi-wall junctions; the
+  posts honor the level's **Cutaway/Stubs** view mode like walls.
+
+### Wall dimensions (phase 5c)
+
+- **Dimensions** toggle (plan controls, persisted) shows a **length label on every
+  wall** — not just while drawing. Labels run along each wall, offset slightly off
+  it, flipped to never read upside-down, in meters with cm precision, and stay a
+  constant readable size while panning/zooming. Plan-only. Walls too short to fit
+  the text on screen are skipped (light de-clutter).
+
+### Saved-design library (phase 5b)
+
+- A **local, offline design library** backed by IndexedDB (`src/storage/library.ts`)
+  replaces the old single-slot autosave. Each record holds `{ id, name, createdAt,
+  modifiedAt, thumbnail, design }`.
+- The **welcome screen** shows your recent designs with thumbnails — **Continue**
+  (most recently modified), open any design, or start a **New** one. Inside the
+  app, **My Designs** (top bar) lets you switch designs, plus **Save as copy**.
+- **New / Open / Duplicate / Rename / Delete** (Delete confirms; you can't delete
+  the design you're editing). Autosave writes the open design to its record and
+  refreshes a small 3D **thumbnail** on save (not on every keystroke).
+- An existing localStorage autosave is **migrated into the library** on first run
+  (never lost). Per-design `schemaVersion` migrations still run on open.
+
+### Image export (phase 5a)
+
+- **Export 3D image** (in the 3D view bar) downloads a crisp **2× PNG** of the
+  current camera/scene, with a **Transparent** toggle that produces real alpha
+  (no opaque background fill).
+- **Export image** (in the plan controls) downloads a **2× PNG** of the plan,
+  framed to the design content like Fit view.
+- Both are built on a reusable `captureView` / `capture3D` / `capturePlan` utility
+  in `src/lib/capture.ts` (the design library reuses it for thumbnails).
+
 ### Fill Room (phase 3e)
 
 - **Fill Room tool (G)** — click inside a fully enclosed room to fill its **floor**
@@ -114,8 +175,9 @@ npm run format   # Prettier
   drag the whole wall, edit length / thickness / height in the properties panel,
   delete.
 - **Undo / redo** for every committed action; a full drag is a single undo step.
-- **Persistence** — debounced autosave to localStorage, plus New / Export JSON /
-  Import JSON. Imports are validated against the schema version.
+- **Persistence** — the open design autosaves (debounced) to its record in the
+  design library (see below), plus New / Export JSON / Import JSON. Imports are
+  validated against the schema version and added as a new library record.
 - All lengths are in **meters**, snapped to a **0.1 m** grid.
 
 ### 3D preview (phase 1b)
@@ -354,7 +416,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 71 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 74 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

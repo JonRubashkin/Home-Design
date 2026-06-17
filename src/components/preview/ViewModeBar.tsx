@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useState, type MutableRefObject } from "react";
 import { useStore } from "../../store/store";
 import type { ViewMode } from "../../persistence/viewPrefs";
 import { LevelsPanel } from "../LevelsPanel";
+import {
+  capture3D,
+  downloadCanvasPng,
+  safeFileName,
+  type Capture3DHandles,
+} from "../../lib/capture";
 
 const MODE_LABELS: { mode: ViewMode; label: string; title: string }[] = [
   { mode: "full", label: "Full", title: "Show all walls" },
@@ -13,7 +19,13 @@ const MODE_LABELS: { mode: ViewMode; label: string; title: string }[] = [
   { mode: "stubs", label: "Stubs", title: "Show walls at 10% height" },
 ];
 
-export function ViewModeBar({ onFit }: { onFit: () => void }) {
+export function ViewModeBar({
+  onFit,
+  captureRef,
+}: {
+  onFit: () => void;
+  captureRef: MutableRefObject<Capture3DHandles | null>;
+}) {
   const viewMode = useStore((s) => s.viewMode);
   const setViewMode = useStore((s) => s.setViewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
@@ -21,10 +33,19 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
   const activeLevelOnly = useStore((s) => s.activeLevelOnly);
   const setActiveLevelOnly = useStore((s) => s.setActiveLevelOnly);
   const multiLevel = useStore((s) => s.design.levels.length > 1);
+  const designName = useStore((s) => s.design.name);
   // Only the 3D pane is visible in the "3d" layout, where the plan's Floors
   // dropdown isn't available — offer a floor picker here instead.
   const planHidden = useStore((s) => s.layout === "3d");
   const [floorsOpen, setFloorsOpen] = useState(false);
+  const [transparent, setTransparent] = useState(false);
+
+  const exportImage = () => {
+    const handles = captureRef.current;
+    if (!handles) return;
+    const canvas = capture3D(handles, { scale: 2, transparent });
+    downloadCanvasPng(canvas, `${safeFileName(designName)}-3d.png`);
+  };
 
   return (
     <div className="viewbar">
@@ -105,6 +126,28 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
       >
         Fit view
       </button>
+
+      <div className="viewbar-export">
+        <button
+          type="button"
+          className="viewbar-fit"
+          title="Download a 2× PNG of the current 3D view"
+          onClick={exportImage}
+        >
+          Export 3D image
+        </button>
+        <label
+          className="viewbar-transparent"
+          title="Export with a transparent background"
+        >
+          <input
+            type="checkbox"
+            checked={transparent}
+            onChange={(e) => setTransparent(e.target.checked)}
+          />
+          Transparent
+        </label>
+      </div>
     </div>
   );
 }

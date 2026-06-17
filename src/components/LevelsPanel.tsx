@@ -1,5 +1,6 @@
 import { useStore } from "../store/store";
 import { formatMeters } from "../lib/format";
+import { RoofPanel } from "./RoofPanel";
 
 // Vertical level list, bottom floor at the BOTTOM and upper floors stacked above
 // (matching physical stacking). Click a row to make it the active (editable)
@@ -104,6 +105,8 @@ export function LevelsPanel({ onSelectLevel }: { onSelectLevel?: () => void }) {
           Show level below (underlay)
         </label>
       )}
+
+      <RoofPanel />
     </aside>
   );
 }

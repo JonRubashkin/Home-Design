@@ -76,9 +76,12 @@ export function useGlobalShortcuts(): void {
             if (sel.kind === "wall") s.deleteWall(sel.id);
             else if (sel.kind === "window") s.deleteWindow(sel.wallId, sel.id);
             else if (sel.kind === "door") s.deleteDoor(sel.wallId, sel.id);
+            else if (sel.kind === "wallMount")
+              s.deleteWallMount(sel.wallId, sel.id);
             else if (sel.kind === "furniture") s.deleteFurniture(sel.id);
             else if (sel.kind === "staircase") s.deleteStaircase(sel.id);
-            else s.deleteFloor(sel.id);
+            else if (sel.kind === "ceilingLight") s.deleteCeilingLight(sel.id);
+            else if (sel.kind === "floor") s.deleteFloor(sel.id);
           }
           break;
         }

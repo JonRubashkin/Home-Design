@@ -9,10 +9,10 @@ import {
 } from "./index";
 
 describe("catalog", () => {
-  it("has 60 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(60);
+  it("has 65 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(65);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(60);
+    expect(new Set(ids).size).toBe(65);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -38,6 +38,12 @@ describe("catalog", () => {
       "towel-rack",
       "bathroom-cabinet",
       "desk-lamp",
+      // Phase 4d Part A: surface/decor items that rest on other furniture.
+      "book-stack",
+      "kettle",
+      "toaster",
+      "coffee-maker",
+      "computer",
     ]);
     for (const e of CATALOG_ITEMS) {
       expect(e.collidable).toBe(!nonCollidable.has(e.id));

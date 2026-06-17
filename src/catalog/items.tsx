@@ -296,6 +296,35 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     ),
   },
   {
+    id: "book-stack",
+    name: "Books",
+    category: "living",
+    // Decor that rests on a shelf, desk, or table surface (auto-stacking).
+    footprint: { width: 0.32, depth: 0.22 },
+    height: 0.2,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.6),
+    slots: [
+      { name: "books", default: solid("#9c6f4a") },
+      { name: "covers", default: solid("#7a8a6f") },
+    ],
+    build: () => [
+      box("books", [0.32, 0.06, 0.22], [0, 0.03, 0]),
+      box("covers", [0.28, 0.05, 0.2], [0.02, 0.085, 0]),
+      box("books", [0.24, 0.05, 0.18], [-0.02, 0.135, 0]),
+      // a single upright book leaning at the back
+      box("covers", [0.04, 0.17, 0.16], [0.13, 0.085, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, d - 0.06, "stack")}
+        {gl(-w / 2 + 0.03, 0, w / 2 - 0.03, 0, "split")}
+      </>
+    ),
+  },
+  {
     id: "sofa-sectional",
     name: "Sectional sofa",
     category: "living",
@@ -1020,6 +1049,86 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}</>
     ),
   },
+  {
+    id: "kettle",
+    name: "Kettle",
+    category: "kitchen",
+    // Small countertop appliance — rests on a counter/island surface.
+    footprint: { width: 0.2, depth: 0.2 },
+    height: 0.28,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "handle", default: SCREEN },
+    ],
+    build: () => [
+      cyl("body", 0.09, 0.2, [0, 0.1, 0]),
+      cyl("body", 0.07, 0.04, [0, 0.22, 0]),
+      box("handle", [0.02, 0.12, 0.02], [0, 0.26, 0]),
+      // spout
+      box("body", [0.03, 0.03, 0.06], [0, 0.16, 0.1]),
+    ],
+    glyph: (): ReactNode => <>{gc(0, 0, 0.09, "body")}</>,
+  },
+  {
+    id: "toaster",
+    name: "Toaster",
+    category: "kitchen",
+    footprint: { width: 0.3, depth: 0.18 },
+    height: 0.2,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "slots", default: SCREEN },
+    ],
+    build: () => [
+      rbox("body", [0.3, 0.18, 0.18], 0.04, [0, 0.09, 0]),
+      box("slots", [0.22, 0.02, 0.06], [0, 0.18, 0]),
+      // lever on the side
+      box("body", [0.02, 0.04, 0.04], [0.15, 0.12, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, d - 0.06, "body")}
+        {gl(-0.07, 0, 0.07, 0, "slot")}
+      </>
+    ),
+  },
+  {
+    id: "coffee-maker",
+    name: "Coffee maker",
+    category: "kitchen",
+    footprint: { width: 0.26, depth: 0.3 },
+    height: 0.36,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: solid("#3a3d44") },
+      { name: "carafe", default: GLASS },
+    ],
+    build: () => {
+      const D = 0.3;
+      return [
+        box("body", [0.26, 0.36, 0.16], [0, 0.18, -D / 2 + 0.08]),
+        box("body", [0.26, 0.04, 0.14], [0, 0.12, 0.02]), // warming plate
+        cyl("carafe", 0.07, 0.14, [0, 0.21, 0.04]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, 0.08, "body")}
+        {gc(0, 0.04, 0.07, "carafe")}
+      </>
+    ),
+  },
 
   // ---------------- BATHROOM ----------------
   {
@@ -1320,6 +1429,40 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
         {gc(0, 0, 0.08, "base")}
         {gc(0.06, -0.03, 0.05, "shade")}
         {gl(0, 0, 0.06, -0.03, "arm")}
+      </>
+    ),
+  },
+  {
+    id: "computer",
+    name: "Computer",
+    category: "office",
+    // The headline surface item: a monitor + keyboard + tower that auto-rests on
+    // a desk / table / counter when its center is over the surface.
+    footprint: { width: 0.55, depth: 0.5 },
+    height: 0.48,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.4),
+    slots: [
+      { name: "monitor", default: SCREEN },
+      { name: "stand", default: METAL },
+      { name: "keyboard", default: solid("#2b2e35") },
+    ],
+    build: () => {
+      const D = 0.5;
+      return [
+        box("monitor", [0.46, 0.28, 0.03], [0, 0.34, -D / 2 + 0.1]), // screen
+        box("stand", [0.06, 0.14, 0.06], [0, 0.16, -D / 2 + 0.1]), // neck
+        box("stand", [0.2, 0.02, 0.14], [0, 0.1, -D / 2 + 0.1]), // base
+        box("keyboard", [0.42, 0.02, 0.14], [0, 0.1, 0.1]),
+        box("stand", [0.18, 0.34, 0.4], [0.18, 0.17, 0.02]), // small tower
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.05, -d / 2 + 0.08, w / 2 - 0.18, -d / 2 + 0.08, "mon")}
+        {gr(-w / 2 + 0.08, d / 2 - 0.16, w - 0.3, 0.1, "kbd")}
       </>
     ),
   },

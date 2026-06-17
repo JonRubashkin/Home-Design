@@ -34,6 +34,16 @@ export interface Slot {
   default: MaterialRef;
 }
 
+// Phase 4c: shape variants. An entry that lists `variants` exposes several
+// distinct looks behind a single catalog id; a `FurnitureItem.variant` picks one
+// and `build()` / `glyph()` switch on it. `variants[0]` is the default (what an
+// item with no variant, e.g. a pre-4c saved design, resolves to). Footprint,
+// height, slots and scaling are shared across an entry's variants.
+export interface CatalogVariant {
+  id: string;
+  name: string;
+}
+
 export type ScaleMode = "none" | "uniform" | "axes";
 
 // Multiplier ranges per axis (x = width, y = height, z = depth). Omit an axis
@@ -70,7 +80,11 @@ export interface CatalogEntry {
   collidable: boolean;
   scaling: CatalogScaling;
   slots: Slot[]; // order matters; slots[0] is the primary slot
-  build: () => Part[]; // 3D parts in local space (y up from floor)
-  glyph: (w: number, d: number) => ReactNode; // distinguishing 2D plan marks
+  // Optional shape variants (Phase 4c). When present, `build`/`glyph` receive the
+  // resolved variant id; absent means the entry has a single fixed shape.
+  variants?: CatalogVariant[];
+  build: (variant?: string) => Part[]; // 3D parts in local space (y up from floor)
+  // Distinguishing 2D plan marks. Receives the resolved variant id (if any).
+  glyph: (w: number, d: number, variant?: string) => ReactNode;
 }
 

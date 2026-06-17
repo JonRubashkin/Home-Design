@@ -248,7 +248,24 @@ npm run format   # Prettier
   reused for the office too).
 - _Utility / laundry:_ washing machine, dryer.
 - _Outdoor:_ patio table, patio chair, sun lounger, parasol, BBQ grill, garden
-  bench, planter box, fire pit, tree, hedge, fence panel.
+  bench, planter box, fire pit, tree, shrub, fence panel.
+
+**Shape variants (phase 4c).** Trees and shrubs come in three shapes each so
+gardens have variety. Each is a **single catalog id plus a `variant` field**
+(not duplicate items), and shows in the palette as one button per variant:
+
+- _Tree:_ **Broadleaf** (rounded canopy), **Conifer** (tall layered evergreen),
+  **Ornamental** (slender trunk, small oval canopy).
+- _Shrub:_ **Spreading** (low hedge-type — stretch it along its length to make a
+  divider), **Rounded** (compact dome), **Columnar** (tall, narrow).
+
+Each variant reads distinctly in both 3D and the 2D plan symbol. **Scaling still
+applies on top** (a conifer scales uniformly; a spreading shrub stretches in
+length), so size variety is independent of shape. Pick a variant when placing
+from the palette, or switch it on a selected item from the **Variant** buttons in
+the properties panel (undoable). **Schema v7** adds the optional `variant` field;
+older designs migrate automatically — pre-4c trees become Broadleaf and hedges
+become the Spreading shrub (kept at their original width).
 
 _Deferred to a future wall-mount / vertical-stacking pass (not yet available as
 floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating

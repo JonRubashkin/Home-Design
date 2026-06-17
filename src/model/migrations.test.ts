@@ -86,6 +86,48 @@ describe("migrateToLatest", () => {
     expect(kept.site).toEqual({ width: 12, depth: 8 });
   });
 
+  it("maps pre-4c tree/hedge items to a default variant (v6 -> v7)", () => {
+    const v6 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v6.schemaVersion = 6;
+    (v6.levels as Record<string, unknown>[])[0]!.staircases = [];
+    (v6.levels as Record<string, unknown>[])[0]!.furniture = [
+      {
+        id: "t",
+        catalogId: "tree",
+        position: { x: 1, y: 1 },
+        rotation: 0,
+        scale: { x: 1, y: 1, z: 1 },
+        materials: {},
+      },
+      {
+        id: "h",
+        catalogId: "hedge",
+        position: { x: 2, y: 2 },
+        rotation: 0,
+        scale: { x: 1, y: 1, z: 1 },
+        materials: {},
+      },
+      {
+        id: "s",
+        catalogId: "sofa-3seat",
+        position: { x: 3, y: 3 },
+        rotation: 0,
+        scale: { x: 1, y: 1, z: 1 },
+        materials: {},
+      },
+    ];
+    const out = migrateToLatest(v6);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    const furn = out.levels[0]!.furniture;
+    expect(furn[0]!.variant).toBe("broadleaf");
+    // Hedge maps to spreading and widens to preserve its old footprint width
+    // (old 1.5 / new 0.8 ≈ 1.875).
+    expect(furn[1]!.variant).toBe("spreading");
+    expect(furn[1]!.scale.x).toBeCloseTo(1.875, 3);
+    // Non-variant items are untouched.
+    expect(furn[2]!.variant).toBeUndefined();
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

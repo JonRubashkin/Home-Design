@@ -13,6 +13,7 @@ import {
   getCatalogEntry,
   effectiveDimensions,
   dimensionToMultiplier,
+  resolveVariantId,
   type CatalogEntry,
 } from "../catalog";
 import type { Vec3 } from "../model/types";
@@ -180,9 +181,32 @@ type EditTarget =
   | { kind: "stairMat"; id: string }
   | { kind: "floor"; id: string };
 
+// One placeable palette button: a catalog entry, optionally narrowed to a single
+// shape variant. Variant-bearing entries (trees, shrubs) expand to one button
+// per variant so any variant can be placed directly from the palette.
+interface PaletteButton {
+  entry: CatalogEntry;
+  variant?: string;
+  key: string;
+  label: string;
+}
+
+function paletteButtons(entry: CatalogEntry): PaletteButton[] {
+  if (!entry.variants || entry.variants.length === 0) {
+    return [{ entry, key: entry.id, label: entry.name }];
+  }
+  return entry.variants.map((v) => ({
+    entry,
+    variant: v.id,
+    key: `${entry.id}:${v.id}`,
+    label: `${entry.name} — ${v.name}`,
+  }));
+}
+
 // The Furniture tool's right-panel palette: catalog items grouped by category.
 function FurniturePalette() {
   const placingCatalogId = useStore((s) => s.placingCatalogId);
+  const placingVariant = useStore((s) => s.placingVariant);
   const setPlacingCatalogId = useStore((s) => s.setPlacingCatalogId);
   return (
     <aside className="properties" aria-label="Furniture catalog">
@@ -196,22 +220,30 @@ function FurniturePalette() {
           <section key={cat}>
             <h3 className="palette-group-title">{CATEGORY_LABELS[cat]}</h3>
             <div className="palette-grid">
-              {CATALOG_ITEMS.filter((e) => e.category === cat).map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  className={`palette-item${placingCatalogId === entry.id ? " active" : ""}`}
-                  title={entry.name}
-                  onClick={() =>
-                    setPlacingCatalogId(
-                      placingCatalogId === entry.id ? null : entry.id,
-                    )
-                  }
-                >
-                  <FurnitureThumb entry={entry} />
-                  <span className="palette-name">{entry.name}</span>
-                </button>
-              ))}
+              {CATALOG_ITEMS.filter((e) => e.category === cat)
+                .flatMap(paletteButtons)
+                .map(({ entry, variant, key, label }) => {
+                  const active =
+                    placingCatalogId === entry.id &&
+                    (placingVariant ?? undefined) === variant;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`palette-item${active ? " active" : ""}`}
+                      title={label}
+                      onClick={() =>
+                        setPlacingCatalogId(
+                          active ? null : entry.id,
+                          variant ?? null,
+                        )
+                      }
+                    >
+                      <FurnitureThumb entry={entry} variant={variant} />
+                      <span className="palette-name">{label}</span>
+                    </button>
+                  );
+                })}
             </div>
           </section>
         ))}
@@ -517,6 +549,26 @@ export function PropertiesPanel() {
             </span>
           </label>
         </div>
+        {entry.variants && entry.variants.length > 1 && (
+          <>
+            <h3 className="properties-subhead">Variant</h3>
+            <div className="chip-row chip-wrap">
+              {entry.variants.map((v) => {
+                const current = resolveVariantId(entry, item.variant);
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className={`seg-button${current === v.id ? " active" : ""}`}
+                    onClick={() => updateFurniture(item.id, { variant: v.id })}
+                  >
+                    {v.name}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
         <FurnitureScaleControls
           entry={entry}
           scale={item.scale}

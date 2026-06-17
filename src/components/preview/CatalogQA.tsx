@@ -11,12 +11,31 @@ import { FurniturePiece } from "./FurniturePiece";
 
 // Dev-only QA view (open with #catalog in the URL): every catalog item laid out
 // in a grid in 3D with default materials, for checking proportions and that each
-// builder reads correctly.
+// builder reads correctly. Variant-bearing items (trees, shrubs) appear once per
+// variant so every shape can be eyeballed.
 const COLS = 6;
 const SPACING = 2.8;
 
+interface QAEntry {
+  entry: (typeof CATALOG_ITEMS)[number];
+  variant: string | undefined;
+  key: string;
+  label: string;
+}
+
+const QA_ENTRIES: QAEntry[] = CATALOG_ITEMS.flatMap((entry): QAEntry[] =>
+  entry.variants && entry.variants.length > 0
+    ? entry.variants.map((v) => ({
+        entry,
+        variant: v.id,
+        key: `${entry.id}:${v.id}`,
+        label: `${entry.name} — ${v.name}`,
+      }))
+    : [{ entry, variant: undefined, key: entry.id, label: entry.name }],
+);
+
 export function CatalogQA() {
-  const rows = Math.ceil(CATALOG_ITEMS.length / COLS);
+  const rows = Math.ceil(QA_ENTRIES.length / COLS);
   return (
     <div style={{ position: "fixed", inset: 0, background: "#11141b" }}>
       <Canvas flat dpr={[1, 2]} gl={{ antialias: true }}>
@@ -39,14 +58,14 @@ export function CatalogQA() {
           infiniteGrid
           fadeDistance={60}
         />
-        {CATALOG_ITEMS.map((entry, i) => {
+        {QA_ENTRIES.map(({ entry, variant, key, label }, i) => {
           const col = i % COLS;
           const row = Math.floor(i / COLS);
           const x = (col - (COLS - 1) / 2) * SPACING;
           const z = (row - (rows - 1) / 2) * SPACING;
-          const item = createFurniture(entry.id, { x, y: z });
+          const item = createFurniture(entry.id, { x, y: z }, { variant });
           return (
-            <group key={entry.id}>
+            <group key={key}>
               <FurniturePiece item={item} elevation={0} selected={false} />
               <Html
                 position={[x, 0, z + entry.footprint.depth / 2 + 0.35]}
@@ -58,7 +77,7 @@ export function CatalogQA() {
                   pointerEvents: "none",
                 }}
               >
-                {entry.name}
+                {label}
               </Html>
             </group>
           );

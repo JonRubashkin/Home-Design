@@ -3,7 +3,12 @@ import * as THREE from "three";
 import type { ThreeEvent } from "@react-three/fiber";
 import { RoundedBox } from "@react-three/drei";
 import type { FurnitureItem, MaterialRef } from "../../model/types";
-import { getCatalogEntry, type CatalogEntry, type Part } from "../../catalog";
+import {
+  getCatalogEntry,
+  resolveVariantId,
+  type CatalogEntry,
+  type Part,
+} from "../../catalog";
 import { planToWorld } from "../../geometry/mapping";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { FLAT_ITEM_LIFT, ITEM_LIFT } from "./stacking";
@@ -91,7 +96,10 @@ export function FurniturePiece({
   onClick?: (e: ThreeEvent<MouseEvent>) => void;
 }) {
   const entry = entryOverride ?? getCatalogEntry(item.catalogId);
-  const parts = useMemo(() => entry?.build() ?? [], [entry]);
+  const parts = useMemo(
+    () => (entry ? entry.build(resolveVariantId(entry, item.variant)) : []),
+    [entry, item.variant],
+  );
   if (!entry) return null;
 
   const [wx, , wz] = planToWorld(item.position, 0);

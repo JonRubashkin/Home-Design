@@ -278,6 +278,7 @@ export function PlanEditor() {
   const [snapHint, setSnapHint] = useState<Vec2 | null>(null);
   // Furniture placement ghost.
   const placingCatalogId = useStore((s) => s.placingCatalogId);
+  const placingVariant = useStore((s) => s.placingVariant);
   const [ghostRotation, setGhostRotation] = useState(0);
   const [furnGhost, setFurnGhost] = useState<{
     pos: Vec2;
@@ -822,7 +823,12 @@ export function PlanEditor() {
           world,
           ghostRotation,
         );
-        store.placeFurniture(placingCatalogId, placed.pos, placed.rotation);
+        store.placeFurniture(
+          placingCatalogId,
+          placed.pos,
+          placed.rotation,
+          placingVariant,
+        );
         // tool stays active for repeat placement
       }
       return;
@@ -1368,6 +1374,7 @@ export function PlanEditor() {
                 position={item.position}
                 rotation={item.rotation}
                 scale={item.scale}
+                variant={item.variant}
                 materials={item.materials}
                 className={`furn${
                   selection?.kind === "furniture" && selection.id === item.id
@@ -1499,6 +1506,7 @@ export function PlanEditor() {
                   entry={entry}
                   position={furnGhost.pos}
                   rotation={furnGhost.rotation}
+                  variant={placingVariant ?? undefined}
                   materials={{}}
                   className={`furn furn-ghost${warn ? " warn" : ""}`}
                 />

@@ -123,6 +123,7 @@ export function createFurniture(
   opts?: {
     rotation?: number;
     scale?: Vec3;
+    variant?: string;
     materials?: Record<string, MaterialRef>;
   },
 ): FurnitureItem {
@@ -132,6 +133,7 @@ export function createFurniture(
     position: { ...position },
     rotation: opts?.rotation ?? 0,
     scale: opts?.scale ? { ...opts.scale } : { x: 1, y: 1, z: 1 },
+    ...(opts?.variant ? { variant: opts.variant } : {}),
     materials: { ...(opts?.materials ?? {}) },
   };
 }
@@ -169,7 +171,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

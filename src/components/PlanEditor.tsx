@@ -75,6 +75,7 @@ import { patternDataUrl, representativeColor } from "../materials/textures";
 import { PATTERN_TILE_METERS } from "../materials/patterns";
 import { useElementSize } from "../lib/useElementSize";
 import { formatMeters } from "../lib/format";
+import { capturePlan, downloadCanvasPng, safeFileName } from "../lib/capture";
 
 interface View {
   pan: Vec2;
@@ -487,6 +488,17 @@ export function PlanEditor() {
     setView(
       fitView(bounds, size, { minScale: MIN_SCALE, maxScale: MAX_SCALE }),
     );
+  };
+
+  // Export the plan to a 2× PNG framed to the design content (Phase 5 Part A).
+  const exportPlanImage = async () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const bounds = unionBounds(siteBounds(site), geometryBounds());
+    if (!bounds) return;
+    const name = useStore.getState().design.name;
+    const canvas = await capturePlan(svg, bounds, { scale: 2 });
+    downloadCanvasPng(canvas, `${safeFileName(name)}-plan.png`);
   };
 
   // Frame the site + content once, when the plan first gets a size (mirrors the
@@ -1414,6 +1426,7 @@ export function PlanEditor() {
         <Grid size={size} view={view} />
 
         <g
+          data-plan-content
           transform={`translate(${view.pan.x} ${view.pan.y}) scale(${view.scale})`}
         >
           {/* Work-area (site): de-emphasize outside, shade the buildable rect. */}
@@ -1789,6 +1802,14 @@ export function PlanEditor() {
           onClick={fitToContent}
         >
           Fit view
+        </button>
+        <button
+          type="button"
+          className="plan-control-button"
+          title="Download a 2× PNG of the plan, framed to content"
+          onClick={exportPlanImage}
+        >
+          Export image
         </button>
       </div>
 

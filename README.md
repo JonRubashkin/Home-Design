@@ -30,6 +30,16 @@ npm run format   # Prettier
 
 ## Features
 
+### Image export (phase 5a)
+
+- **Export 3D image** (in the 3D view bar) downloads a crisp **2× PNG** of the
+  current camera/scene, with a **Transparent** toggle that produces real alpha
+  (no opaque background fill).
+- **Export image** (in the plan controls) downloads a **2× PNG** of the plan,
+  framed to the design content like Fit view.
+- Both are built on a reusable `captureView` / `capture3D` / `capturePlan` utility
+  in `src/lib/capture.ts` (the design library reuses it for thumbnails).
+
 ### Fill Room (phase 3e)
 
 - **Fill Room tool (G)** — click inside a fully enclosed room to fill its **floor**

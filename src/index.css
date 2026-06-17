@@ -426,6 +426,21 @@ button:focus-visible,
   border-color: var(--accent);
 }
 
+.viewbar-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.viewbar-transparent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim, #9aa1b2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* --- segmented control (layout toggle, view modes) --- */
 .seg {
   display: inline-flex;

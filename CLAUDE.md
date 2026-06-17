@@ -355,6 +355,22 @@ in code under `src/catalog/`:
   check `schemaVersion`; if it's a future unknown version, refuse with a friendly
   message rather than corrupting data.
 
+## Image export (Phase 5a)
+
+- Reusable capture utilities live in `src/lib/capture.ts`. `capture3D(handles,
+  {scale, transparent})` renders the live preview scene/camera to an offscreen
+  render target at `scale`× the on-screen size and returns a canvas; transparent
+  clears alpha to 0 and drops the scene background (real alpha, never blank), and
+  renderer state is restored afterwards. `captureView` is the small-thumbnail
+  wrapper reused by the design library (Phase 5b). `capturePlan(svg, bounds,
+  {scale, transparent})` clones the plan's `[data-plan-content]` group (dropping
+  its pan/zoom transform + screen-space dimming), frames it to the design bounds
+  via a viewBox, and rasterizes to a 2× canvas.
+- The 3D handles (`gl`/`scene`/`camera`/`size`) reach the export UI via a
+  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref.
+- UI: **Export 3D image** + a Transparent toggle in the 3D view bar; **Export
+  image** in the plan controls. Both download a PNG via `downloadCanvasPng`.
+
 ## Geometry rules
 
 - **No CSG libraries.** Window holes are made by composing each wall from

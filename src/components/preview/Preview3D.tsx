@@ -5,9 +5,11 @@ import { Grid, OrbitControls, OrthographicCamera } from "@react-three/drei";
 import { Building3D } from "./Building3D";
 import { CameraController } from "./CameraController";
 import { ViewModeBar } from "./ViewModeBar";
+import { SceneCapture } from "./SceneCapture";
 import { GROUND_Y } from "./stacking";
 import { isClick } from "./picking";
 import { useStore } from "../../store/store";
+import type { Capture3DHandles } from "../../lib/capture";
 
 // Guard the sRGB pipeline regardless of R3F/three version quirks: hex colors are
 // interpreted as sRGB and converted to linear for lighting.
@@ -54,6 +56,8 @@ export function Preview3D() {
   // Pointer-down position (CSS px) so picking can tell a click from an orbit
   // drag; shared with Furniture3D for select, used here for deselect-on-empty.
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  // Live renderer/scene/camera handles for image export (Phase 5 Part A).
+  const captureRef = useRef<Capture3DHandles | null>(null);
 
   return (
     <div
@@ -62,7 +66,10 @@ export function Preview3D() {
         pointerDownRef.current = { x: e.clientX, y: e.clientY };
       }}
     >
-      <ViewModeBar onFit={() => setFitNonce((n) => n + 1)} />
+      <ViewModeBar
+        onFit={() => setFitNonce((n) => n + 1)}
+        captureRef={captureRef}
+      />
       <Canvas
         flat
         dpr={[1, 2]}
@@ -95,6 +102,7 @@ export function Preview3D() {
         <Ground />
         <Building3D pointerDownRef={pointerDownRef} />
         <CameraController fitNonce={fitNonce} />
+        <SceneCapture handlesRef={captureRef} />
         <OrbitControls
           makeDefault
           enableDamping

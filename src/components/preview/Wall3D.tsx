@@ -10,6 +10,7 @@ import {
 import { faceTextureTransform } from "../../materials/faceUV";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
 import { useThreeMaterial } from "../../materials/threeMaterial";
+import { WallMount3D } from "./WallMount3D";
 
 const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
 const NEUTRAL_END: MaterialRef = { kind: "solid", color: "#c4bfb5" };
@@ -55,6 +56,8 @@ interface Props {
   selected: boolean;
   stub: boolean;
   ghost: boolean;
+  // The selected wall-mount id (if a mount on this wall is selected).
+  selectedMountId?: string | null;
   // Extend the wall downward by this much (the floor-slab thickness) so an upper
   // level's walls meet the lower level's wall tops — no floor band shows between
   // storeys. 0 = no skirt (ground level / stubs).
@@ -160,6 +163,7 @@ export function Wall3D({
   selected,
   stub,
   ghost,
+  selectedMountId = null,
   skirt = 0,
 }: Props) {
   const boxes = useMemo(() => {
@@ -251,6 +255,19 @@ export function Wall3D({
             </group>
           );
         })}
+
+      {/* Wall-mounted items (not in stub mode — they sit above stub height). */}
+      {!stub &&
+        wall.mounts.map((m) => (
+          <WallMount3D
+            key={m.id}
+            wall={wall}
+            mount={m}
+            elevation={elevation}
+            selected={selectedMountId === m.id}
+            ghost={ghost}
+          />
+        ))}
     </group>
   );
 }

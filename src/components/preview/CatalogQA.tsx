@@ -64,9 +64,19 @@ export function CatalogQA() {
           const x = (col - (COLS - 1) / 2) * SPACING;
           const z = (row - (rows - 1) / 2) * SPACING;
           const item = createFurniture(entry.id, { x, y: z }, { variant });
+          // Wall items have no floor; float them at their mount height so the
+          // build reads at a sensible elevation (centered on defaultMountHeight).
+          const elevation =
+            entry.mount === "wall"
+              ? (entry.defaultMountHeight ?? 1.5) - entry.height / 2
+              : 0;
           return (
             <group key={key}>
-              <FurniturePiece item={item} elevation={0} selected={false} />
+              <FurniturePiece
+                item={item}
+                elevation={elevation}
+                selected={false}
+              />
               <Html
                 position={[x, 0, z + entry.footprint.depth / 2 + 0.35]}
                 center

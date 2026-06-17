@@ -11,17 +11,21 @@ import type {
   Vec2,
   Vec3,
   Wall,
+  WallMount,
   WindowOpening,
 } from "../model/types";
 import {
   clampScale,
   getCatalogEntry,
   effectiveDimensions,
+  collisionExtent,
   type CatalogEntry,
 } from "../catalog";
 import {
   footprintsOverlap,
+  collidableItemsCollide,
   wallFootprint,
+  type CollisionItem,
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
@@ -39,6 +43,7 @@ import {
   createLevel,
   createStaircase,
   createWall,
+  createWallMount,
   createWindow,
   makeId,
   FLOOR_SLAB_THICKNESS,
@@ -72,18 +77,43 @@ function orientedFootprint(
   };
 }
 
-// Every collidable footprint on a level: collidable furniture + all staircases
-// (stairs are always bulky/collidable). `stairOrientedFootprint` is defined below.
-function levelCollidables(
-  level: Level,
-): { id: string; footprint: OrientedFootprint }[] {
-  const out: { id: string; footprint: OrientedFootprint }[] = [];
+// A height-aware collision item for a placed furniture piece: footprint plus its
+// vertical extent (base 0 on the floor) and tuck info (leg clearance / tuck
+// height) so chairs can tuck under tables (Phase 4d Part C).
+function furnitureCollisionItem(
+  item: FurnitureItem,
+  entry: CatalogEntry,
+): CollisionItem {
+  const ext = collisionExtent(entry, item.scale);
+  return {
+    id: item.id,
+    collidable: entry.collidable,
+    footprint: orientedFootprint(item, entry),
+    vertical: { base: 0, height: ext.height },
+    tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
+  };
+}
+
+// A staircase as a bulky, full-height collision item (no tuck-under).
+function stairCollisionItem(stair: Staircase, level: Level): CollisionItem {
+  return {
+    id: stair.id,
+    collidable: true,
+    footprint: stairOrientedFootprint(stair, level),
+    vertical: { base: 0, height: storeyHeightOf(level) },
+  };
+}
+
+// Every collidable thing on a level as height-aware collision items: collidable
+// furniture + all staircases (stairs are always bulky/collidable).
+function levelCollidables(level: Level): CollisionItem[] {
+  const out: CollisionItem[] = [];
   for (const item of level.furniture) {
     const entry = getCatalogEntry(item.catalogId);
-    if (entry?.collidable) out.push({ id: item.id, footprint: orientedFootprint(item, entry) });
+    if (entry?.collidable) out.push(furnitureCollisionItem(item, entry));
   }
   for (const stair of level.staircases) {
-    out.push({ id: stair.id, footprint: stairOrientedFootprint(stair, level) });
+    out.push(stairCollisionItem(stair, level));
   }
   return out;
 }
@@ -101,25 +131,25 @@ function belowStairFootprints(
     : [];
 }
 
-// Does a candidate footprint overlap any OTHER collidable thing on the level
-// (other furniture/staircases), a wall, or a stairwell opening (the hole from a
-// staircase on the level below)? Walls and openings act as barriers.
+// Does a candidate collide with any OTHER collidable thing on the level (other
+// furniture/staircases — height-aware, with tuck-under), a wall, or a stairwell
+// opening (the hole from a staircase on the level below)? Walls and openings are
+// hard barriers (footprint-only; no vertical/tuck exemption).
 function collidesOnLevel(
   design: Design,
   levelId: string,
-  candidateId: string,
-  candidate: OrientedFootprint,
+  candidate: CollisionItem,
 ): boolean {
   const level = levelOf(design, levelId);
   for (const other of levelCollidables(level)) {
-    if (other.id === candidateId) continue;
-    if (footprintsOverlap(candidate, other.footprint)) return true;
+    if (other.id === candidate.id) continue;
+    if (collidableItemsCollide(candidate, other)) return true;
   }
   for (const wall of level.walls) {
-    if (footprintsOverlap(candidate, wallFootprint(wall))) return true;
+    if (footprintsOverlap(candidate.footprint, wallFootprint(wall))) return true;
   }
   for (const opening of belowStairFootprints(design, levelId)) {
-    if (footprintsOverlap(candidate, opening)) return true;
+    if (footprintsOverlap(candidate.footprint, opening)) return true;
   }
   return false;
 }
@@ -132,7 +162,7 @@ function itemCollides(
 ): boolean {
   const entry = getCatalogEntry(item.catalogId);
   if (!entry?.collidable) return false;
-  return collidesOnLevel(design, levelId, item.id, orientedFootprint(item, entry));
+  return collidesOnLevel(design, levelId, furnitureCollisionItem(item, entry));
 }
 
 export type Tool =
@@ -151,6 +181,7 @@ export type Selection =
   | { kind: "wall"; id: string }
   | { kind: "window"; wallId: string; id: string }
   | { kind: "door"; wallId: string; id: string }
+  | { kind: "wallMount"; wallId: string; id: string }
   | { kind: "floor"; id: string }
   | { kind: "furniture"; id: string }
   | { kind: "staircase"; id: string }
@@ -178,6 +209,7 @@ function cloneWallWithNewIds(wall: Wall): Wall {
   copy.id = makeId("wall");
   copy.windows = copy.windows.map((w) => ({ ...w, id: makeId("win") }));
   copy.doors = copy.doors.map((d) => ({ ...d, id: makeId("door") }));
+  copy.mounts = copy.mounts.map((m) => ({ ...m, id: makeId("mount") }));
   return copy;
 }
 
@@ -218,6 +250,15 @@ function findDoor(
   doorId: string,
 ): DoorOpening | undefined {
   return findWall(design, levelId, wallId)?.doors.find((d) => d.id === doorId);
+}
+
+function findWallMount(
+  design: Design,
+  levelId: string,
+  wallId: string,
+  mountId: string,
+): WallMount | undefined {
+  return findWall(design, levelId, wallId)?.mounts.find((m) => m.id === mountId);
 }
 
 function findFloor(
@@ -274,6 +315,8 @@ function selectionExists(
     return !!findWindow(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "door")
     return !!findDoor(design, levelId, sel.wallId, sel.id);
+  if (sel.kind === "wallMount")
+    return !!findWallMount(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
   if (sel.kind === "staircase") return !!findStaircase(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
@@ -377,6 +420,20 @@ interface AppState {
   ) => void;
   setDoorMaterial: (wallId: string, id: string, material: MaterialRef) => void;
   deleteDoor: (wallId: string, id: string) => void;
+  addWallMount: (wallId: string, mount: Omit<WallMount, "id">) => void;
+  updateWallMount: (
+    wallId: string,
+    id: string,
+    patch: Partial<Omit<WallMount, "id" | "catalogId">>,
+  ) => void;
+  setWallMountMaterial: (
+    wallId: string,
+    id: string,
+    slot: string,
+    material: MaterialRef,
+  ) => void;
+  setWallMountScale: (wallId: string, id: string, scale: Vec3) => void;
+  deleteWallMount: (wallId: string, id: string) => void;
   addFloor: (polygon: Vec2[], material: MaterialRef) => void;
   updateFloor: (id: string, patch: Partial<Omit<FloorRegion, "id">>) => void;
   setFloorMaterial: (id: string, material: MaterialRef) => void;
@@ -834,6 +891,74 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    addWallMount: (wallId, mount) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      const made = createWallMount(mount.catalogId, mount);
+      set((s) => {
+        const design = clone(s.design);
+        findWall(design, s.currentLevelId, wallId)?.mounts.push(made);
+        return {
+          design,
+          selection: { kind: "wallMount", wallId, id: made.id },
+        };
+      });
+    },
+
+    updateWallMount: (wallId, id, patch) => {
+      if (!findWallMount(get().design, get().currentLevelId, wallId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const mount = findWallMount(design, s.currentLevelId, wallId, id);
+        if (mount) Object.assign(mount, patch);
+        return { design };
+      });
+    },
+
+    setWallMountMaterial: (wallId, id, slot, material) => {
+      if (!findWallMount(get().design, get().currentLevelId, wallId, id)) return;
+      commitCoalesced(`mount-mat:${wallId}:${id}:${slot}`, (design) => {
+        const mount = findWallMount(design, get().currentLevelId, wallId, id);
+        if (mount)
+          mount.materials = { ...mount.materials, [slot]: clone(material) };
+      });
+    },
+
+    setWallMountScale: (wallId, id, scale) => {
+      const existing = findWallMount(
+        get().design,
+        get().currentLevelId,
+        wallId,
+        id,
+      );
+      if (!existing) return;
+      const entry = getCatalogEntry(existing.catalogId);
+      const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      commitCoalesced(`mount-scale:${wallId}:${id}`, (design) => {
+        const mount = findWallMount(design, get().currentLevelId, wallId, id);
+        if (mount) mount.scale = clamped;
+      });
+    },
+
+    deleteWallMount: (wallId, id) => {
+      const wall = findWall(get().design, get().currentLevelId, wallId);
+      if (!wall) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const w = findWall(design, s.currentLevelId, wallId);
+        if (w) w.mounts = w.mounts.filter((m) => m.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     addFloor: (polygon, material) => {
       pushHistory();
       const floor = createFloor(polygon, material);
@@ -1020,8 +1145,7 @@ export const useStore = create<AppState>((set, get) => {
           collidesOnLevel(
             get().design,
             get().currentLevelId,
-            stair.id,
-            stairOrientedFootprint(stair, level),
+            stairCollisionItem(stair, level),
           )
         )
           return;
@@ -1064,8 +1188,7 @@ export const useStore = create<AppState>((set, get) => {
           collidesOnLevel(
             get().design,
             get().currentLevelId,
-            id,
-            stairOrientedFootprint(hypo, level),
+            stairCollisionItem(hypo, level),
           )
         )
           return;

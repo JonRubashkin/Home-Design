@@ -46,6 +46,20 @@ export interface DoorOpening {
   material: MaterialRef;
 }
 
+// A wall-mounted item (Phase 4d). Like a window/door it is a CHILD of a wall,
+// positioned by `t` along the wall and a height up the wall — so it moves with
+// the wall and is deleted with it. References a catalog entry with mount:"wall";
+// never geometry. `face` picks which wall side it hangs on.
+export interface WallMount {
+  id: string;
+  catalogId: string;
+  t: number; // center along wall, 0..1 (exclusive of ends)
+  heightUpWall: number; // meters from floor to the item's vertical CENTER
+  face: "A" | "B"; // which wall side it mounts on
+  scale: Vec3; // per-axis multipliers, per the entry's scaling policy
+  materials: Record<string, MaterialRef>; // overrides keyed by part slot
+}
+
 export interface Wall {
   id: string;
   start: Vec2; // plan coords, grid-snapped
@@ -56,6 +70,7 @@ export interface Wall {
   paintB: MaterialRef; // side B = right of start->end direction
   windows: WindowOpening[];
   doors: DoorOpening[];
+  mounts: WallMount[]; // Phase 4d wall-mounted items
 }
 
 export interface FloorRegion {
@@ -115,7 +130,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 7;
+  schemaVersion: 8;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

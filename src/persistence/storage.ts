@@ -79,6 +79,19 @@ function structuralError(obj: Record<string, unknown>): string | null {
         )
           return "A door is malformed.";
       }
+      if (!Array.isArray(wall.mounts)) return "A wall is missing its mounts.";
+      for (const mount of wall.mounts) {
+        if (
+          !isObj(mount) ||
+          !isStr(mount.catalogId) ||
+          !isNum(mount.t) ||
+          !isNum(mount.heightUpWall) ||
+          (mount.face !== "A" && mount.face !== "B") ||
+          !isVec3(mount.scale) ||
+          !isObj(mount.materials)
+        )
+          return "A wall mount is malformed.";
+      }
     }
 
     for (const floor of level.floors) {

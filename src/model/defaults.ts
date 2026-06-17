@@ -10,6 +10,7 @@ import type {
   Vec2,
   Vec3,
   Wall,
+  WallMount,
   WindowOpening,
 } from "./types";
 import { DEFAULT_SITE } from "./site";
@@ -75,6 +76,26 @@ export function createWall(
     paintB: { ...DEFAULT_PAINT },
     windows: [],
     doors: [],
+    mounts: [],
+  };
+}
+
+// Default vertical center (meters) for a wall mount whose catalog entry omits
+// `defaultMountHeight`. Roughly eye level.
+export const DEFAULT_MOUNT_HEIGHT = 1.5;
+
+export function createWallMount(
+  catalogId: string,
+  opts?: Partial<Omit<WallMount, "id" | "catalogId">>,
+): WallMount {
+  return {
+    id: makeId("mount"),
+    catalogId,
+    t: opts?.t ?? 0.5,
+    heightUpWall: opts?.heightUpWall ?? DEFAULT_MOUNT_HEIGHT,
+    face: opts?.face ?? "A",
+    scale: opts?.scale ? { ...opts.scale } : { x: 1, y: 1, z: 1 },
+    materials: { ...(opts?.materials ?? {}) },
   };
 }
 
@@ -171,7 +192,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

@@ -15,13 +15,14 @@ import { FLAT_ITEM_LIFT, ITEM_LIFT } from "./stacking";
 
 const DEG = Math.PI / 180;
 
-function PartMesh({
+export function PartMesh({
   part,
   material,
   selected,
   hovered,
   warned,
   doubleSided,
+  ghost = false,
 }: {
   part: Part;
   material: MaterialRef;
@@ -31,11 +32,13 @@ function PartMesh({
   // Flat items (rugs/mats) render double-sided so their thin faces never get
   // backface-culled and vanish when the camera orbits to a low / overhead angle.
   doubleSided: boolean;
+  // Render translucent (wall mounts on a ghosted cutaway wall).
+  ghost?: boolean;
 }) {
   const mat = useThreeMaterial(
     material,
     doubleSided ? { side: THREE.DoubleSide } : {},
-    { selected, hovered, warned },
+    { selected, hovered, warned, ghost },
   );
   const p = part.primitive;
   const common = {

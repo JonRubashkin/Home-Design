@@ -58,6 +58,7 @@ describe("validateDesign — windows, floors, materials", () => {
         { id: "win", t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 },
       ],
       doors: [],
+      mounts: [],
     });
     d.levels[0]!.floors.push({
       id: "f1",
@@ -105,6 +106,7 @@ describe("validateDesign — windows, floors, materials", () => {
       // missing sillHeight
       windows: [{ id: "x", t: 0.5, width: 1, height: 1 } as never],
       doors: [],
+      mounts: [],
     });
     expect(validateDesign(d).ok).toBe(false);
   });
@@ -167,8 +169,9 @@ describe("validateDesign — v1 migration on import", () => {
     const r = validateDesign(v1);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.design.schemaVersion).toBe(7);
+      expect(r.design.schemaVersion).toBe(8);
       expect(r.design.levels[0]!.walls[0]!.doors).toEqual([]);
+      expect(r.design.levels[0]!.walls[0]!.mounts).toEqual([]);
       expect(r.design.levels[0]!.furniture).toEqual([]);
       expect(r.design.levels[0]!.staircases).toEqual([]);
       expect(r.design.site.width).toBeGreaterThan(0);

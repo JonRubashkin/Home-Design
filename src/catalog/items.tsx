@@ -112,6 +112,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.4,
+    legClearance: 0.34,
     scaling: axesScale({ x: [0.5, 2.2], z: [0.5, 2.0] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -258,6 +259,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: true,
     collidable: true,
     surfaceTop: 0.8,
+    legClearance: 0.72,
     scaling: axesScale({ x: [0.5, 2.5] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -292,6 +294,35 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       <>
         {gc(0, 0, 0.2, "foliage")}
         {gc(0, 0, 0.09, "pot")}
+      </>
+    ),
+  },
+  {
+    id: "book-stack",
+    name: "Books",
+    category: "living",
+    // Decor that rests on a shelf, desk, or table surface (auto-stacking).
+    footprint: { width: 0.32, depth: 0.22 },
+    height: 0.2,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.6),
+    slots: [
+      { name: "books", default: solid("#9c6f4a") },
+      { name: "covers", default: solid("#7a8a6f") },
+    ],
+    build: () => [
+      box("books", [0.32, 0.06, 0.22], [0, 0.03, 0]),
+      box("covers", [0.28, 0.05, 0.2], [0.02, 0.085, 0]),
+      box("books", [0.24, 0.05, 0.18], [-0.02, 0.135, 0]),
+      // a single upright book leaning at the back
+      box("covers", [0.04, 0.17, 0.16], [0.13, 0.085, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, d - 0.06, "stack")}
+        {gl(-w / 2 + 0.03, 0, w / 2 - 0.03, 0, "split")}
       </>
     ),
   },
@@ -805,6 +836,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.75,
+    legClearance: 0.68,
     scaling: axesScale({ x: [0.5, 2.5], z: [0.6, 1.8] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -830,6 +862,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.9,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.45,
     scaling: uniformScale(0.7, 1.5),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -858,6 +891,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.75,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.72,
     scaling: uniformScale(0.7, 1.5),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -879,6 +913,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.45,
+    tuckHeight: 0.45,
     scaling: axesScale({ x: [0.5, 2.8] }),
     slots: [
       { name: "seat", default: WOOD_LIGHT },
@@ -1002,6 +1037,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.9,
+    legClearance: 0.8,
     scaling: axesScale({ x: [0.6, 2.0], z: [0.6, 1.6] }),
     slots: [
       { name: "cabinet", default: solid("#d7d2c8") },
@@ -1018,6 +1054,86 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     },
     glyph: (w, d): ReactNode => (
       <>{gr(-w / 2 + 0.08, -d / 2 + 0.08, w - 0.16, d - 0.16, "top")}</>
+    ),
+  },
+  {
+    id: "kettle",
+    name: "Kettle",
+    category: "kitchen",
+    // Small countertop appliance — rests on a counter/island surface.
+    footprint: { width: 0.2, depth: 0.2 },
+    height: 0.28,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.8, 1.3),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "handle", default: SCREEN },
+    ],
+    build: () => [
+      cyl("body", 0.09, 0.2, [0, 0.1, 0]),
+      cyl("body", 0.07, 0.04, [0, 0.22, 0]),
+      box("handle", [0.02, 0.12, 0.02], [0, 0.26, 0]),
+      // spout
+      box("body", [0.03, 0.03, 0.06], [0, 0.16, 0.1]),
+    ],
+    glyph: (): ReactNode => <>{gc(0, 0, 0.09, "body")}</>,
+  },
+  {
+    id: "toaster",
+    name: "Toaster",
+    category: "kitchen",
+    footprint: { width: 0.3, depth: 0.18 },
+    height: 0.2,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: METAL },
+      { name: "slots", default: SCREEN },
+    ],
+    build: () => [
+      rbox("body", [0.3, 0.18, 0.18], 0.04, [0, 0.09, 0]),
+      box("slots", [0.22, 0.02, 0.06], [0, 0.18, 0]),
+      // lever on the side
+      box("body", [0.02, 0.04, 0.04], [0.15, 0.12, 0]),
+    ],
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, d - 0.06, "body")}
+        {gl(-0.07, 0, 0.07, 0, "slot")}
+      </>
+    ),
+  },
+  {
+    id: "coffee-maker",
+    name: "Coffee maker",
+    category: "kitchen",
+    footprint: { width: 0.26, depth: 0.3 },
+    height: 0.36,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.85, 1.2),
+    slots: [
+      { name: "body", default: solid("#3a3d44") },
+      { name: "carafe", default: GLASS },
+    ],
+    build: () => {
+      const D = 0.3;
+      return [
+        box("body", [0.26, 0.36, 0.16], [0, 0.18, -D / 2 + 0.08]),
+        box("body", [0.26, 0.04, 0.14], [0, 0.12, 0.02]), // warming plate
+        cyl("carafe", 0.07, 0.14, [0, 0.21, 0.04]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gr(-w / 2 + 0.03, -d / 2 + 0.03, w - 0.06, 0.08, "body")}
+        {gc(0, 0.04, 0.07, "carafe")}
+      </>
     ),
   },
 
@@ -1204,6 +1320,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: true,
     collidable: true,
     surfaceTop: 0.75,
+    legClearance: 0.68,
     scaling: axesScale({ x: [0.6, 1.8] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -1233,6 +1350,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 1.0,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.5,
     scaling: uniformScale(0.8, 1.3),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -1323,6 +1441,40 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       </>
     ),
   },
+  {
+    id: "computer",
+    name: "Computer",
+    category: "office",
+    // The headline surface item: a monitor + keyboard + tower that auto-rests on
+    // a desk / table / counter when its center is over the surface.
+    footprint: { width: 0.55, depth: 0.5 },
+    height: 0.48,
+    wallHugger: false,
+    collidable: false,
+    stackable: true,
+    scaling: uniformScale(0.7, 1.4),
+    slots: [
+      { name: "monitor", default: SCREEN },
+      { name: "stand", default: METAL },
+      { name: "keyboard", default: solid("#2b2e35") },
+    ],
+    build: () => {
+      const D = 0.5;
+      return [
+        box("monitor", [0.46, 0.28, 0.03], [0, 0.34, -D / 2 + 0.1]), // screen
+        box("stand", [0.06, 0.14, 0.06], [0, 0.16, -D / 2 + 0.1]), // neck
+        box("stand", [0.2, 0.02, 0.14], [0, 0.1, -D / 2 + 0.1]), // base
+        box("keyboard", [0.42, 0.02, 0.14], [0, 0.1, 0.1]),
+        box("stand", [0.18, 0.34, 0.4], [0.18, 0.17, 0.02]), // small tower
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>
+        {gl(-w / 2 + 0.05, -d / 2 + 0.08, w / 2 - 0.18, -d / 2 + 0.08, "mon")}
+        {gr(-w / 2 + 0.08, d / 2 - 0.16, w - 0.3, 0.1, "kbd")}
+      </>
+    ),
+  },
 
   // ---------------- UTILITY / LAUNDRY ----------------
   {
@@ -1398,6 +1550,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.74,
+    legClearance: 0.66,
     scaling: axesScale({ x: [0.6, 1.8], z: [0.6, 1.8] }),
     slots: [
       { name: "top", default: solid("#9aa6ad") },
@@ -1426,6 +1579,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.85,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.45,
     scaling: uniformScale(0.8, 1.3),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -1807,6 +1961,167 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
         {gl(0, -d / 2, 0, d / 2, "p2")}
         {gl(w / 4, -d / 2, w / 4, d / 2, "p3")}
       </>
+    ),
+  },
+
+  // ---------------- WALL-MOUNTED (Phase 4d) ----------------
+  // mount:"wall" — footprint is (width along wall) × (protrusion out), height is
+  // the vertical size, build() parts are centered in x/z and rise from y=0.
+  {
+    id: "wall-art",
+    name: "Framed wall art",
+    category: "living",
+    footprint: { width: 0.8, depth: 0.05 },
+    height: 0.6,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    defaultMountHeight: 1.6,
+    scaling: axesScale({ x: [0.5, 2.0], y: [0.5, 2.0] }),
+    slots: [
+      { name: "picture", default: solid("#6b7b8c") },
+      { name: "frame", default: WOOD_DARK },
+    ],
+    build: () => {
+      const W = 0.8,
+        H = 0.6,
+        D = 0.05;
+      return [
+        box("frame", [W, H, D], [0, H / 2, -D / 2 + 0.005]),
+        box("picture", [W - 0.1, H - 0.1, 0.02], [0, H / 2, D / 2]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.02, -d / 2 + 0.01, w - 0.04, d - 0.02, "pic")}</>
+    ),
+  },
+  {
+    id: "wall-tv",
+    name: "Wall-mounted TV",
+    category: "living",
+    footprint: { width: 1.2, depth: 0.08 },
+    height: 0.7,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    defaultMountHeight: 1.3,
+    scaling: axesScale({ x: [0.6, 1.8], y: [0.6, 1.8] }),
+    slots: [
+      { name: "screen", default: SCREEN },
+      { name: "frame", default: solid("#16181d") },
+    ],
+    build: () => {
+      const W = 1.2,
+        H = 0.7,
+        D = 0.08;
+      return [
+        box("frame", [W, H, D], [0, H / 2, -D / 2 + 0.01]),
+        box("screen", [W - 0.06, H - 0.06, 0.02], [0, H / 2, D / 2]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.02, -d / 2 + 0.01, w - 0.04, d - 0.02, "screen")}</>
+    ),
+  },
+  {
+    id: "floating-shelf",
+    name: "Floating shelf",
+    category: "living",
+    footprint: { width: 0.9, depth: 0.25 },
+    height: 0.06,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    defaultMountHeight: 1.4,
+    // NOTE: auto-stacking ONTO a wall shelf is out of scope — computeStackBaseLifts
+    // is plan-position based and can't know a shelf's wall height. The shelf is
+    // decorative for now (items don't rest on it).
+    scaling: axesScale({ x: [0.4, 2.5], z: [0.6, 1.6] }),
+    slots: [{ name: "board", default: WOOD }],
+    build: () => {
+      const W = 0.9,
+        D = 0.25;
+      return [box("board", [W, 0.06, D], [0, 0.03, 0])];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.02, -d / 2 + 0.02, w - 0.04, d - 0.04, "board")}</>
+    ),
+  },
+  {
+    id: "wall-sconce",
+    name: "Wall sconce",
+    category: "living",
+    footprint: { width: 0.18, depth: 0.18 },
+    height: 0.3,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    defaultMountHeight: 1.7,
+    scaling: uniformScale(0.7, 1.5),
+    slots: [
+      { name: "base", default: METAL },
+      { name: "shade", default: SHADE },
+    ],
+    build: () => [
+      box("base", [0.06, 0.16, 0.04], [0, 0.15, 0]),
+      cyl("shade", 0.08, 0.14, [0, 0.22, 0.08]),
+    ],
+    glyph: (): ReactNode => <>{gc(0, 0.04, 0.08, "shade")}</>,
+  },
+  {
+    id: "wall-mirror",
+    name: "Wall mirror",
+    category: "bathroom",
+    footprint: { width: 0.6, depth: 0.06 },
+    height: 0.8,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    defaultMountHeight: 1.5,
+    // glass is an OPAQUE pale material — no real transparency (cutaway-safe).
+    scaling: axesScale({ x: [0.5, 2.0], y: [0.6, 1.6] }),
+    slots: [
+      { name: "frame", default: WOOD_DARK },
+      { name: "glass", default: solid("#dfe8ec") },
+    ],
+    build: () => {
+      const W = 0.6,
+        H = 0.8,
+        D = 0.06;
+      return [
+        box("frame", [W, H, D], [0, H / 2, -D / 2 + 0.005]),
+        box("glass", [W - 0.08, H - 0.08, 0.02], [0, H / 2, D / 2]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.03, -d / 2 + 0.01, w - 0.06, d - 0.02, "glass")}</>
+    ),
+  },
+  {
+    id: "range-hood",
+    name: "Range hood",
+    category: "kitchen",
+    footprint: { width: 0.9, depth: 0.5 },
+    height: 0.5,
+    wallHugger: false,
+    collidable: false,
+    mount: "wall",
+    // Sits above a stove (~1.5 m to its vertical center).
+    defaultMountHeight: 1.5,
+    scaling: axesScale({ x: [0.6, 1.6] }),
+    slots: [{ name: "body", default: METAL }],
+    build: () => {
+      const W = 0.9,
+        D = 0.5;
+      return [
+        // Canopy tapering toward the wall, plus a narrow duct above.
+        box("body", [W, 0.18, D], [0, 0.09, 0]),
+        box("body", [W - 0.3, 0.16, D - 0.2], [0, 0.26, -0.05]),
+        box("body", [0.2, 0.16, 0.16], [0, 0.42, -D / 2 + 0.1]),
+      ];
+    },
+    glyph: (w, d): ReactNode => (
+      <>{gr(-w / 2 + 0.02, -d / 2 + 0.02, w - 0.04, d - 0.04, "hood")}</>
     ),
   },
 ];

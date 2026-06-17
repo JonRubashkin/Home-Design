@@ -744,3 +744,97 @@ describe("furniture vs stairwell opening (hard mode)", () => {
     state().setCollisionMode("soft");
   });
 });
+
+describe("wall mounts", () => {
+  const mounts = () => walls()[0]!.mounts;
+
+  it("adds, selects, updates, and deletes a wall mount (undoable)", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const wallId = walls()[0]!.id;
+    state().addWallMount(wallId, {
+      catalogId: "wall-tv",
+      t: 0.5,
+      heightUpWall: 1.3,
+      face: "A",
+      scale: { x: 1, y: 1, z: 1 },
+      materials: {},
+    });
+    expect(mounts()).toHaveLength(1);
+    const mountId = mounts()[0]!.id;
+    expect(state().selection).toEqual({ kind: "wallMount", wallId, id: mountId });
+
+    state().updateWallMount(wallId, mountId, { heightUpWall: 1.6, face: "B" });
+    expect(mounts()[0]!.heightUpWall).toBe(1.6);
+    expect(mounts()[0]!.face).toBe("B");
+
+    state().undo(); // revert the update
+    expect(mounts()[0]!.heightUpWall).toBe(1.3);
+    expect(mounts()[0]!.face).toBe("A");
+
+    state().deleteWallMount(wallId, mountId);
+    expect(mounts()).toHaveLength(0);
+    state().undo();
+    expect(mounts()).toHaveLength(1);
+  });
+
+  it("clamps a mount's scale to the catalog policy", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const wallId = walls()[0]!.id;
+    state().addWallMount(wallId, {
+      catalogId: "wall-tv",
+      t: 0.5,
+      heightUpWall: 1.3,
+      face: "A",
+      scale: { x: 1, y: 1, z: 1 },
+      materials: {},
+    });
+    const mountId = walls()[0]!.mounts[0]!.id;
+    // wall-tv allows x in [0.6, 1.8]; an over-range value clamps.
+    state().setWallMountScale(wallId, mountId, { x: 5, y: 1, z: 1 });
+    expect(walls()[0]!.mounts[0]!.scale.x).toBeCloseTo(1.8, 5);
+  });
+
+  it("carries mounts when the wall is copied to the floor above", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const wallId = walls()[0]!.id;
+    state().addWallMount(wallId, {
+      catalogId: "wall-art",
+      t: 0.4,
+      heightUpWall: 1.6,
+      face: "A",
+      scale: { x: 1, y: 1, z: 1 },
+      materials: {},
+    });
+    const originalMountId = walls()[0]!.mounts[0]!.id;
+    state().copyWallsToAbove([wallId]);
+    // active level switched to the new upper level; its wall has a fresh mount.
+    const upper = selectCurrentLevel(useStore.getState());
+    expect(upper.walls[0]!.mounts).toHaveLength(1);
+    expect(upper.walls[0]!.mounts[0]!.catalogId).toBe("wall-art");
+    expect(upper.walls[0]!.mounts[0]!.id).not.toBe(originalMountId);
+  });
+});
+
+describe("height-aware collision (hard mode tuck-under)", () => {
+  const furn = () => selectCurrentLevel(useStore.getState()).furniture;
+
+  it("lets a dining chair tuck under a dining table but blocks a wardrobe", () => {
+    state().placeFurniture("dining-table", { x: 5, y: 5 }, 0);
+    state().setCollisionMode("hard");
+    // chair tucks under the table -> placed
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "dining-chair")).toHaveLength(1);
+    // a wardrobe over the same spot collides (no leg clearance) -> blocked
+    state().placeFurniture("wardrobe", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "wardrobe")).toHaveLength(0);
+    state().setCollisionMode("soft");
+  });
+
+  it("still blocks a second overlapping chair (two chairs collide)", () => {
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    state().setCollisionMode("hard");
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "dining-chair")).toHaveLength(1);
+    state().setCollisionMode("soft");
+  });
+});

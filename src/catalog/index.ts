@@ -15,6 +15,7 @@ export type {
 export {
   clampScale,
   effectiveDimensions,
+  collisionExtent,
   dimensionToMultiplier,
   UNIT_SCALE,
 } from "./scale";

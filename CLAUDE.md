@@ -50,9 +50,10 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 7;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 8;         // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
-                            // v6 = staircases; v7 = furniture shape variants.
+                            // v6 = staircases; v7 = furniture shape variants;
+                            // v8 = wall-mounted items (Phase 4d).
                             // Migrations in src/model/migrations.ts upgrade older
                             // saved designs.
   name: string;
@@ -107,7 +108,20 @@ interface Wall {
   paintB: MaterialRef;      // side B = right of start→end direction
   windows: WindowOpening[];
   doors: DoorOpening[];     // Phase 2a
+  mounts: WallMount[];      // Phase 4d wall-mounted items
 }
+
+interface WallMount {       // Phase 4d. Child of a wall, like a window/door.
+  id: string;
+  catalogId: string;        // a catalog entry with mount: "wall"
+  t: number;                // center along wall, 0..1 (exclusive of ends)
+  heightUpWall: number;     // meters from floor to the item's vertical CENTER
+  face: "A" | "B";          // which wall side it mounts on
+  scale: Vec3;              // per the entry's scaling policy
+  materials: Record<string, MaterialRef>;
+}
+// Moves/deletes with its host wall (parametric, like windows/doors). Excluded
+// from furniture collision; never wall-hugs or floor-stacks.
 
 interface WindowOpening {
   id: string;
@@ -179,8 +193,11 @@ in code under `src/catalog/`:
   `footprint` (width × depth, meters),
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
-  `stackable` (small item that auto-climbs onto a surface), a `scaling` policy
-  (see below), ordered named material `slots`
+  `stackable` (small item that auto-climbs onto a surface), an optional `mount`
+  (`"floor"` default | `"wall"`) with `defaultMountHeight` for wall items (Phase
+  4d — see "Wall-mounted items"), optional `legClearance` / `tuckHeight` for
+  height-aware collision (Phase 4d Part C — see "Furniture collision"), a `scaling`
+  policy (see below), ordered named material `slots`
   (slot[0] is the primary slot the Paint tool recolors), a pure `build(variant?)`
   that returns `Part[]` (composed from shared `box` / `roundedBox` / `cylinder`
   primitives in local space, y up from the floor, +z = front), and a
@@ -228,44 +245,91 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
   `CATALOG_ITEMS`, so new items appear there automatically).
-- **Catalog inventory (Phase 4a/4b).** 60 items across seven categories:
+- **Catalog inventory (Phase 4a/4b/4d).** 71 items across seven categories:
   *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
-  lamp, potted plant); *Bedroom* (double/single bed, nightstand, wardrobe,
-  dresser, dressing table, bed bench, crib, bedside lamp, full-length mirror);
-  *Kitchen* (counter, upper cabinet, pantry cabinet, kitchen island, fridge,
-  stove, dishwasher, microwave, dining table/chair, bar stool, bench);
-  *Bathroom* (toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
-  bathroom cabinet); *Office* (desk, office chair, filing cabinet, desk lamp —
-  the bookshelf is reused, not duplicated); *Utility* (washing machine, dryer);
-  *Outdoor* (patio table, patio chair, sun lounger, parasol, BBQ grill, garden
-  bench, planter box, fire pit, tree, shrub, fence panel — all free-standing and
-  collidable; placed on the ground level; decking/paving use the existing
-  planks/tile floor patterns, not new items). The `tree` and `shrub` (id `hedge`)
-  entries each carry three shape **variants** (Phase 4c, above).
-  **Deferred** to a future wall-mount / vertical-stacking pass (do NOT add as
-  floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
-  shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances.
+  lamp, potted plant, **books**); *Bedroom* (double/single bed, nightstand,
+  wardrobe, dresser, dressing table, bed bench, crib, bedside lamp, full-length
+  mirror); *Kitchen* (counter, upper cabinet, pantry cabinet, kitchen island,
+  fridge, stove, dishwasher, microwave, dining table/chair, bar stool, bench,
+  **kettle, toaster, coffee maker**); *Bathroom* (toilet, bidet, sink vanity,
+  bathtub, shower stall, towel rack, bathroom cabinet); *Office* (desk, office
+  chair, filing cabinet, desk lamp, **computer** — the bookshelf is reused, not
+  duplicated); *Utility* (washing machine, dryer); *Outdoor* (patio table, patio
+  chair, sun lounger, parasol, BBQ grill, garden bench, planter box, fire pit,
+  tree, shrub, fence panel — all free-standing and collidable; placed on the
+  ground level; decking/paving use the existing planks/tile floor patterns, not
+  new items). The `tree` and `shrub` (id `hedge`) entries each carry three shape
+  **variants** (Phase 4c, above). **Phase 4d Part A** adds the surface/decor items
+  (computer, kettle, toaster, coffee maker, books) — `stackable`, `collidable:
+  false`, riding the existing auto-stacking. **Phase 4d Part B** adds six
+  `mount:"wall"` items (see "Wall-mounted items"): framed wall art, wall-mounted
+  TV, floating shelf, wall sconce, wall mirror, range hood.
+  **Deferred** to a future ceiling-attach pass (do NOT add as floor/wall items):
+  curtains, pendant/ceiling lights. (Auto-stacking ONTO a wall shelf is also out
+  of scope — `computeStackBaseLifts` is plan-position based and can't know a
+  shelf's wall height; the floating shelf is decorative for now.)
 
-## Furniture collision (Phase 3c.2 — footprint only, no vertical stacking)
+## Wall-mounted items (Phase 4d Part B)
+
+- A `mount:"wall"` `CatalogEntry` hangs on a wall face as a `WallMount` (child of
+  the wall, like a window/door). Its `footprint` is read as (width along the wall)
+  × (protrusion out from the wall), `height` is the vertical size, and
+  `defaultMountHeight` is the placement height to the item's vertical center.
+- **Placement** reuses the window/door wall-attach interaction: with a wall item
+  active in the **Furniture** tool, hovering near a wall shows a ghost marker on
+  the nearest face at the cursor's `t` and side (`face`); click attaches at
+  `defaultMountHeight`; Esc cancels; the tool stays active. `addWallMount`.
+- **Child-of-wall:** mounts move with their wall (parametric `t`) and are deleted
+  with it; `copyWallsToAbove` copies them under fresh ids.
+- **3D** (`WallMount3D`, rendered as a child of `Wall3D`): a group on the chosen
+  face, offset out by `thickness/2 + protrusion/2`, vertical center at `elevation
+  + heightUpWall`, oriented to face away from the wall, scaled, materials via the
+  shared `materialRefToThreeMaterial` helper. Because it renders inside `Wall3D`
+  it inherits the wall's **Cutaway** Invisible/Ghost suppression and is **hidden
+  in Stubs** (it sits above stub height, like windows). Wall mirror glass is an
+  **opaque** pale material (no real transparency — cutaway-safe).
+- **2D plan:** a small distinct selectable marker (the footprint rectangle on the
+  face + a dot). Height isn't visible top-down, so only position/side show.
+- **Selection** is **plan-only** (`Selection` kind `wallMount`); 3D picking is not
+  wired for mounts. The properties panel edits position along wall (meters), height
+  up wall, face A/B, Size (per scaling policy), material slots, and Delete — all
+  undoable store actions (`updateWallMount` / `setWallMountMaterial` /
+  `setWallMountScale` / `deleteWallMount`). Mounts are **excluded** from furniture
+  collision and never wall-hug or floor-stack. Pure transforms live in
+  `src/geometry/wallMount.ts` (`wallMountPlanFootprint`, `wallMountWorld`, tested).
+- Schema bumped to **v8**; the v7→v8 migration gives every wall `mounts: []`
+  (fixture-tested). Export/Import + autosave round-trip mounts.
+
+## Furniture collision (Phase 3c.2 — footprint; Phase 4d Part C — height-aware)
 
 - Each `CatalogEntry` carries `collidable: boolean` — **true** for bulky
   floor-standing items you'd never overlap, **false** for flat/surface/decor
   items meant to sit on or under others (rug, lamps, plant, microwave, mirror,
-  towel rack, bathroom cabinet). A non-collidable item never collides.
+  towel rack, bathroom cabinet, and the Part A surface items). A non-collidable
+  item never collides.
 - Two **collidable** items on the **same level** collide when their oriented
-  (scaled, rotated) footprint rectangles overlap beyond a small tolerance —
-  Separating Axis Theorem in pure tested `footprintsOverlap` / `collidingIds`
-  (`src/geometry/furniture.ts`). **No vertical stacking is considered**, so a
-  chair tucked under a table reads as a collision (expected; Soft handles it).
+  (scaled, rotated) footprint rectangles overlap beyond a small tolerance
+  (Separating Axis Theorem, `footprintsOverlap`) **AND** their vertical extents
+  `[base, base + scaledHeight]` overlap (`verticalExtentsOverlap`; `base` is 0 on
+  the floor) **AND** neither tucks under the other. The full predicate is
+  `collidableItemsCollide`; `collidingIds` / `collidingMovableIds` use it (all in
+  pure tested `src/geometry/furniture.ts`).
+- **Tuck-under (Part C).** Leggy entries (dining table, desk, console table,
+  coffee table, kitchen island, patio table) carry `legClearance` (open space
+  beneath the top); tuckable entries (dining chair, bar stool, office chair, patio
+  chair, bench) carry `tuckHeight` (default = `height`). `fitsUnder(t, l)` is true
+  when `l.legClearance` exists and `t.tuckHeight <= l.legClearance` — those two do
+  NOT collide even with overlapping footprints (chairs tuck under tables). The
+  catalog→collision inputs (scaled height/legClearance/tuckHeight) come from
+  `collisionExtent(entry, scale)`. Tuck-under does **not** apply to walls/openings.
 - **Walls and stairwell openings are barriers too:** a collidable item overlapping
-  a wall (each wall is an oriented length×thickness footprint via `wallFootprint`)
-  OR a stairwell opening (the floor hole on this level from a staircase on the
-  level **below**) collides, per the same mode — so furniture can't be pushed
-  through walls or float over the stair hole (Hard blocks, Soft warns).
-  `collidingMovableIds` checks movables vs other movables + barriers; the store's
-  `collidesOnLevel` (Hard guards) does the same. Wall-huggers sit flush to the
-  face (≈0 overlap, within tolerance) so they don't trip it.
+  a wall (an oriented length×thickness footprint via `wallFootprint`) OR a
+  stairwell opening (the floor hole on this level from a staircase on the level
+  **below**) collides — footprint-only, **no** vertical/tuck exemption (a chair
+  vs a wall always collides). `collidingMovableIds` checks movables vs other
+  movables + barriers; the store's `collidesOnLevel` (Hard guards) does the same.
+  Wall-huggers sit flush to the face (≈0 overlap) so they don't trip it.
 - **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
   set from the **Settings** dialog (gear in the top bar, next to Undo/Redo):
   **Off** (no checks),

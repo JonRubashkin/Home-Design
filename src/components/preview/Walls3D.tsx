@@ -19,6 +19,8 @@ export function Walls3D({
   skirt?: number;
 }) {
   const selection = useStore((s) => s.selection);
+  const selectedMountId =
+    selection?.kind === "wallMount" ? selection.id : null;
   const viewMode = useStore((s) => s.viewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
   const camera = useThree((s) => s.camera);
@@ -56,9 +58,10 @@ export function Walls3D({
             key={w.id}
             wall={w}
             elevation={elevation}
-            selected={selection?.id === w.id}
+            selected={selection?.kind === "wall" && selection.id === w.id}
             stub={viewMode === "stubs"}
             ghost={isHidden && cutawayStyle === "ghost"}
+            selectedMountId={selectedMountId}
             skirt={skirt}
           />
         );

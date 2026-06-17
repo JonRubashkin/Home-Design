@@ -5,6 +5,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
+  Roof,
   Site,
   Staircase,
   Vec2,
@@ -187,14 +188,34 @@ export function createLevel(name = "First floor"): Level {
   };
 }
 
+// A sensible default roof (Phase 5e): a gentle gable in a muted roof-tile tone.
+export const DEFAULT_ROOF: Roof = {
+  type: "gabled",
+  pitch: 30,
+  overhang: 0.4,
+  visible: true,
+  material: { kind: "solid", color: "#8a5a44" },
+};
+
+export function createRoof(opts?: Partial<Roof>): Roof {
+  return {
+    type: opts?.type ?? DEFAULT_ROOF.type,
+    pitch: opts?.pitch ?? DEFAULT_ROOF.pitch,
+    overhang: opts?.overhang ?? DEFAULT_ROOF.overhang,
+    visible: opts?.visible ?? DEFAULT_ROOF.visible,
+    material: opts?.material ? { ...opts.material } : { ...DEFAULT_ROOF.material },
+  };
+}
+
 export function createDesign(
   name = "Untitled design",
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],
+    roof: null,
   };
 }

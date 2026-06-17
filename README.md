@@ -30,6 +30,17 @@ npm run format   # Prettier
 
 ## Features
 
+### Roofs (phase 5e)
+
+- One **roof over the top level**, auto-generated from its wall footprint's
+  bounding rectangle: **flat**, **gabled**, **hipped**, or **pitched** (shed),
+  with adjustable **pitch** and **overhang** and a material. Edit it in the Roof
+  subsection of the **Floors** dropdown (all undoable).
+- In **Cutaway/Stubs** the roof suppresses like an upper floor slab so the
+  interior stays visible; in **Full** it's solid; a **Show roof** toggle hides it
+  in any mode. Adding a floor re-tops the roof onto the new top level. Pure tested
+  `computeRoof` in `src/geometry/roof.ts`; round-trips through Export/Import.
+
 ### Corner posts (phase 5d)
 
 - Junctions where thick walls meet get a small **corner post** so corners read

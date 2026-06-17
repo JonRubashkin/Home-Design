@@ -50,18 +50,27 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 8;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 9;         // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
-                            // v8 = wall-mounted items (Phase 4d).
-                            // Migrations in src/model/migrations.ts upgrade older
-                            // saved designs.
+                            // v8 = wall-mounted items (Phase 4d); v9 = roof
+                            // (Phase 5e). Migrations in src/model/migrations.ts
+                            // upgrade older saved designs.
   name: string;
   site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
                             // multi-level NOW so storeys can be added without
                             // migration. Never hardcode levels[0] outside of a
                             // single "current level" selector.
+  roof: Roof | null;        // Phase 5e: one roof over the top level (null = none)
+}
+
+interface Roof {            // Phase 5e. One roof over the highest level.
+  type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = shed/single-slope
+  pitch: number;            // slope in degrees (ignored for flat)
+  overhang: number;         // meters beyond the footprint bbox (eaves)
+  visible: boolean;         // hide-roof toggle (default true)
+  material: MaterialRef;    // default a roof-tile solid
 }
 
 interface Site {            // SOFT work-area boundary — never enforced.
@@ -532,6 +541,32 @@ in code under `src/catalog/`:
   "open below" dashed void on the upper level (plus the stair through the
   underlay). Selectable/draggable/rotatable with a properties panel (width,
   rotation, position, material, delete). `Selection` gains `{ kind: "staircase" }`.
+
+## Roofs (Phase 5e — auto from footprint)
+
+- The design carries one `roof: Roof | null` over the **top** level (highest in
+  the ground-first `levels`), generated from that level's wall-footprint bounding
+  rectangle (the site rect as a fallback when there are no walls). Multi-section /
+  L-shaped / per-wing roofs are **deferred** — a single rectangular roof over the
+  bbox is correct for this phase.
+- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY)` in
+  `src/geometry/roof.ts` → `RoofPart[]` (planar world-space polygons): **flat** =
+  one slab at the wall-top height over (bbox + overhang); **pitched** = a single
+  shed slope eave-to-eave; **gabled** = ridge along the longer bbox axis, two
+  slopes + triangular gable ends; **hipped** = central inset ridge with four
+  slopes. `baseY = topLevel.elevation + topLevel.wallHeight`; the bbox is expanded
+  by `overhang`.
+- `Roof3D` fan-triangulates each part into a double-sided mesh (material via the
+  shared helper, planar UVs so patterns tile). **View-mode (critical):** the roof
+  suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)
+  so it never blocks the iso interior; solid in Full; kept solid in active-level-
+  only. PLUS the `roof.visible` hide toggle removes it in any mode.
+- UI: a Roof subsection in the **Floors dropdown** (`RoofPanel`) — type, pitch,
+  overhang, material, Show-roof toggle, Add/Remove. Edits are undoable store
+  actions (`setRoof` / `updateRoof`, the latter coalesced + auto-creating a
+  default roof). Adding a floor re-tops the roof onto the new top level
+  automatically (Roof3D always reads the last level). v8→v9 migration adds
+  `roof: null`; Export/Import round-trips it.
 
 ## 2D plan editor rules
 

@@ -107,6 +107,13 @@ const migrations: Migration[] = [
     design.schemaVersion = 8;
     return design;
   },
+  // v8 -> v9: roofs. The design gains a `roof` field (null = no roof) so existing
+  // designs open unchanged with no roof.
+  (design) => {
+    if (design.roof === undefined) design.roof = null;
+    design.schemaVersion = 9;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

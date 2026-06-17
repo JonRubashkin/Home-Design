@@ -42,6 +42,20 @@ function structuralError(obj: Record<string, unknown>): string | null {
   if (!isObj(obj.site) || !isNum(obj.site.width) || !isNum(obj.site.depth))
     return "Design is missing its site.";
 
+  if (obj.roof !== null && obj.roof !== undefined) {
+    const roof = obj.roof;
+    const ROOF_TYPES = ["flat", "gabled", "hipped", "pitched"];
+    if (
+      !isObj(roof) ||
+      !ROOF_TYPES.includes(roof.type as string) ||
+      !isNum(roof.pitch) ||
+      !isNum(roof.overhang) ||
+      typeof roof.visible !== "boolean" ||
+      !isMaterial(roof.material)
+    )
+      return "The roof is malformed.";
+  }
+
   for (const level of obj.levels) {
     if (!isObj(level)) return "A level is malformed.";
     if (!Array.isArray(level.walls)) return "A level is missing its walls.";

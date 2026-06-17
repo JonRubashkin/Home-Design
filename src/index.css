@@ -1275,6 +1275,40 @@ button:focus-visible,
   color: #ef4444;
 }
 
+/* --- roof panel (in the Floors dropdown) --- */
+.roof-panel {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--chrome-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.roof-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.roof-types {
+  flex-wrap: wrap;
+}
+.roof-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.roof-slider input[type="range"] {
+  width: 100%;
+}
+.roof-visible {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
 /* --- 2D underlay (level below the active one) --- */
 .underlay {
   pointer-events: none;

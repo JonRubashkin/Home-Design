@@ -6,6 +6,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
+  Roof,
   Site,
   Staircase,
   Vec2,
@@ -41,6 +42,7 @@ import {
   createFloor,
   createFurniture,
   createLevel,
+  createRoof,
   createStaircase,
   createWall,
   createWallMount,
@@ -470,6 +472,10 @@ interface AppState {
   rotateStaircase: (id: string, deltaDeg: number) => void;
   deleteStaircase: (id: string) => void;
   setSite: (site: Site) => void;
+  // Roof (Phase 5e): set/clear the whole roof, or patch fields. updateRoof starts
+  // from a default roof if none exists yet.
+  setRoof: (roof: Roof | null) => void;
+  updateRoof: (patch: Partial<Roof>) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
   // Welcome actions.
@@ -1244,6 +1250,24 @@ export const useStore = create<AppState>((set, get) => {
 
     // Import: load a design into a brand-new library record (fresh id) with a
     // clean history, so an imported file becomes its own saved design.
+    setRoof: (roof) => {
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        design.roof = roof ? clone(roof) : null;
+        return { design };
+      });
+    },
+
+    updateRoof: (patch) => {
+      // Coalesce slider drags (pitch/overhang) into one undo step, like scaling.
+      const key = Object.keys(patch).join(",");
+      commitCoalesced(`roof:${key}`, (design) => {
+        const base = design.roof ?? createRoof();
+        design.roof = { ...base, ...patch };
+      });
+    },
+
     setDesign: (design) => {
       const next = clone(design);
       set({

@@ -129,12 +129,24 @@ export interface Site {
   depth: number; // meters
 }
 
+// A single roof over the whole top level, generated from its wall footprint's
+// bounding rectangle (Phase 5e). Multi-section / L-shaped roofs are deferred.
+export interface Roof {
+  type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = single-slope/shed
+  pitch: number; // slope in degrees (ignored for flat)
+  overhang: number; // meters beyond the footprint bbox (eaves)
+  visible: boolean; // hide-roof toggle (default true)
+  material: MaterialRef; // default a roof-tile solid
+}
+
 export interface Design {
-  schemaVersion: 8;
+  schemaVersion: 9;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can
   // be added without migration. Never hardcode levels[0] outside the current-level
   // selector.
   levels: Level[];
+  // A single roof over the top level, or null for no roof (Phase 5e).
+  roof: Roof | null;
 }

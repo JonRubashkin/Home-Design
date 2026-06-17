@@ -145,6 +145,15 @@ type DragState =
       basePos: Vec2;
       started: boolean;
     }
+  | {
+      kind: "ceilingLight";
+      pointerId: number;
+      itemId: string;
+      startScreen: Vec2;
+      startWorld: Vec2;
+      basePos: Vec2;
+      started: boolean;
+    }
   | { kind: "room"; pointerId: number; startScreen: Vec2 };
 
 const GRID_TIERS: { spacing: number; className: string }[] = [
@@ -302,12 +311,15 @@ export function PlanEditor() {
     t: number;
     face: WallSide;
   } | null>(null);
+  // Ceiling-light placement ghost (the active placing item is a mount:"ceiling").
+  const [ceilingGhost, setCeilingGhost] = useState<Vec2 | null>(null);
   const lastWorldRef = useRef<Vec2>({ x: 0, y: 0 });
-  // The catalog entry being placed, and whether it attaches to a wall.
+  // The catalog entry being placed, and whether it attaches to a wall/ceiling.
   const placingEntry = placingCatalogId
     ? getCatalogEntry(placingCatalogId)
     : undefined;
   const placingWallMount = placingEntry?.mount === "wall";
+  const placingCeiling = placingEntry?.mount === "ceiling";
 
   const dragRef = useRef<DragState>({ kind: "none" });
   const shiftRef = useRef(false);
@@ -318,6 +330,7 @@ export function PlanEditor() {
   const floors = level.floors;
   const furniture = level.furniture;
   const staircases = level.staircases;
+  const ceilingLights = level.ceilingLights;
   const storeyHeight = level.wallHeight + FLOOR_SLAB_THICKNESS;
 
   // A staircase's footprint (width × run), and a hit-test for the select tool.
@@ -531,6 +544,25 @@ export function PlanEditor() {
     return undefined;
   };
 
+  // A ceiling light whose plan marker is under the cursor (footprint hit-test).
+  const ceilingLightUnderCursor = (world: Vec2) => {
+    for (let i = ceilingLights.length - 1; i >= 0; i--) {
+      const light = ceilingLights[i]!;
+      const entry = getCatalogEntry(light.catalogId);
+      if (!entry) continue;
+      if (
+        pointInFootprint(
+          world,
+          light.position,
+          0,
+          scaledFootprint(entry, light.scale),
+        )
+      )
+        return light;
+    }
+    return undefined;
+  };
+
   // A wall mount whose plan marker (the rectangle on the wall face) is under the
   // cursor, for select-tool picking. Mounts sit just off the wall face.
   const mountUnderCursor = (
@@ -717,6 +749,7 @@ export function PlanEditor() {
     setFloorCursor(null);
     setFurnGhost(null);
     setMountGhost(null);
+    setCeilingGhost(null);
     setGhostRotation(0);
     useStore.getState().setSideHighlight(null);
     if (activeTool !== "furniture")
@@ -755,6 +788,7 @@ export function PlanEditor() {
         setFloorCursor(null);
         setFurnGhost(null);
         setStairGhost(null);
+        setCeilingGhost(null);
         setRoomRect(null);
         setSnapHint(null);
         dragRef.current = { kind: "none" };
@@ -906,6 +940,10 @@ export function PlanEditor() {
           });
         }
         // tool stays active for repeat placement
+      } else if (placingCatalogId && placingCeiling) {
+        // Ceiling-light placement (plan X/Z, grid-snapped, default drop).
+        store.addCeilingLight(placingCatalogId, snapToGrid(world));
+        // tool stays active for repeat placement
       } else if (placingCatalogId) {
         const placed = resolveFurniturePlacement(
           placingCatalogId,
@@ -1047,6 +1085,22 @@ export function PlanEditor() {
       return;
     }
 
+    const lightHit = ceilingLightUnderCursor(world);
+    if (lightHit) {
+      store.setSelection({ kind: "ceilingLight", id: lightHit.id });
+      dragRef.current = {
+        kind: "ceilingLight",
+        pointerId: e.pointerId,
+        itemId: lightHit.id,
+        startScreen: screen,
+        startWorld: world,
+        basePos: { ...lightHit.position },
+        started: false,
+      };
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     const furnHit = furnitureUnderCursor(world);
     if (furnHit) {
       store.setSelection({ kind: "furniture", id: furnHit.id });
@@ -1143,6 +1197,8 @@ export function PlanEditor() {
             ? { wall, t: projectPointToWallT(wall, world), face: sideOf(wall, world) }
             : null,
         );
+      } else if (activeTool === "furniture" && placingCatalogId && placingCeiling) {
+        setCeilingGhost(snapToGrid(world));
       } else if (activeTool === "furniture" && placingCatalogId) {
         setFurnGhost(
           resolveFurniturePlacement(placingCatalogId, world, ghostRotation),
@@ -1199,7 +1255,8 @@ export function PlanEditor() {
       d.kind === "window" ||
       d.kind === "door" ||
       d.kind === "furniture" ||
-      d.kind === "staircase"
+      d.kind === "staircase" ||
+      d.kind === "ceilingLight"
     ) {
       const screen = clientToScreen(e.clientX, e.clientY);
       if (!d.started && distance(screen, d.startScreen) < DRAG_THRESHOLD_PX)
@@ -1209,7 +1266,10 @@ export function PlanEditor() {
         d.started = true;
       }
       const world = clientToWorld(e.clientX, e.clientY);
-      if (d.kind === "staircase") {
+      if (d.kind === "ceilingLight") {
+        const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
+        store.moveCeilingLight(d.itemId, pos);
+      } else if (d.kind === "staircase") {
         const stair = staircases.find((x) => x.id === d.itemId);
         if (stair) {
           const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
@@ -1348,7 +1408,8 @@ export function PlanEditor() {
         d.kind === "window" ||
         d.kind === "door" ||
         d.kind === "furniture" ||
-        d.kind === "staircase") &&
+        d.kind === "staircase" ||
+        d.kind === "ceilingLight") &&
       d.started
     ) {
       useStore.getState().endDrag();
@@ -1511,6 +1572,24 @@ export function PlanEditor() {
             );
           })}
 
+          {/* Ceiling lights (markers; hang from this level's ceiling). */}
+          {ceilingLights.map((light) => {
+            const entry = getCatalogEntry(light.catalogId);
+            if (!entry) return null;
+            return (
+              <CeilingLightSymbol
+                key={light.id}
+                position={light.position}
+                entry={entry}
+                scale={light.scale}
+                selected={
+                  selection?.kind === "ceilingLight" &&
+                  selection.id === light.id
+                }
+              />
+            );
+          })}
+
           {/* Walls, broken at window openings. */}
           {walls.map((w) => {
             const isSel = selection?.kind === "wall" && selection.id === w.id;
@@ -1652,6 +1731,19 @@ export function PlanEditor() {
                 entry={placingEntry}
                 scale={UNIT_SCALE}
                 materials={{}}
+                ghost
+              />
+            )}
+
+          {/* Ceiling-light placement ghost. */}
+          {activeTool === "furniture" &&
+            placingCeiling &&
+            ceilingGhost &&
+            placingEntry && (
+              <CeilingLightSymbol
+                position={ceilingGhost}
+                entry={placingEntry}
+                scale={UNIT_SCALE}
                 ghost
               />
             )}
@@ -1959,6 +2051,39 @@ function WallMountSymbol({
         r={0.05}
         vectorEffect="non-scaling-stroke"
       />
+    </g>
+  );
+}
+
+// Plan marker for a ceiling light: a small circle with a cross at its position
+// (its drop/height aren't visible top-down). Selectable; also used as the ghost.
+function CeilingLightSymbol({
+  position,
+  entry,
+  scale,
+  selected,
+  ghost,
+}: {
+  position: Vec2;
+  entry: CatalogEntry;
+  scale: Vec3;
+  selected?: boolean;
+  ghost?: boolean;
+}) {
+  const d = effectiveDimensions(entry, scale);
+  const r = Math.max(0.1, Math.min(d.width, d.depth) / 2);
+  const cls = ghost
+    ? "ceiling-light-symbol ghost"
+    : `ceiling-light-symbol${selected ? " selected" : ""}`;
+  const ns = { vectorEffect: "non-scaling-stroke" as const };
+  return (
+    <g
+      className={cls}
+      transform={`translate(${position.x} ${position.y})`}
+    >
+      <circle cx={0} cy={0} r={r} fill="none" {...ns} />
+      <line x1={-r} y1={0} x2={r} y2={0} {...ns} />
+      <line x1={0} y1={-r} x2={0} y2={r} {...ns} />
     </g>
   );
 }

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  CeilingLight,
   Design,
   DoorOpening,
   FloorRegion,
@@ -37,6 +38,7 @@ import {
   unionBounds,
 } from "../geometry/planview";
 import {
+  createCeilingLight,
   createDesign,
   createDoor,
   createFloor,
@@ -187,6 +189,7 @@ export type Selection =
   | { kind: "floor"; id: string }
   | { kind: "furniture"; id: string }
   | { kind: "staircase"; id: string }
+  | { kind: "ceilingLight"; id: string }
   | null;
 
 const HISTORY_CAP = 100;
@@ -287,6 +290,14 @@ function findStaircase(
   return levelOf(design, levelId).staircases.find((s) => s.id === stairId);
 }
 
+function findCeilingLight(
+  design: Design,
+  levelId: string,
+  lightId: string,
+): CeilingLight | undefined {
+  return levelOf(design, levelId).ceilingLights.find((l) => l.id === lightId);
+}
+
 // Storey height a staircase ascends (its level's wallHeight + slab).
 function storeyHeightOf(level: Level): number {
   return level.wallHeight + FLOOR_SLAB_THICKNESS;
@@ -321,6 +332,8 @@ function selectionExists(
     return !!findWallMount(design, levelId, sel.wallId, sel.id);
   if (sel.kind === "furniture") return !!findFurniture(design, levelId, sel.id);
   if (sel.kind === "staircase") return !!findStaircase(design, levelId, sel.id);
+  if (sel.kind === "ceilingLight")
+    return !!findCeilingLight(design, levelId, sel.id);
   return !!findFloor(design, levelId, sel.id);
 }
 
@@ -471,6 +484,23 @@ interface AppState {
   updateStaircase: (id: string, patch: Partial<Omit<Staircase, "id">>) => void;
   rotateStaircase: (id: string, deltaDeg: number) => void;
   deleteStaircase: (id: string) => void;
+  // Ceiling lights (Phase 5f). Hang from the active level's ceiling.
+  addCeilingLight: (
+    catalogId: string,
+    position: Vec2,
+    drop?: number,
+  ) => void;
+  updateCeilingLight: (
+    id: string,
+    patch: Partial<Omit<CeilingLight, "id" | "catalogId">>,
+  ) => void;
+  setCeilingLightMaterial: (
+    id: string,
+    slot: string,
+    material: MaterialRef,
+  ) => void;
+  setCeilingLightScale: (id: string, scale: Vec3) => void;
+  deleteCeilingLight: (id: string) => void;
   setSite: (site: Site) => void;
   // Roof (Phase 5e): set/clear the whole roof, or patch fields. updateRoof starts
   // from a default roof if none exists yet.
@@ -495,6 +525,7 @@ interface AppState {
   moveDoor: (wallId: string, id: string, t: number) => void;
   moveFurniture: (id: string, position: Vec2, rotation?: number) => void;
   moveStaircase: (id: string, position: Vec2, rotation?: number) => void;
+  moveCeilingLight: (id: string, position: Vec2) => void;
   endDrag: () => void;
   cancelDrag: () => void;
 
@@ -1237,6 +1268,70 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    addCeilingLight: (catalogId, position, drop) => {
+      const entry = getCatalogEntry(catalogId);
+      if (!entry || entry.mount !== "ceiling") return;
+      const light = createCeilingLight(catalogId, snapToGrid(position), {
+        drop: drop ?? entry.defaultDrop,
+      });
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        levelOf(design, s.currentLevelId).ceilingLights.push(light);
+        return {
+          design,
+          selection: { kind: "ceilingLight", id: light.id },
+        };
+      });
+    },
+
+    updateCeilingLight: (id, patch) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const light = findCeilingLight(design, s.currentLevelId, id);
+        if (light) Object.assign(light, patch);
+        return { design };
+      });
+    },
+
+    setCeilingLightMaterial: (id, slot, material) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      commitCoalesced(`light-mat:${id}:${slot}`, (design) => {
+        const light = findCeilingLight(design, get().currentLevelId, id);
+        if (light)
+          light.materials = { ...light.materials, [slot]: clone(material) };
+      });
+    },
+
+    setCeilingLightScale: (id, scale) => {
+      const existing = findCeilingLight(get().design, get().currentLevelId, id);
+      if (!existing) return;
+      const entry = getCatalogEntry(existing.catalogId);
+      const clamped = entry ? clampScale(entry.scaling, scale) : scale;
+      commitCoalesced(`light-scale:${id}`, (design) => {
+        const light = findCeilingLight(design, get().currentLevelId, id);
+        if (light) light.scale = clamped;
+      });
+    },
+
+    deleteCeilingLight: (id) => {
+      if (!findCeilingLight(get().design, get().currentLevelId, id)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        level.ceilingLights = level.ceilingLights.filter((l) => l.id !== id);
+        const stillThere = selectionExists(
+          design,
+          s.currentLevelId,
+          s.selection,
+        );
+        return { design, selection: stillThere ? s.selection : null };
+      });
+    },
+
     setSite: (site) => {
       // Soft boundary: resizing only changes the numbers — nothing is clamped,
       // moved, or deleted. Undoable.
@@ -1398,6 +1493,15 @@ export const useStore = create<AppState>((set, get) => {
         if (!stair) return {};
         stair.position = position;
         if (rotation !== undefined) stair.rotation = rotation;
+        return { design };
+      }),
+
+    moveCeilingLight: (id, position) =>
+      set((s) => {
+        const design = clone(s.design);
+        const light = findCeilingLight(design, s.currentLevelId, id);
+        if (!light) return {};
+        light.position = position;
         return { design };
       }),
 

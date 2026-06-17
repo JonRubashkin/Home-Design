@@ -9,10 +9,10 @@ import {
 } from "./index";
 
 describe("catalog", () => {
-  it("has 71 items with unique ids", () => {
-    expect(CATALOG_ITEMS).toHaveLength(71);
+  it("has 74 items with unique ids", () => {
+    expect(CATALOG_ITEMS).toHaveLength(74);
     const ids = CATALOG_ITEMS.map((e) => e.id);
-    expect(new Set(ids).size).toBe(71);
+    expect(new Set(ids).size).toBe(74);
   });
 
   it("every entry has a positive footprint, height, and at least one slot", () => {
@@ -51,6 +51,10 @@ describe("catalog", () => {
       "wall-sconce",
       "wall-mirror",
       "range-hood",
+      // Phase 5f: ceiling lights (never floor-collide).
+      "pendant-light",
+      "flush-light",
+      "chandelier",
     ]);
     for (const e of CATALOG_ITEMS) {
       expect(e.collidable).toBe(!nonCollidable.has(e.id));
@@ -79,13 +83,25 @@ describe("catalog", () => {
     }
   });
 
-  it("every built part references a declared slot and 3-8 primitives", () => {
+  it("every built part references a declared slot and 1-12 primitives", () => {
     for (const e of CATALOG_ITEMS) {
       const slotNames = new Set(e.slots.map((s) => s.name));
       const parts = e.build();
       expect(parts.length).toBeGreaterThanOrEqual(1);
-      expect(parts.length).toBeLessThanOrEqual(8);
+      expect(parts.length).toBeLessThanOrEqual(12);
       for (const p of parts) expect(slotNames.has(p.slot)).toBe(true);
+    }
+  });
+
+  it("ceiling lights declare mount:ceiling, a default drop, and are non-collidable", () => {
+    const ceilingIds = ["pendant-light", "flush-light", "chandelier"];
+    for (const id of ceilingIds) {
+      const e = getCatalogEntry(id)!;
+      expect(e.mount).toBe("ceiling");
+      expect(typeof e.defaultDrop).toBe("number");
+      expect(e.defaultDrop!).toBeGreaterThanOrEqual(0);
+      expect(e.collidable).toBe(false);
+      expect(e.wallHugger).toBe(false);
     }
   });
 

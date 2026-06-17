@@ -1,4 +1,5 @@
 import type {
+  CeilingLight,
   Design,
   DoorOpening,
   FloorRegion,
@@ -160,6 +161,24 @@ export function createFurniture(
   };
 }
 
+// Default drop (meters) for a ceiling light whose catalog entry omits `defaultDrop`.
+export const DEFAULT_CEILING_DROP = 0.5;
+
+export function createCeilingLight(
+  catalogId: string,
+  position: Vec2,
+  opts?: Partial<Omit<CeilingLight, "id" | "catalogId" | "position">>,
+): CeilingLight {
+  return {
+    id: makeId("light"),
+    catalogId,
+    position: { ...position },
+    drop: opts?.drop ?? DEFAULT_CEILING_DROP,
+    scale: opts?.scale ? { ...opts.scale } : { x: 1, y: 1, z: 1 },
+    materials: { ...(opts?.materials ?? {}) },
+  };
+}
+
 export function createStaircase(
   position: Vec2,
   opts?: { rotation?: number; width?: number; material?: MaterialRef },
@@ -185,6 +204,7 @@ export function createLevel(name = "First floor"): Level {
     floors: [],
     furniture: [],
     staircases: [],
+    ceilingLights: [],
   };
 }
 
@@ -212,7 +232,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 9,
+    schemaVersion: 10,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

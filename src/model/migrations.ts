@@ -114,6 +114,15 @@ const migrations: Migration[] = [
     design.schemaVersion = 9;
     return design;
   },
+  // v9 -> v10: ceiling lights. Every level gains an empty `ceilingLights` array.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      if (!Array.isArray(level.ceilingLights)) level.ceilingLights = [];
+    }
+    design.schemaVersion = 10;
+    return design;
+  },
 ];
 
 // The newest schema version this build understands.

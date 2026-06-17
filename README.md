@@ -30,6 +30,17 @@ npm run format   # Prettier
 
 ## Features
 
+### Ceiling lights (phase 5f)
+
+- Three **ceiling-attached fixtures** (pendant light, flush ceiling light,
+  chandelier) hang from a level's ceiling. Pick one in the **Furniture** palette
+  and click in the plan to place it; it hangs at the chosen **drop** below the
+  ceiling with a connecting cord. Edit position, drop, size, and materials in the
+  properties panel (all undoable); drag the plan marker to move it.
+- Fixtures only — no real illumination; the shade reads as "lit". Hidden in
+  **Stubs**, visible in **Cutaway** (the ceiling above is suppressed). Excluded
+  from collision. Schema v10; round-trips through Export/Import.
+
 ### Roofs (phase 5e)
 
 - One **roof over the top level**, auto-generated from its wall footprint's
@@ -405,7 +416,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 71 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 74 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

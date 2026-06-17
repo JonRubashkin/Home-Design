@@ -19,6 +19,7 @@ const GLASS = solid("#cfe0ea");
 const LEAF = solid("#5f7d52");
 const POT = solid("#a9785a");
 const SHADE = solid("#e8e2d2");
+const LIT = solid("#fff3d4"); // warm near-white shade reads as "lit" (no scene light)
 
 // --- scaling policy helpers (lowercase so the react-refresh lint doesn't
 // mistake them for components) ---
@@ -2122,6 +2123,97 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     },
     glyph: (w, d): ReactNode => (
       <>{gr(-w / 2 + 0.02, -d / 2 + 0.02, w - 0.04, d - 0.04, "hood")}</>
+    ),
+  },
+
+  // ---------------- CEILING-MOUNTED (Phase 5f) ----------------
+  // mount:"ceiling" — build() parts rise y-up from 0 (bulb) to `height` (canopy).
+  // The fixture hangs at ceilingY - drop; CeilingLight3D draws the connecting cord.
+  {
+    id: "pendant-light",
+    name: "Pendant light",
+    category: "living",
+    footprint: { width: 0.32, depth: 0.32 },
+    height: 0.35,
+    wallHugger: false,
+    collidable: false,
+    mount: "ceiling",
+    defaultDrop: 0.6,
+    scaling: uniformScale(0.6, 1.8),
+    slots: [
+      { name: "canopy", default: METAL },
+      { name: "shade", default: LIT },
+    ],
+    build: () => {
+      const H = 0.35;
+      return [
+        box("canopy", [0.12, 0.03, 0.12], [0, H, 0]), // ceiling plate (top)
+        cyl("canopy", 0.01, 0.16, [0, 0.26, 0]), // stem to the shade
+        cone("shade", 0.16, 0.06, 0.18, [0, 0.09, 0]), // shade, open at bottom
+      ];
+    },
+    glyph: (): ReactNode => <>{gc(0, 0, 0.16, "shade")}</>,
+  },
+  {
+    id: "flush-light",
+    name: "Flush ceiling light",
+    category: "living",
+    footprint: { width: 0.42, depth: 0.42 },
+    height: 0.14,
+    wallHugger: false,
+    collidable: false,
+    mount: "ceiling",
+    defaultDrop: 0,
+    scaling: uniformScale(0.6, 1.8),
+    slots: [
+      { name: "canopy", default: METAL },
+      { name: "shade", default: LIT },
+    ],
+    build: () => [
+      box("canopy", [0.42, 0.03, 0.42], [0, 0.125, 0]), // backplate at ceiling
+      cone("shade", 0.21, 0.16, 0.1, [0, 0.05, 0]), // shallow dome below
+    ],
+    glyph: (w): ReactNode => <>{gc(0, 0, w / 2 - 0.02, "dome")}</>,
+  },
+  {
+    id: "chandelier",
+    name: "Chandelier",
+    category: "living",
+    footprint: { width: 0.7, depth: 0.7 },
+    height: 0.55,
+    wallHugger: false,
+    collidable: false,
+    mount: "ceiling",
+    defaultDrop: 0.5,
+    scaling: uniformScale(0.6, 1.6),
+    slots: [
+      { name: "frame", default: METAL },
+      { name: "shade", default: LIT },
+    ],
+    build: (): Part[] => {
+      const parts: Part[] = [
+        box("frame", [0.1, 0.03, 0.1], [0, 0.55, 0]), // canopy
+        cyl("frame", 0.015, 0.4, [0, 0.34, 0]), // central rod
+        cyl("frame", 0.1, 0.05, [0, 0.12, 0]), // hub
+      ];
+      const R = 0.3;
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        const x = Math.cos(a) * R;
+        const z = Math.sin(a) * R;
+        parts.push(
+          box("frame", [R, 0.02, 0.02], [x / 2, 0.13, z / 2], [0, -a, 0]),
+        );
+        parts.push(cone("shade", 0.05, 0.07, 0.09, [x, 0.18, z])); // candle cup
+      }
+      return parts;
+    },
+    glyph: (w): ReactNode => (
+      <>
+        {gc(0, 0, w / 2 - 0.05, "ring")}
+        {gl(-w / 2 + 0.05, 0, w / 2 - 0.05, 0, "a1")}
+        {gl(0, -w / 2 + 0.05, 0, w / 2 - 0.05, "a2")}
+      </>
     ),
   },
 ];

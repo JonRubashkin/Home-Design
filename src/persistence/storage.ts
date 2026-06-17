@@ -130,6 +130,20 @@ function structuralError(obj: Record<string, unknown>): string | null {
         return "A staircase is malformed.";
     }
 
+    if (!Array.isArray(level.ceilingLights))
+      return "A level is missing its ceiling lights.";
+    for (const light of level.ceilingLights) {
+      if (
+        !isObj(light) ||
+        !isStr(light.catalogId) ||
+        !isVec2(light.position) ||
+        !isNum(light.drop) ||
+        !isVec3(light.scale) ||
+        !isObj(light.materials)
+      )
+        return "A ceiling light is malformed.";
+    }
+
     if (!Array.isArray(level.furniture))
       return "A level is missing its furniture.";
     for (const item of level.furniture) {

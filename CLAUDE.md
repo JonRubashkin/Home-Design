@@ -50,12 +50,13 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 9;         // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 10;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
-                            // (Phase 5e). Migrations in src/model/migrations.ts
-                            // upgrade older saved designs.
+                            // (Phase 5e); v10 = ceiling lights (Phase 5f).
+                            // Migrations in src/model/migrations.ts upgrade
+                            // older saved designs.
   name: string;
   site: Site;               // the work-area rectangle (see below)
   levels: Level[];          // Phase 1 uses exactly one level; the structure is
@@ -92,6 +93,17 @@ interface Level {
   walls: Wall[];
   floors: FloorRegion[];
   furniture: FurnitureItem[]; // Phase 2b
+  staircases: Staircase[];    // Phase 3d
+  ceilingLights: CeilingLight[]; // Phase 5f
+}
+
+interface CeilingLight {    // Phase 5f. Hangs from THIS level's ceiling.
+  id: string;
+  catalogId: string;        // a catalog entry with mount: "ceiling"
+  position: Vec2;           // plan X/Z
+  drop: number;             // meters hanging below the ceiling
+  scale: Vec3;              // per the entry's scaling policy
+  materials: Record<string, MaterialRef>;
 }
 
 interface FurnitureItem {   // Phase 2b. References a catalog id — never geometry.
@@ -203,8 +215,9 @@ in code under `src/catalog/`:
   `height`, `wallHugger`, an optional `flat` flag (rugs: above floors, below other
   furniture), optional `surfaceTop` (local meters — marks a support surface) and
   `stackable` (small item that auto-climbs onto a surface), an optional `mount`
-  (`"floor"` default | `"wall"`) with `defaultMountHeight` for wall items (Phase
-  4d — see "Wall-mounted items"), optional `legClearance` / `tuckHeight` for
+  (`"floor"` default | `"wall"` | `"ceiling"`) with `defaultMountHeight` for wall
+  items (Phase 4d) / `defaultDrop` for ceiling lights (Phase 5f — see "Wall-mounted
+  items" and "Ceiling lights"), optional `legClearance` / `tuckHeight` for
   height-aware collision (Phase 4d Part C — see "Furniture collision"), a `scaling`
   policy (see below), ordered named material `slots`
   (slot[0] is the primary slot the Paint tool recolors), a pure `build(variant?)`
@@ -254,7 +267,7 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
   `CATALOG_ITEMS`, so new items appear there automatically).
-- **Catalog inventory (Phase 4a/4b/4d).** 71 items across seven categories:
+- **Catalog inventory (Phase 4a/4b/4d/5f).** 74 items across seven categories:
   *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
   lamp, potted plant, **books**); *Bedroom* (double/single bed, nightstand,
@@ -273,11 +286,13 @@ in code under `src/catalog/`:
   (computer, kettle, toaster, coffee maker, books) — `stackable`, `collidable:
   false`, riding the existing auto-stacking. **Phase 4d Part B** adds six
   `mount:"wall"` items (see "Wall-mounted items"): framed wall art, wall-mounted
-  TV, floating shelf, wall sconce, wall mirror, range hood.
-  **Deferred** to a future ceiling-attach pass (do NOT add as floor/wall items):
-  curtains, pendant/ceiling lights. (Auto-stacking ONTO a wall shelf is also out
-  of scope — `computeStackBaseLifts` is plan-position based and can't know a
-  shelf's wall height; the floating shelf is decorative for now.)
+  TV, floating shelf, wall sconce, wall mirror, range hood. **Phase 5f** adds three
+  `mount:"ceiling"` lights (see "Ceiling lights"): pendant light, flush ceiling
+  light, chandelier.
+  **Deferred** (do NOT add): curtains (a future fabric pass); multi-section /
+  L-shaped roofs; auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is
+  plan-position based and can't know a shelf's wall height; the floating shelf is
+  decorative for now).
 
 ## Wall-mounted items (Phase 4d Part B)
 
@@ -567,6 +582,32 @@ in code under `src/catalog/`:
   default roof). Adding a floor re-tops the roof onto the new top level
   automatically (Roof3D always reads the last level). v8→v9 migration adds
   `roof: null`; Export/Import round-trips it.
+
+## Ceiling lights (Phase 5f — fixtures only, ceiling-attach)
+
+- A `mount:"ceiling"` `CatalogEntry` hangs from a level's ceiling as a
+  `CeilingLight` (stored on the level). `build()` parts rise y-up from 0 (bulb)
+  to `height` (canopy); `defaultDrop` is the placement drop below the ceiling.
+  Fixtures only — NO real illumination; the shade reads "lit" via a warm
+  near-white default color (no scene light, no emissive material field).
+- The ceiling height for a level = `elevation + wallHeight`; a light hangs with
+  its canopy at `ceilingY - drop`, and `CeilingLight3D` draws the connecting cord
+  (length = drop) up to the ceiling. Excluded from collision (like wall mounts).
+- **Placement** reuses the Furniture tool: with a `mount:"ceiling"` item active a
+  ghost follows the cursor in the plan (X/Z, grid-snapped); click places at the
+  default drop; Esc cancels; the tool stays active. `addCeilingLight`.
+- **3D** (`CeilingLights3D` per level): hidden in **Stubs** (above stub height,
+  like windows); shown in **Full** and **Cutaway** (in Cutaway the ceiling/roof
+  above suppresses, so the lights become visible — correct). Materials via the
+  shared helper.
+- **2D plan:** a small selectable circle+cross marker at `position` (drop/height
+  aren't visible top-down). **Selection** kind `ceilingLight` is **plan-only** (no
+  3D picking); the properties panel edits X/Y, drop, Size, materials, Delete — all
+  undoable (`updateCeilingLight` / `setCeilingLightMaterial` /
+  `setCeilingLightScale` / `deleteCeilingLight`); draggable in the plan.
+- Schema bumped to **v10**; the v9→v10 migration gives every level
+  `ceilingLights: []` (fixture-tested). Export/Import round-trips them. Three
+  catalog items: pendant light, flush ceiling light, chandelier.
 
 ## 2D plan editor rules
 

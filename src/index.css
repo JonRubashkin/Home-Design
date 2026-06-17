@@ -272,6 +272,24 @@ body {
   font-weight: 500;
 }
 
+.ceiling-light-symbol circle,
+.ceiling-light-symbol line {
+  stroke: #d8b24a;
+  stroke-width: 1.5;
+  fill: none;
+}
+.ceiling-light-symbol.selected circle,
+.ceiling-light-symbol.selected line {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.ceiling-light-symbol.ghost circle,
+.ceiling-light-symbol.ghost line {
+  stroke: #d8b24a;
+  opacity: 0.55;
+  stroke-dasharray: 3 3;
+}
+
 .plan-hint {
   position: absolute;
   left: 12px;

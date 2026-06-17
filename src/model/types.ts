@@ -110,6 +110,18 @@ export interface FurnitureItem {
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
+// A ceiling-attached light fixture (Phase 5f). Hangs from THIS level's ceiling
+// (its slab/roof above). References a catalog entry with mount:"ceiling"; never
+// geometry. Excluded from collision (like wall mounts).
+export interface CeilingLight {
+  id: string;
+  catalogId: string;
+  position: Vec2; // plan X/Z
+  drop: number; // meters hanging below the ceiling
+  scale: Vec3; // per-axis multipliers, per the entry's scaling policy
+  materials: Record<string, MaterialRef>; // overrides keyed by part slot
+}
+
 export interface Level {
   id: string;
   name: string; // "Ground floor"
@@ -119,6 +131,7 @@ export interface Level {
   floors: FloorRegion[];
   furniture: FurnitureItem[];
   staircases: Staircase[];
+  ceilingLights: CeilingLight[]; // Phase 5f
 }
 
 // The work area ("site"): a soft, buildable rectangle. Never enforced — it frames
@@ -140,7 +153,7 @@ export interface Roof {
 }
 
 export interface Design {
-  schemaVersion: 9;
+  schemaVersion: 10;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

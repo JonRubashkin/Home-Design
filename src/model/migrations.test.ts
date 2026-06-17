@@ -176,6 +176,11 @@ describe("migrateToLatest", () => {
     });
   });
 
+  it("adds an empty ceilingLights array to every level (-> v10)", () => {
+    const out = migrateToLatest(structuredClone(V1_FIXTURE));
+    expect(out.levels[0]!.ceilingLights).toEqual([]);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

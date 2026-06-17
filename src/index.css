@@ -262,6 +262,16 @@ body {
   font-weight: 600;
 }
 
+.dim-label rect {
+  fill: #0f1117;
+  opacity: 0.7;
+}
+.dim-label text {
+  fill: #cdd3e0;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .plan-hint {
   position: absolute;
   left: 12px;

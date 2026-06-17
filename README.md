@@ -30,6 +30,14 @@ npm run format   # Prettier
 
 ## Features
 
+### Wall dimensions (phase 5c)
+
+- **Dimensions** toggle (plan controls, persisted) shows a **length label on every
+  wall** — not just while drawing. Labels run along each wall, offset slightly off
+  it, flipped to never read upside-down, in meters with cm precision, and stay a
+  constant readable size while panning/zooming. Plan-only. Walls too short to fit
+  the text on screen are skipped (light de-clutter).
+
 ### Saved-design library (phase 5b)
 
 - A **local, offline design library** backed by IndexedDB (`src/storage/library.ts`)

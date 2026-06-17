@@ -355,6 +355,8 @@ interface AppState {
   // Multi-level UI prefs (persisted, never in the Design).
   activeLevelOnly: boolean; // 3D: render only the active level
   showUnderlay: boolean; // 2D: ghost the level below the active one
+  // 2D: show a length label on every wall segment (persisted UI pref).
+  showDimensions: boolean;
   // Furniture collision prevention (persisted UI pref, never in the Design).
   collisionMode: CollisionMode;
 
@@ -393,6 +395,7 @@ interface AppState {
   setCurrentMaterial: (material: MaterialRef) => void;
   setActiveLevelOnly: (only: boolean) => void;
   setShowUnderlay: (show: boolean) => void;
+  setShowDimensions: (show: boolean) => void;
   setCollisionMode: (mode: CollisionMode) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
@@ -538,6 +541,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      showDimensions,
       collisionMode,
       currentLevelId,
     } = get();
@@ -548,6 +552,7 @@ export const useStore = create<AppState>((set, get) => {
       currentMaterial,
       activeLevelOnly,
       showUnderlay,
+      showDimensions,
       collisionMode,
       activeLevelId: currentLevelId,
     });
@@ -571,6 +576,7 @@ export const useStore = create<AppState>((set, get) => {
     currentMaterial: prefs.currentMaterial,
     activeLevelOnly: prefs.activeLevelOnly,
     showUnderlay: prefs.showUnderlay,
+    showDimensions: prefs.showDimensions,
     collisionMode: prefs.collisionMode,
     past: [],
     future: [],
@@ -643,6 +649,10 @@ export const useStore = create<AppState>((set, get) => {
     },
     setShowUnderlay: (showUnderlay) => {
       set({ showUnderlay });
+      persistViewPrefs();
+    },
+    setShowDimensions: (showDimensions) => {
+      set({ showDimensions });
       persistViewPrefs();
     },
     setCollisionMode: (collisionMode) => {

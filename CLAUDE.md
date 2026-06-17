@@ -478,6 +478,12 @@ in code under `src/catalog/`:
   the **3D-only** layout (no plan visible) the same dropdown appears in the 3D view
   bar so you can still switch floors. (The toolbar scrolls vertically when the
   viewport is too short for every tool.)
+- **Wall dimensions (Phase 5c):** a persisted UI pref `showDimensions`
+  (`setShowDimensions`, toggle in the plan controls) draws a length label on every
+  wall segment, not just while drawing. Labels render in **screen space** (constant
+  font at any zoom), rotated along the wall, flipped to avoid upside-down text,
+  offset slightly off the face; walls too short on screen are skipped (light
+  de-clutter, no full collision-avoidance). Plan-only; 3D unaffected.
 - **2D underlay:** the level directly below the active one renders as a faint,
   **non-interactive** reference (`UnderlayLayer`, `pointer-events: none`), toggled
   from the Floors dropdown (only when not on the bottom floor).

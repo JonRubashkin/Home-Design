@@ -216,6 +216,8 @@ export function PlanEditor() {
   const levels = useStore((s) => s.design.levels);
   const currentLevelId = useStore((s) => s.currentLevelId);
   const showUnderlay = useStore((s) => s.showUnderlay);
+  const showDimensions = useStore((s) => s.showDimensions);
+  const setShowDimensions = useStore((s) => s.setShowDimensions);
   const activeTool = useStore((s) => s.activeTool);
   const selection = useStore((s) => s.selection);
   const sideHighlight = useStore((s) => s.sideHighlight);
@@ -1724,6 +1726,11 @@ export function PlanEditor() {
           worldToScreen={worldToScreen}
         />
 
+        {/* Auto wall-length dimensions (screen space, always legible). */}
+        {showDimensions && (
+          <DimensionLabels walls={walls} worldToScreen={worldToScreen} />
+        )}
+
         {/* Site dimension label on the top border (screen space). */}
         {(() => {
           const p = worldToScreen({ x: site.width / 2, y: 0 });
@@ -1795,6 +1802,15 @@ export function PlanEditor() {
             </div>
           )}
         </div>
+        <button
+          type="button"
+          className={`plan-control-button${showDimensions ? " active" : ""}`}
+          aria-pressed={showDimensions}
+          title="Show a length label on every wall"
+          onClick={() => setShowDimensions(!showDimensions)}
+        >
+          Dimensions
+        </button>
         <button
           type="button"
           className="plan-control-button"
@@ -2289,6 +2305,60 @@ function Overlay({
             />
           );
         })()}
+    </g>
+  );
+}
+
+// Persistent length labels on every wall (Phase 5c). Rendered in screen space so
+// the font stays a constant size at any zoom; each label is rotated to run along
+// its wall and flipped when it would read upside-down, and offset slightly off
+// the wall. Walls too short on screen to fit the text are skipped (de-clutter).
+function DimensionLabels({
+  walls,
+  worldToScreen,
+}: {
+  walls: Wall[];
+  worldToScreen: (p: Vec2) => Vec2;
+}) {
+  const OFFSET_PX = 12;
+  const MIN_SCREEN_LEN = 30;
+  return (
+    <g className="dim-labels">
+      {walls.map((w) => {
+        const a = worldToScreen(w.start);
+        const b = worldToScreen(w.end);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy);
+        if (len < MIN_SCREEN_LEN) return null;
+        let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        if (angle > 90) angle -= 180;
+        else if (angle < -90) angle += 180;
+        // Offset perpendicular to the (un-flipped) wall direction, one side.
+        const nx = -dy / len;
+        const ny = dx / len;
+        const mx = (a.x + b.x) / 2 + nx * OFFSET_PX;
+        const my = (a.y + b.y) / 2 + ny * OFFSET_PX;
+        const text = formatMeters(wallLength(w));
+        return (
+          <g
+            key={w.id}
+            className="dim-label"
+            transform={`translate(${mx} ${my}) rotate(${angle})`}
+          >
+            <rect
+              x={-text.length * 3.4 - 4}
+              y={-8}
+              width={text.length * 6.8 + 8}
+              height={15}
+              rx={3}
+            />
+            <text x={0} y={3} textAnchor="middle">
+              {text}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }

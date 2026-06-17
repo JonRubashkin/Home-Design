@@ -814,3 +814,27 @@ describe("wall mounts", () => {
     expect(upper.walls[0]!.mounts[0]!.id).not.toBe(originalMountId);
   });
 });
+
+describe("height-aware collision (hard mode tuck-under)", () => {
+  const furn = () => selectCurrentLevel(useStore.getState()).furniture;
+
+  it("lets a dining chair tuck under a dining table but blocks a wardrobe", () => {
+    state().placeFurniture("dining-table", { x: 5, y: 5 }, 0);
+    state().setCollisionMode("hard");
+    // chair tucks under the table -> placed
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "dining-chair")).toHaveLength(1);
+    // a wardrobe over the same spot collides (no leg clearance) -> blocked
+    state().placeFurniture("wardrobe", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "wardrobe")).toHaveLength(0);
+    state().setCollisionMode("soft");
+  });
+
+  it("still blocks a second overlapping chair (two chairs collide)", () => {
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    state().setCollisionMode("hard");
+    state().placeFurniture("dining-chair", { x: 5, y: 5 }, 0);
+    expect(furn().filter((f) => f.catalogId === "dining-chair")).toHaveLength(1);
+    state().setCollisionMode("soft");
+  });
+});

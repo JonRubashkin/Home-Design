@@ -6,6 +6,9 @@ import {
   wallHuggerSnap,
   computeStackBaseLifts,
   footprintsOverlap,
+  verticalExtentsOverlap,
+  fitsUnder,
+  collidableItemsCollide,
   collidingIds,
   collidingMovableIds,
   wallFootprint,
@@ -308,5 +311,121 @@ describe("wallFootprint + collidingMovableIds (furniture vs walls)", () => {
     expect(ids).toEqual(new Set(["a", "b"]));
     const rug = { ...movable("rug", 0, 0), collidable: false };
     expect(collidingMovableIds([a, rug], []).has("rug")).toBe(false);
+  });
+});
+
+// --- Height-aware collision (Phase 4d Part C) ---
+const item = (
+  id: string,
+  center: { x: number; y: number },
+  w: number,
+  d: number,
+  opts: {
+    height: number;
+    base?: number;
+    legClearance?: number;
+    tuckHeight?: number;
+    collidable?: boolean;
+  },
+): CollisionItem => ({
+  id,
+  collidable: opts.collidable ?? true,
+  footprint: { center, rotation: 0, footprint: { width: w, depth: d } },
+  vertical: { base: opts.base ?? 0, height: opts.height },
+  tuck: { legClearance: opts.legClearance, tuckHeight: opts.tuckHeight },
+});
+
+describe("verticalExtentsOverlap", () => {
+  it("detects overlap and separation of [base, base+height] ranges", () => {
+    expect(
+      verticalExtentsOverlap({ base: 0, height: 1 }, { base: 0.5, height: 1 }),
+    ).toBe(true);
+    expect(
+      verticalExtentsOverlap({ base: 0, height: 0.4 }, { base: 0.5, height: 1 }),
+    ).toBe(false);
+  });
+});
+
+describe("fitsUnder", () => {
+  it("true only when leg clearance exists and tuck height fits", () => {
+    expect(fitsUnder({ tuckHeight: 0.45 }, { legClearance: 0.68 })).toBe(true);
+    expect(fitsUnder({ tuckHeight: 0.8 }, { legClearance: 0.68 })).toBe(false);
+    expect(fitsUnder({ tuckHeight: 0.45 }, { tuckHeight: 0.9 })).toBe(false); // no clearance
+  });
+});
+
+describe("collidableItemsCollide (tuck-under + vertical extents)", () => {
+  const table = () =>
+    item("table", { x: 0, y: 0 }, 1.4, 0.8, {
+      height: 0.75,
+      legClearance: 0.68,
+      tuckHeight: 0.75,
+    });
+  const chair = (id = "chair", center = { x: 0, y: 0 }) =>
+    item(id, center, 0.45, 0.45, { height: 0.9, tuckHeight: 0.45 });
+
+  it("a chair tucks under a table (no collision despite footprint overlap)", () => {
+    expect(collidableItemsCollide(chair(), table())).toBe(false);
+  });
+
+  it("two overlapping chairs still collide", () => {
+    expect(collidableItemsCollide(chair("a"), chair("b"))).toBe(true);
+  });
+
+  it("a chair vs a tall wardrobe still collides", () => {
+    const wardrobe = item("ward", { x: 0, y: 0 }, 1.2, 0.6, { height: 2.0 });
+    expect(collidableItemsCollide(chair(), wardrobe)).toBe(true);
+  });
+
+  it("items at clearly different heights (overlapping footprints) don't collide", () => {
+    const low = item("low", { x: 0, y: 0 }, 1, 1, { height: 0.3 });
+    const high = item("high", { x: 0, y: 0 }, 1, 1, { height: 1.0, base: 0.5 });
+    expect(collidableItemsCollide(low, high)).toBe(false);
+  });
+
+  it("a too-tall stool does NOT fit under a low coffee table", () => {
+    const coffee = item("coffee", { x: 0, y: 0 }, 1.1, 0.6, {
+      height: 0.4,
+      legClearance: 0.34,
+      tuckHeight: 0.4,
+    });
+    const stool = item("stool", { x: 0, y: 0 }, 0.4, 0.4, {
+      height: 0.75,
+      tuckHeight: 0.72,
+    });
+    expect(collidableItemsCollide(stool, coffee)).toBe(true);
+  });
+});
+
+describe("collidingIds / collidingMovableIds with tuck-under", () => {
+  it("collidingIds excludes a tucked chair-table pair", () => {
+    const table = item("table", { x: 0, y: 0 }, 1.4, 0.8, {
+      height: 0.75,
+      legClearance: 0.68,
+      tuckHeight: 0.75,
+    });
+    const chair = item("chair", { x: 0, y: 0 }, 0.45, 0.45, {
+      height: 0.9,
+      tuckHeight: 0.45,
+    });
+    expect(collidingIds([table, chair]).size).toBe(0);
+    // two chairs still collide
+    const chair2 = item("chair2", { x: 0, y: 0 }, 0.45, 0.45, {
+      height: 0.9,
+      tuckHeight: 0.45,
+    });
+    expect(collidingIds([chair, chair2])).toEqual(new Set(["chair", "chair2"]));
+  });
+
+  it("a wall barrier never allows tuck-under (chair vs wall collides)", () => {
+    const wall = createWall({ x: -1, y: 0 }, { x: 1, y: 0 });
+    wall.thickness = 0.6;
+    const chair = item("chair", { x: 0, y: 0 }, 0.45, 0.45, {
+      height: 0.9,
+      tuckHeight: 0.45,
+    });
+    expect(collidingMovableIds([chair], [wallFootprint(wall)])).toEqual(
+      new Set(["chair"]),
+    );
   });
 });

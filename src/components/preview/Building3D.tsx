@@ -1,7 +1,7 @@
 import { useMemo, type RefObject } from "react";
 import type { Level, Vec2 } from "../../model/types";
 import { useStore } from "../../store/store";
-import { getCatalogEntry, effectiveDimensions } from "../../catalog";
+import { getCatalogEntry, effectiveDimensions, collisionExtent } from "../../catalog";
 import {
   collidingMovableIds,
   wallFootprint,
@@ -23,6 +23,7 @@ function warnedIdsFor(level: Level, below: Level | undefined): Set<string> {
     const entry = getCatalogEntry(item.catalogId);
     if (!entry) continue;
     const d = effectiveDimensions(entry, item.scale);
+    const ext = collisionExtent(entry, item.scale);
     items.push({
       id: item.id,
       collidable: entry.collidable,
@@ -31,10 +32,13 @@ function warnedIdsFor(level: Level, below: Level | undefined): Set<string> {
         rotation: item.rotation,
         footprint: { width: d.width, depth: d.depth },
       },
+      vertical: { base: 0, height: ext.height },
+      tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
     });
   }
+  const storey = level.wallHeight + FLOOR_SLAB_THICKNESS;
   for (const stair of level.staircases) {
-    const g = computeStair(stair, level.wallHeight + FLOOR_SLAB_THICKNESS);
+    const g = computeStair(stair, storey);
     items.push({
       id: stair.id,
       collidable: true,
@@ -43,6 +47,7 @@ function warnedIdsFor(level: Level, below: Level | undefined): Set<string> {
         rotation: stair.rotation,
         footprint: { width: stair.width, depth: g.runLength },
       },
+      vertical: { base: 0, height: storey },
     });
   }
   const barriers = [

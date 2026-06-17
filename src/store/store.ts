@@ -18,11 +18,14 @@ import {
   clampScale,
   getCatalogEntry,
   effectiveDimensions,
+  collisionExtent,
   type CatalogEntry,
 } from "../catalog";
 import {
   footprintsOverlap,
+  collidableItemsCollide,
   wallFootprint,
+  type CollisionItem,
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
@@ -74,18 +77,43 @@ function orientedFootprint(
   };
 }
 
-// Every collidable footprint on a level: collidable furniture + all staircases
-// (stairs are always bulky/collidable). `stairOrientedFootprint` is defined below.
-function levelCollidables(
-  level: Level,
-): { id: string; footprint: OrientedFootprint }[] {
-  const out: { id: string; footprint: OrientedFootprint }[] = [];
+// A height-aware collision item for a placed furniture piece: footprint plus its
+// vertical extent (base 0 on the floor) and tuck info (leg clearance / tuck
+// height) so chairs can tuck under tables (Phase 4d Part C).
+function furnitureCollisionItem(
+  item: FurnitureItem,
+  entry: CatalogEntry,
+): CollisionItem {
+  const ext = collisionExtent(entry, item.scale);
+  return {
+    id: item.id,
+    collidable: entry.collidable,
+    footprint: orientedFootprint(item, entry),
+    vertical: { base: 0, height: ext.height },
+    tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
+  };
+}
+
+// A staircase as a bulky, full-height collision item (no tuck-under).
+function stairCollisionItem(stair: Staircase, level: Level): CollisionItem {
+  return {
+    id: stair.id,
+    collidable: true,
+    footprint: stairOrientedFootprint(stair, level),
+    vertical: { base: 0, height: storeyHeightOf(level) },
+  };
+}
+
+// Every collidable thing on a level as height-aware collision items: collidable
+// furniture + all staircases (stairs are always bulky/collidable).
+function levelCollidables(level: Level): CollisionItem[] {
+  const out: CollisionItem[] = [];
   for (const item of level.furniture) {
     const entry = getCatalogEntry(item.catalogId);
-    if (entry?.collidable) out.push({ id: item.id, footprint: orientedFootprint(item, entry) });
+    if (entry?.collidable) out.push(furnitureCollisionItem(item, entry));
   }
   for (const stair of level.staircases) {
-    out.push({ id: stair.id, footprint: stairOrientedFootprint(stair, level) });
+    out.push(stairCollisionItem(stair, level));
   }
   return out;
 }
@@ -103,25 +131,25 @@ function belowStairFootprints(
     : [];
 }
 
-// Does a candidate footprint overlap any OTHER collidable thing on the level
-// (other furniture/staircases), a wall, or a stairwell opening (the hole from a
-// staircase on the level below)? Walls and openings act as barriers.
+// Does a candidate collide with any OTHER collidable thing on the level (other
+// furniture/staircases — height-aware, with tuck-under), a wall, or a stairwell
+// opening (the hole from a staircase on the level below)? Walls and openings are
+// hard barriers (footprint-only; no vertical/tuck exemption).
 function collidesOnLevel(
   design: Design,
   levelId: string,
-  candidateId: string,
-  candidate: OrientedFootprint,
+  candidate: CollisionItem,
 ): boolean {
   const level = levelOf(design, levelId);
   for (const other of levelCollidables(level)) {
-    if (other.id === candidateId) continue;
-    if (footprintsOverlap(candidate, other.footprint)) return true;
+    if (other.id === candidate.id) continue;
+    if (collidableItemsCollide(candidate, other)) return true;
   }
   for (const wall of level.walls) {
-    if (footprintsOverlap(candidate, wallFootprint(wall))) return true;
+    if (footprintsOverlap(candidate.footprint, wallFootprint(wall))) return true;
   }
   for (const opening of belowStairFootprints(design, levelId)) {
-    if (footprintsOverlap(candidate, opening)) return true;
+    if (footprintsOverlap(candidate.footprint, opening)) return true;
   }
   return false;
 }
@@ -134,7 +162,7 @@ function itemCollides(
 ): boolean {
   const entry = getCatalogEntry(item.catalogId);
   if (!entry?.collidable) return false;
-  return collidesOnLevel(design, levelId, item.id, orientedFootprint(item, entry));
+  return collidesOnLevel(design, levelId, furnitureCollisionItem(item, entry));
 }
 
 export type Tool =
@@ -1117,8 +1145,7 @@ export const useStore = create<AppState>((set, get) => {
           collidesOnLevel(
             get().design,
             get().currentLevelId,
-            stair.id,
-            stairOrientedFootprint(stair, level),
+            stairCollisionItem(stair, level),
           )
         )
           return;
@@ -1161,8 +1188,7 @@ export const useStore = create<AppState>((set, get) => {
           collidesOnLevel(
             get().design,
             get().currentLevelId,
-            id,
-            stairOrientedFootprint(hypo, level),
+            stairCollisionItem(hypo, level),
           )
         )
           return;

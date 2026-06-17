@@ -44,6 +44,7 @@ import {
   wallHuggerSnap,
   footprintCorners,
   footprintsOverlap,
+  collidableItemsCollide,
   collidingMovableIds,
   wallFootprint,
   type Footprint,
@@ -63,6 +64,7 @@ import {
   getCatalogEntry,
   primarySlot,
   effectiveDimensions,
+  collisionExtent,
   UNIT_SCALE,
   type CatalogEntry,
 } from "../catalog";
@@ -320,6 +322,18 @@ export function PlanEditor() {
     width: stair.width,
     depth: computeStair(stair, storeyHeight).runLength,
   });
+  // A staircase as a bulky, full-height collision candidate (no tuck-under).
+  const stairCandidate = (
+    id: string,
+    pos: Vec2,
+    rotation: number,
+    footprint: Footprint,
+  ): CollisionItem => ({
+    id,
+    collidable: true,
+    footprint: { center: pos, rotation, footprint },
+    vertical: { base: 0, height: storeyHeight },
+  });
   const stairUnderCursor = (world: Vec2): Staircase | undefined => {
     for (let i = staircases.length - 1; i >= 0; i--) {
       const s = staircases[i]!;
@@ -348,6 +362,7 @@ export function PlanEditor() {
     for (const item of lvl.furniture) {
       const entry = getCatalogEntry(item.catalogId);
       if (!entry) continue;
+      const ext = collisionExtent(entry, item.scale);
       items.push({
         id: item.id,
         collidable: entry.collidable,
@@ -356,6 +371,8 @@ export function PlanEditor() {
           rotation: item.rotation,
           footprint: scaledFootprint(entry, item.scale),
         },
+        vertical: { base: 0, height: ext.height },
+        tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
       });
     }
     for (const s of lvl.staircases) {
@@ -367,6 +384,7 @@ export function PlanEditor() {
           rotation: s.rotation,
           footprint: stairFootprint(s),
         },
+        vertical: { base: 0, height: storeyHeight },
       });
     }
     return items;
@@ -383,20 +401,21 @@ export function PlanEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [furniture, staircases, walls, belowLevel, collisionMode]);
 
-  // Does a candidate footprint overlap any OTHER collidable thing on the active
-  // level, or a wall? Reads fresh state so it's valid mid-drag.
+  // Does a candidate collide with any OTHER collidable thing on the active level
+  // (height-aware, with tuck-under), or a wall / stairwell opening (footprint
+  // barriers)? Reads fresh state so it's valid mid-drag.
   const overlapsCollidable = (
-    candidate: { center: Vec2; rotation: number; footprint: Footprint },
+    candidate: CollisionItem,
     excludeId: string,
   ): boolean => {
     const st = useStore.getState();
     const lvl = selectCurrentLevel(st);
     for (const o of collidablesOf(lvl)) {
       if (o.id === excludeId || !o.collidable) continue;
-      if (footprintsOverlap(candidate, o.footprint)) return true;
+      if (collidableItemsCollide(candidate, o)) return true;
     }
     for (const w of lvl.walls) {
-      if (footprintsOverlap(candidate, wallFootprint(w))) return true;
+      if (footprintsOverlap(candidate.footprint, wallFootprint(w))) return true;
     }
     // Stairwell openings from the level below (the floor hole on this level).
     const idx = st.design.levels.findIndex((l) => l.id === st.currentLevelId);
@@ -412,7 +431,7 @@ export function PlanEditor() {
               .runLength,
           },
         };
-        if (footprintsOverlap(candidate, fp)) return true;
+        if (footprintsOverlap(candidate.footprint, fp)) return true;
       }
     }
     return false;
@@ -426,8 +445,15 @@ export function PlanEditor() {
   ): boolean => {
     const entry = getCatalogEntry(catalogId);
     if (!entry?.collidable) return false;
+    const ext = collisionExtent(entry, scale);
     return overlapsCollidable(
-      { center: pos, rotation, footprint: scaledFootprint(entry, scale) },
+      {
+        id: excludeId || "candidate",
+        collidable: true,
+        footprint: { center: pos, rotation, footprint: scaledFootprint(entry, scale) },
+        vertical: { base: 0, height: ext.height },
+        tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
+      },
       excludeId,
     );
   };
@@ -1177,7 +1203,7 @@ export function PlanEditor() {
           if (
             collisionMode === "hard" &&
             !overlapsCollidable(
-              { center: pos, rotation: stair.rotation, footprint: stairFootprint(stair) },
+              stairCandidate(d.itemId, pos, stair.rotation, stairFootprint(stair)),
               d.itemId,
             )
           ) {
@@ -1286,11 +1312,12 @@ export function PlanEditor() {
       if (
         stair &&
         overlapsCollidable(
-          {
-            center: stair.position,
-            rotation: stair.rotation,
-            footprint: stairFootprint(stair),
-          },
+          stairCandidate(
+            d.itemId,
+            stair.position,
+            stair.rotation,
+            stairFootprint(stair),
+          ),
           d.itemId,
         )
       ) {
@@ -1629,11 +1656,10 @@ export function PlanEditor() {
               const warn =
                 collisionMode === "hard" &&
                 overlapsCollidable(
-                  {
-                    center: ghost.position,
-                    rotation: ghost.rotation,
-                    footprint: { width: ghost.width, depth: g.runLength },
-                  },
+                  stairCandidate("ghost", ghost.position, ghost.rotation, {
+                    width: ghost.width,
+                    depth: g.runLength,
+                  }),
                   "ghost",
                 );
               return (

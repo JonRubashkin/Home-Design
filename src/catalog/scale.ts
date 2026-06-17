@@ -39,6 +39,22 @@ export function effectiveDimensions(
   };
 }
 
+// Height-aware collision inputs (Phase 4d Part C) for an item at the given
+// scale: its scaled height, the scaled leg clearance (if leggy), and the scaled
+// tuck height (defaulting to the full height when the entry omits one). Every
+// collision call site builds its CollisionItem vertical/tuck fields from this.
+export function collisionExtent(
+  entry: CatalogEntry,
+  scale: Vec3,
+): { height: number; legClearance?: number; tuckHeight: number } {
+  return {
+    height: entry.height * scale.y,
+    legClearance:
+      entry.legClearance != null ? entry.legClearance * scale.y : undefined,
+    tuckHeight: (entry.tuckHeight ?? entry.height) * scale.y,
+  };
+}
+
 // Inverse of one axis of effectiveDimensions: turn a desired real-world
 // dimension (meters) into the scale multiplier for that axis, given the base
 // (unscaled) dimension. Lets the properties panel accept typed meters; the

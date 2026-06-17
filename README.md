@@ -222,8 +222,15 @@ npm run format   # Prettier
   Soft tints
   overlapping items red (2D + 3D) but still lets you drop them; Hard blocks an
   overlapping placement, reverts a drag to its last clear spot, and undoes a
-  rotate/scale that would overlap. (Footprint-only — no place-on-surface yet, so a
-  chair tucked under a table reads as overlapping; that's what Soft is for.)
+  rotate/scale that would overlap.
+- **Height-aware collision (phase 4d)** — collision now also checks vertical
+  extents and **tuck-under**: a dining chair tucks fully under a dining table, a
+  bar stool under the kitchen island, an office chair under a desk — no false
+  collision. Leggy items declare `legClearance` (open space under the top) and
+  tuckable items a `tuckHeight` (seat height); a tuckable fits under a leggy item
+  when its tuck height clears. Two chairs, a chair vs a wardrobe, and a chair vs a
+  **wall** all still collide (walls/stairwell openings stay hard barriers — no
+  tuck-under).
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are
@@ -232,23 +239,29 @@ npm run format   # Prettier
   item. **Schema v4** adds per-item `scale` (v3 adds `furniture`); older designs
   migrate automatically.
 
-**Catalog (60):**
+**Catalog (71):**
 
 - _Living:_ 3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor
-  lamp, potted plant.
+  lamp, potted plant, books.
 - _Bedroom:_ double bed, single bed, nightstand, wardrobe, dresser, dressing
   table, bed bench, crib, bedside lamp, full-length mirror.
 - _Kitchen / dining:_ counter unit, upper cabinet, pantry cabinet, kitchen
   island, fridge, stove, dishwasher, microwave, dining table, dining chair, bar
-  stool, bench.
+  stool, bench, kettle, toaster, coffee maker.
 - _Bathroom:_ toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
   bathroom cabinet.
-- _Office:_ desk, office chair, filing cabinet, desk lamp (the bookshelf is
-  reused for the office too).
+- _Office:_ desk, office chair, filing cabinet, desk lamp, computer (the
+  bookshelf is reused for the office too).
 - _Utility / laundry:_ washing machine, dryer.
 - _Outdoor:_ patio table, patio chair, sun lounger, parasol, BBQ grill, garden
   bench, planter box, fire pit, tree, shrub, fence panel.
+- _Wall-mounted (phase 4d):_ framed wall art, wall-mounted TV, floating shelf,
+  wall sconce, wall mirror, range hood.
+
+The new **surface items** (computer, kettle, toaster, coffee maker, books) are
+decor that auto-rest on a counter/desk/table/shelf via the existing surface
+stacking and never collide.
 
 **Shape variants (phase 4c).** Trees and shrubs come in three shapes each so
 gardens have variety. Each is a **single catalog id plus a `variant` field**
@@ -267,9 +280,32 @@ the properties panel (undoable). **Schema v7** adds the optional `variant` field
 older designs migrate automatically — pre-4c trees become Broadleaf and hedges
 become the Spreading shrub (kept at their original width).
 
-_Deferred to a future wall-mount / vertical-stacking pass (not yet available as
-floor items): range hood, wall-hung mirror, wall art, wall-mounted TV, floating
-shelves, curtains, pendant/ceiling lights, sconces, countertop small appliances._
+### Wall-mounted items (phase 4d)
+
+Wall items attach to a **wall face** as children of the wall — exactly like
+windows and doors — so they move with the wall and are deleted with it.
+
+- **Placement** — pick a wall item in the Furniture palette (framed wall art,
+  wall-mounted TV, floating shelf, wall sconce, wall mirror, range hood). The
+  ghost snaps to the nearest wall face at the cursor, on the side you're hovering,
+  at the item's default height; click to attach, `Esc` cancels, the tool stays
+  active. Their `footprint` is read as _width along the wall × protrusion out_,
+  and `height` is the vertical size.
+- **3D** — rendered on the chosen face, protruding outward, centred at the height
+  up the wall. In **Cutaway** a mount follows its wall's Invisible/Ghost
+  suppression; in **Stubs** it's hidden (it sits above stub height, like windows).
+  The wall mirror's glass is an opaque pale material (no real transparency).
+- **2D plan** — a small distinct marker on the wall at the mount's position and
+  side (height isn't visible top-down). Mounts are **selectable in the plan**; the
+  properties panel edits position along the wall, height up the wall, face A/B,
+  size, and materials, plus Delete — all undoable.
+- Mounts don't participate in furniture collision and don't wall-hug or
+  floor-stack. **Schema v8** adds `mounts` to every wall; older designs migrate
+  automatically. Auto-stacking _onto_ a wall shelf is out of scope (a shelf can't
+  know its wall height from a top-down plan position), so the floating shelf is
+  decorative for now.
+
+_Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 
 ## Controls & keyboard shortcuts
 
@@ -318,7 +354,7 @@ src/
   geometry/      pure geometry (snap, hit-test, mapping, wallToBoxes, cutaway,
                  windows, polygon) + tests
   materials/     material cache keys (tested) + procedural pattern textures
-  catalog/       furniture catalog: primitive helpers + 60 procedural items + scaling
+  catalog/       furniture catalog: primitive helpers + 71 procedural items + scaling
   store/         Zustand store with undo/redo + view prefs + tests
   persistence/   localStorage autosave, JSON import/export, view prefs + tests
   components/     TopBar, Toolbar, PlanEditor (SVG), PropertiesPanel, LayoutToggle

@@ -112,6 +112,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.4,
+    legClearance: 0.34,
     scaling: axesScale({ x: [0.5, 2.2], z: [0.5, 2.0] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -258,6 +259,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: true,
     collidable: true,
     surfaceTop: 0.8,
+    legClearance: 0.72,
     scaling: axesScale({ x: [0.5, 2.5] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -834,6 +836,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.75,
+    legClearance: 0.68,
     scaling: axesScale({ x: [0.5, 2.5], z: [0.6, 1.8] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -859,6 +862,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.9,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.45,
     scaling: uniformScale(0.7, 1.5),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -887,6 +891,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.75,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.72,
     scaling: uniformScale(0.7, 1.5),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -908,6 +913,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.45,
+    tuckHeight: 0.45,
     scaling: axesScale({ x: [0.5, 2.8] }),
     slots: [
       { name: "seat", default: WOOD_LIGHT },
@@ -1031,6 +1037,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.9,
+    legClearance: 0.8,
     scaling: axesScale({ x: [0.6, 2.0], z: [0.6, 1.6] }),
     slots: [
       { name: "cabinet", default: solid("#d7d2c8") },
@@ -1313,6 +1320,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: true,
     collidable: true,
     surfaceTop: 0.75,
+    legClearance: 0.68,
     scaling: axesScale({ x: [0.6, 1.8] }),
     slots: [
       { name: "top", default: WOOD_LIGHT },
@@ -1342,6 +1350,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 1.0,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.5,
     scaling: uniformScale(0.8, 1.3),
     slots: [
       { name: "seat", default: FABRIC2 },
@@ -1541,6 +1550,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     wallHugger: false,
     collidable: true,
     surfaceTop: 0.74,
+    legClearance: 0.66,
     scaling: axesScale({ x: [0.6, 1.8], z: [0.6, 1.8] }),
     slots: [
       { name: "top", default: solid("#9aa6ad") },
@@ -1569,6 +1579,7 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     height: 0.85,
     wallHugger: false,
     collidable: true,
+    tuckHeight: 0.45,
     scaling: uniformScale(0.8, 1.3),
     slots: [
       { name: "seat", default: FABRIC2 },

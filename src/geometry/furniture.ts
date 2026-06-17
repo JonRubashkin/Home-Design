@@ -210,14 +210,72 @@ export function footprintsOverlap(
   return true;
 }
 
+// --- Height-aware collision (Phase 4d Part C) -------------------------------
+// Two items collide only when their footprints overlap AND their vertical
+// extents overlap AND neither tucks under the other (a chair's seat fitting
+// beneath a table's leg clearance). Items without vertical/tuck info fall back
+// to footprint-only behavior, so barriers and untyped callers are unaffected.
+
+export interface VerticalExtent {
+  base: number; // world-Y above the floor of the item's bottom
+  height: number; // its scaled height (top = base + height)
+}
+
+export interface TuckInfo {
+  legClearance?: number; // open space beneath a leggy item's top
+  tuckHeight?: number; // height that must clear to tuck under (default: height)
+}
+
 export interface CollisionItem {
   id: string;
   collidable: boolean;
   footprint: OrientedFootprint;
+  vertical?: VerticalExtent;
+  tuck?: TuckInfo;
+}
+
+// Do the (open) vertical extents [base, base+height] overlap?
+export function verticalExtentsOverlap(
+  a: VerticalExtent,
+  b: VerticalExtent,
+  tolerance = 1e-6,
+): boolean {
+  return (
+    a.base < b.base + b.height - tolerance &&
+    b.base < a.base + a.height - tolerance
+  );
+}
+
+// Does tuckable `t` fit beneath leggy `l` — i.e. `l` has open leg clearance and
+// `t`'s tuck height clears it? When so, the two do NOT collide despite an
+// overlapping footprint (the chair-under-table case).
+export function fitsUnder(
+  t: TuckInfo | undefined,
+  l: TuckInfo | undefined,
+  tolerance = 1e-9,
+): boolean {
+  if (!l || l.legClearance == null) return false;
+  const th = t?.tuckHeight;
+  if (th == null) return false;
+  return th <= l.legClearance + tolerance;
+}
+
+// The full collision predicate for two collidable items.
+export function collidableItemsCollide(
+  a: CollisionItem,
+  b: CollisionItem,
+  tolerance = 0.02,
+): boolean {
+  if (!footprintsOverlap(a.footprint, b.footprint, tolerance)) return false;
+  if (a.vertical && b.vertical && !verticalExtentsOverlap(a.vertical, b.vertical))
+    return false;
+  if (fitsUnder(a.tuck, b.tuck) || fitsUnder(b.tuck, a.tuck)) return false;
+  return true;
 }
 
 // Ids of items that overlap at least one OTHER collidable item. Only collidable
-// vs collidable pairs are considered; non-collidable items never collide.
+// vs collidable pairs are considered; non-collidable items never collide. Uses
+// the full height-aware predicate (vertical extents + tuck-under).
 export function collidingIds(
   items: CollisionItem[],
   tolerance = 0.02,
@@ -226,7 +284,7 @@ export function collidingIds(
   const c = items.filter((i) => i.collidable);
   for (let i = 0; i < c.length; i++) {
     for (let j = i + 1; j < c.length; j++) {
-      if (footprintsOverlap(c[i]!.footprint, c[j]!.footprint, tolerance)) {
+      if (collidableItemsCollide(c[i]!, c[j]!, tolerance)) {
         hits.add(c[i]!.id);
         hits.add(c[j]!.id);
       }

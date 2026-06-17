@@ -30,6 +30,20 @@ npm run format   # Prettier
 
 ## Features
 
+### Saved-design library (phase 5b)
+
+- A **local, offline design library** backed by IndexedDB (`src/storage/library.ts`)
+  replaces the old single-slot autosave. Each record holds `{ id, name, createdAt,
+  modifiedAt, thumbnail, design }`.
+- The **welcome screen** shows your recent designs with thumbnails — **Continue**
+  (most recently modified), open any design, or start a **New** one. Inside the
+  app, **My Designs** (top bar) lets you switch designs, plus **Save as copy**.
+- **New / Open / Duplicate / Rename / Delete** (Delete confirms; you can't delete
+  the design you're editing). Autosave writes the open design to its record and
+  refreshes a small 3D **thumbnail** on save (not on every keystroke).
+- An existing localStorage autosave is **migrated into the library** on first run
+  (never lost). Per-design `schemaVersion` migrations still run on open.
+
 ### Image export (phase 5a)
 
 - **Export 3D image** (in the 3D view bar) downloads a crisp **2× PNG** of the
@@ -124,8 +138,9 @@ npm run format   # Prettier
   drag the whole wall, edit length / thickness / height in the properties panel,
   delete.
 - **Undo / redo** for every committed action; a full drag is a single undo step.
-- **Persistence** — debounced autosave to localStorage, plus New / Export JSON /
-  Import JSON. Imports are validated against the schema version.
+- **Persistence** — the open design autosaves (debounced) to its record in the
+  design library (see below), plus New / Export JSON / Import JSON. Imports are
+  validated against the schema version and added as a new library record.
 - All lengths are in **meters**, snapped to a **0.1 m** grid.
 
 ### 3D preview (phase 1b)

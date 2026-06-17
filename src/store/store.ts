@@ -333,6 +333,9 @@ interface AppState {
   // a saved design was found on load (set by main.tsx).
   started: boolean;
   hasSavedDesign: boolean;
+  // The id of the open library record (Phase 5b). Autosave writes the open design
+  // to this record. Null before a design is opened/created.
+  openDesignId: string | null;
 
   // Transient hover hint: which wall side to spotlight in the plan (paint tool
   // hover and the properties-panel side chips). Not persisted, not in history.
@@ -469,6 +472,11 @@ interface AppState {
   // Welcome actions.
   continueDesign: () => void;
   startNewDesign: (site: Site) => void;
+  // Library (Phase 5b): open an existing record, rename the open design, or fork
+  // the open design into a new record (Save As).
+  openRecord: (id: string, design: Design) => void;
+  renameDesign: (name: string) => void;
+  saveAs: (name: string) => void;
 
   // --- drag session (transient until endDrag) ---
   beginDrag: () => void;
@@ -552,6 +560,7 @@ export const useStore = create<AppState>((set, get) => {
     selection: null,
     started: false,
     hasSavedDesign: false,
+    openDesignId: null,
     sideHighlight: null,
     placingCatalogId: null,
     placingVariant: null,
@@ -1223,30 +1232,36 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    // Import: load a design into a brand-new library record (fresh id) with a
+    // clean history, so an imported file becomes its own saved design.
     setDesign: (design) => {
-      pushHistory();
       const next = clone(design);
       set({
         design: next,
         currentLevelId: next.levels[0]!.id,
         selection: null,
+        past: [],
+        future: [],
+        openDesignId: makeId("design"),
       });
     },
 
     newDesign: () => {
-      pushHistory();
       const design = createDesign();
       set({
         design,
         currentLevelId: design.levels[0]!.id,
         selection: null,
+        past: [],
+        future: [],
+        openDesignId: makeId("design"),
       });
     },
 
     continueDesign: () => set({ started: true }),
 
     startNewDesign: (site) => {
-      // Fresh design with the chosen site and a clean history.
+      // Fresh design with the chosen site, a clean history, and a new record id.
       const design = createDesign(undefined, site);
       set({
         design,
@@ -1255,6 +1270,40 @@ export const useStore = create<AppState>((set, get) => {
         past: [],
         future: [],
         started: true,
+        openDesignId: makeId("design"),
+      });
+    },
+
+    // Open an existing library record into the editor.
+    openRecord: (id, design) => {
+      const next = clone(design);
+      set({
+        design: next,
+        currentLevelId: next.levels[0]!.id,
+        selection: null,
+        past: [],
+        future: [],
+        started: true,
+        openDesignId: id,
+      });
+    },
+
+    // Rename the open design (undoable, persisted by autosave).
+    renameDesign: (name) => {
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        design.name = name;
+        return { design };
+      });
+    },
+
+    // Save As: fork the open design into a new record under a new name.
+    saveAs: (name) => {
+      set((s) => {
+        const design = clone(s.design);
+        design.name = name;
+        return { design, openDesignId: makeId("design") };
       });
     },
 

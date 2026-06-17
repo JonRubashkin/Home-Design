@@ -12,6 +12,17 @@ export interface Capture3DHandles {
   size: { width: number; height: number };
 }
 
+// A module-level pointer to the live 3D handles (set by the SceneCapture bridge
+// each frame). Lets non-Canvas code (e.g. the autosave thumbnail) grab the
+// current view without prop-drilling a ref. Null when no 3D pane is mounted.
+let _liveHandles: Capture3DHandles | null = null;
+export function setCaptureHandles(handles: Capture3DHandles | null): void {
+  _liveHandles = handles;
+}
+export function getCaptureHandles(): Capture3DHandles | null {
+  return _liveHandles;
+}
+
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 

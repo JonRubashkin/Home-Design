@@ -4,6 +4,7 @@ import { exportDesignToFile, parseImportedDesign } from "../persistence/io";
 import { LayoutToggle } from "./LayoutToggle";
 import { SettingsDialog } from "./SettingsDialog";
 import { ResizeAreaDialog } from "./ResizeAreaDialog";
+import { DesignLibraryModal } from "./DesignLibrary";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -30,6 +31,7 @@ export function TopBar() {
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resizeOpen, setResizeOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   const onImportClick = () => {
     setError(null);
@@ -50,9 +52,9 @@ export function TopBar() {
   };
 
   const onNew = () => {
-    if (window.confirm("Start a new design? Unsaved changes will be lost.")) {
-      newDesign();
-    }
+    // The current design is already autosaved to its library record; New just
+    // opens a fresh one, so no data is lost.
+    newDesign();
   };
 
   return (
@@ -91,6 +93,13 @@ export function TopBar() {
           {GearIcon}
         </button>
         <span className="topbar-divider" />
+        <button
+          type="button"
+          onClick={() => setLibraryOpen(true)}
+          title="Switch between your saved designs"
+        >
+          My Designs
+        </button>
         <button
           type="button"
           onClick={() => setResizeOpen(true)}
@@ -139,6 +148,9 @@ export function TopBar() {
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
+      {libraryOpen && (
+        <DesignLibraryModal onClose={() => setLibraryOpen(false)} />
+      )}
     </header>
   );
 }

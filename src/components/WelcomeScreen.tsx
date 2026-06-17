@@ -1,47 +1,72 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "../store/store";
+import { validateDesign } from "../persistence/storage";
+import {
+  getDesignRecord,
+  listDesigns,
+  migrateLegacyAutosave,
+  type DesignRecord,
+} from "../storage/library";
+import { DesignLibrary } from "./DesignLibrary";
 import { SiteSizeForm } from "./SiteSizeForm";
 
-// Shown before the editor on load. If a saved design exists, offer Continue or a
-// fresh start; otherwise go straight to the size chooser. Picking a size creates
-// a new design with that work area; Continue resumes the saved one untouched.
+// Shown before the editor on load. Loads the design library (migrating any legacy
+// localStorage autosave into it on first run). If saved designs exist, offer the
+// recents list with Continue (= most recently modified) and New; otherwise go
+// straight to the size chooser. Picking a size creates a new design.
 export function WelcomeScreen() {
-  const hasSavedDesign = useStore((s) => s.hasSavedDesign);
-  const continueDesign = useStore((s) => s.continueDesign);
+  const openRecord = useStore((s) => s.openRecord);
   const startNewDesign = useStore((s) => s.startNewDesign);
 
-  // Returning users see the choice first; first-timers go straight to sizing.
-  const [step, setStep] = useState<"choice" | "size">(
-    hasSavedDesign ? "choice" : "size",
-  );
+  const [records, setRecords] = useState<DesignRecord[] | null>(null);
+  const [step, setStep] = useState<"choice" | "size">("choice");
+
+  const reload = () => {
+    void listDesigns().then(setRecords);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await migrateLegacyAutosave();
+      const list = await listDesigns();
+      if (cancelled) return;
+      setRecords(list);
+      // First-timers (no saved designs) skip straight to choosing a work area.
+      setStep(list.length > 0 ? "choice" : "size");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onContinue = async () => {
+    const list = records ?? (await listDesigns());
+    const recent = list[0]; // listDesigns is sorted most-recent-first
+    if (!recent) {
+      setStep("size");
+      return;
+    }
+    const record = await getDesignRecord(recent.id);
+    if (!record) return;
+    const result = validateDesign(record.design);
+    openRecord(record.id, result.ok ? result.design : record.design);
+  };
+
+  const loading = records === null;
+  const hasSaved = !loading && records.length > 0;
 
   return (
     <div className="welcome">
-      <div className="welcome-card">
+      <div className="welcome-card welcome-wide">
         <div className="welcome-head">
           <h1>Home Design</h1>
           <p className="welcome-sub">Draw walls, furnish rooms, see it in 3D.</p>
         </div>
 
-        {step === "choice" ? (
-          <div className="welcome-choice">
-            <button
-              type="button"
-              className="primary-button welcome-continue"
-              autoFocus
-              onClick={continueDesign}
-            >
-              Continue your design
-            </button>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => setStep("size")}
-            >
-              Start a new design
-            </button>
-          </div>
-        ) : (
+        {loading ? (
+          <p className="welcome-size-hint">Loading your designs…</p>
+        ) : step === "size" ? (
           <div className="welcome-size">
             <h2 className="welcome-size-title">Choose your work area</h2>
             <p className="welcome-size-hint">
@@ -51,7 +76,26 @@ export function WelcomeScreen() {
             <SiteSizeForm
               confirmLabel="Create design"
               onConfirm={startNewDesign}
-              onCancel={hasSavedDesign ? () => setStep("choice") : undefined}
+              onCancel={hasSaved ? () => setStep("choice") : undefined}
+            />
+          </div>
+        ) : (
+          <div className="welcome-choice-wide">
+            {hasSaved && (
+              <button
+                type="button"
+                className="primary-button welcome-continue"
+                autoFocus
+                onClick={onContinue}
+              >
+                Continue your most recent design
+              </button>
+            )}
+            <DesignLibrary
+              records={records}
+              reload={reload}
+              onNew={() => setStep("size")}
+              mode="welcome"
             />
           </div>
         )}

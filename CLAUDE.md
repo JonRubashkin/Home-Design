@@ -350,10 +350,20 @@ in code under `src/catalog/`:
   shared or deep-cloned — design docs are small) pushed on each *committed* action.
   Mid-drag movements update a transient preview; history records only on commit
   (mouse-up). Ctrl+Z / Ctrl+Shift+Z (and Ctrl+Y). Cap history at 100 entries.
-- **Persistence:** autosave the `Design` JSON to localStorage (debounced), plus
-  explicit "Export JSON" (file download) and "Import JSON" (file picker). On load,
-  check `schemaVersion`; if it's a future unknown version, refuse with a friendly
-  message rather than corrupting data.
+- **Persistence (Phase 5b — design library):** designs live in an IndexedDB
+  library (`src/storage/library.ts`) of records `{ id, name, createdAt,
+  modifiedAt, thumbnail?, design }` — 100% local/offline, no backend (raw IDB, no
+  package). The store tracks the open record's id (`openDesignId`); debounced
+  autosave (`useAutosave`) writes the open design to its record via
+  `saveOpenDesign` and refreshes a small `captureView` thumbnail on save (NOT per
+  keystroke). On first run, `migrateLegacyAutosave` imports any old
+  single-slot localStorage autosave into the library (never lost) and clears it.
+  The welcome screen and the in-app **My Designs** menu list records (New / Open /
+  Duplicate / Rename / Delete; Continue = most recent; Save As forks a new record
+  via `saveAs`). Import (`setDesign`) and New (`newDesign`) start a fresh record
+  id. Still: explicit "Export JSON" / "Import JSON"; per-design `schemaVersion`
+  migrations run on open via `validateDesign`; a future unknown version is refused
+  rather than corrupting data.
 
 ## Image export (Phase 5a)
 

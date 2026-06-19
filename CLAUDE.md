@@ -387,6 +387,15 @@ in code under `src/catalog/`:
   shared or deep-cloned — design docs are small) pushed on each *committed* action.
   Mid-drag movements update a transient preview; history records only on commit
   (mouse-up). Ctrl+Z / Ctrl+Shift+Z (and Ctrl+Y). Cap history at 100 entries.
+- **Copy/paste.** A transient store `clipboard` (NOT persisted, NOT in history)
+  holds a deep clone of the selected top-level object (wall, furniture, roof,
+  staircase, ceiling light). `copySelection` fills it; `pasteClipboard` drops a
+  fresh-id duplicate offset by `PASTE_OFFSET` (0.5 m) onto the **active** level,
+  selects it, and is one undo step. A copied wall brings its windows/doors/mounts
+  under fresh ids (`cloneWallWithNewIds`); a pasted staircase auto-creates the
+  level above like placement. The clipboard survives level switches (copy on one
+  floor, paste on another). Wired to Ctrl/Cmd+C / Ctrl/Cmd+V in
+  `useGlobalShortcuts` (suppressed while typing so browser text copy still works).
 - **Persistence (Phase 5b — design library):** designs live in an IndexedDB
   library (`src/storage/library.ts`) of records `{ id, name, createdAt,
   modifiedAt, thumbnail?, design }` — 100% local/offline, no backend (raw IDB, no

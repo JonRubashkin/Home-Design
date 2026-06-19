@@ -15,6 +15,7 @@ beforeEach(() => {
     past: [],
     future: [],
     dragBaseline: null,
+    clipboard: null,
   });
 });
 
@@ -932,5 +933,80 @@ describe("manual roofs (Phase 5.2)", () => {
       .design.levels.find((l) => l.id === groundId)!;
     expect(ground.roofs).toHaveLength(1);
     expect(ground.roofs[0]!.position).toEqual({ x: 2, y: 1.5 });
+  });
+});
+
+const furn = () => selectCurrentLevel(useStore.getState()).furniture;
+
+describe("copy / paste", () => {
+  it("copies and pastes a roof with a fresh id, offset and selected", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    const id = roofs()[0]!.id;
+    expect(state().copySelection()).toBe(true);
+    expect(state().pasteClipboard()).toBe(true);
+    expect(roofs()).toHaveLength(2);
+    const copy = roofs()[1]!;
+    expect(copy.id).not.toBe(id);
+    expect(copy.position).toEqual({ x: 2.5, y: 2 });
+    expect(copy.width).toBe(4);
+    expect(state().selection).toEqual({ kind: "roof", id: copy.id });
+  });
+
+  it("copies and pastes furniture", () => {
+    state().placeFurniture("dining-chair", { x: 1, y: 1 }, 30);
+    state().copySelection();
+    state().pasteClipboard();
+    const chairs = furn().filter((f) => f.catalogId === "dining-chair");
+    expect(chairs).toHaveLength(2);
+    expect(chairs[1]!.position).toEqual({ x: 1.5, y: 1.5 });
+    expect(chairs[1]!.rotation).toBe(30);
+    expect(chairs[1]!.id).not.toBe(chairs[0]!.id);
+  });
+
+  it("copies a wall with its openings under fresh ids", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    const wallId = walls()[0]!.id;
+    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9 });
+    state().setSelection({ kind: "wall", id: wallId });
+    state().copySelection();
+    state().pasteClipboard();
+    expect(walls()).toHaveLength(2);
+    const copy = walls()[1]!;
+    expect(copy.id).not.toBe(wallId);
+    expect(copy.start).toEqual({ x: 0.5, y: 0.5 });
+    expect(copy.windows).toHaveLength(1);
+    expect(copy.windows[0]!.id).not.toBe(walls()[0]!.windows[0]!.id);
+  });
+
+  it("pastes across floors (clipboard survives a level switch)", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    state().copySelection();
+    state().addLevelAbove(); // switches to the new upper level
+    expect(roofs()).toHaveLength(0);
+    state().pasteClipboard();
+    expect(roofs()).toHaveLength(1);
+  });
+
+  it("is a no-op with an empty clipboard or an uncopyable selection", () => {
+    expect(state().pasteClipboard()).toBe(false);
+    state().addFloor(
+      [
+        { x: 0, y: 0 },
+        { x: 2, y: 0 },
+        { x: 2, y: 2 },
+      ],
+      { kind: "solid", color: "#fff" },
+    );
+    // A floor is selected but not copyable.
+    expect(state().copySelection()).toBe(false);
+  });
+
+  it("paste is one undo step", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    state().copySelection();
+    state().pasteClipboard();
+    expect(roofs()).toHaveLength(2);
+    state().undo();
+    expect(roofs()).toHaveLength(1);
   });
 });

@@ -31,6 +31,17 @@ export function useGlobalShortcuts(): void {
 
       if (isTypingTarget(e.target)) return;
 
+      // Copy / paste the current selection (top-level objects). Suppressed while
+      // typing (handled above) so the browser's text copy/paste still works.
+      if (mod && e.key.toLowerCase() === "c") {
+        if (s.copySelection()) e.preventDefault();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "v") {
+        if (s.pasteClipboard()) e.preventDefault();
+        return;
+      }
+
       switch (e.key) {
         case "v":
         case "V":

@@ -194,6 +194,22 @@ export type Selection =
   | { kind: "roof"; id: string }
   | null;
 
+// Copy/paste clipboard (not persisted, not in undo history). Holds a deep clone
+// of a copied top-level object; paste creates a fresh-id duplicate offset a touch
+// from the original on the active level. Wall children (windows/doors/mounts)
+// come along with a copied wall; standalone openings aren't independently copied.
+export type Clipboard =
+  | { kind: "wall"; data: Wall }
+  | { kind: "furniture"; data: FurnitureItem }
+  | { kind: "roof"; data: Roof }
+  | { kind: "staircase"; data: Staircase }
+  | { kind: "ceilingLight"; data: CeilingLight }
+  | null;
+
+// Plan-space offset (meters) applied to a pasted copy so it doesn't land exactly
+// on the original. Grid-aligned (0.1 m grid) so the copy stays snapped.
+const PASTE_OFFSET: Vec2 = { x: 0.5, y: 0.5 };
+
 const HISTORY_CAP = 100;
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -392,6 +408,9 @@ interface AppState {
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
 
+  // Copy/paste clipboard (transient; not persisted, not in undo history).
+  clipboard: Clipboard;
+
   // Undo/redo: snapshots of the whole Design taken before each committed action.
   past: Design[];
   future: Design[];
@@ -528,6 +547,12 @@ interface AppState {
   // target so the moved roof stays visible/selected.
   moveRoofToLevel: (id: string, targetLevelId: string) => void;
   deleteRoof: (id: string) => void;
+  // Copy/paste of the current selection (top-level objects: wall, furniture,
+  // roof, staircase, ceiling light). `copySelection` returns true if something
+  // was copied; `pasteClipboard` drops a fresh-id duplicate (offset) on the
+  // active level, selects it, and returns true if anything was pasted (one undo).
+  copySelection: () => boolean;
+  pasteClipboard: () => boolean;
   setDesign: (design: Design) => void;
   newDesign: () => void;
   // Welcome actions.
@@ -641,6 +666,7 @@ export const useStore = create<AppState>((set, get) => {
     showDimensions: prefs.showDimensions,
     collisionMode: prefs.collisionMode,
     hideRoofs: prefs.hideRoofs,
+    clipboard: null,
     past: [],
     future: [],
     dragBaseline: null,
@@ -1459,6 +1485,89 @@ export const useStore = create<AppState>((set, get) => {
         );
         return { design, selection: stillThere ? s.selection : null };
       });
+    },
+
+    // Copy the current selection into the clipboard (deep clone). Only top-level
+    // objects are copyable; openings/mounts ride along with their wall.
+    copySelection: () => {
+      const { design, currentLevelId, selection } = get();
+      if (!selection) return false;
+      let clip: Clipboard = null;
+      if (selection.kind === "wall") {
+        const w = findWall(design, currentLevelId, selection.id);
+        if (w) clip = { kind: "wall", data: clone(w) };
+      } else if (selection.kind === "furniture") {
+        const f = findFurniture(design, currentLevelId, selection.id);
+        if (f) clip = { kind: "furniture", data: clone(f) };
+      } else if (selection.kind === "roof") {
+        const r = findRoof(design, currentLevelId, selection.id);
+        if (r) clip = { kind: "roof", data: clone(r) };
+      } else if (selection.kind === "staircase") {
+        const st = findStaircase(design, currentLevelId, selection.id);
+        if (st) clip = { kind: "staircase", data: clone(st) };
+      } else if (selection.kind === "ceilingLight") {
+        const l = findCeilingLight(design, currentLevelId, selection.id);
+        if (l) clip = { kind: "ceilingLight", data: clone(l) };
+      }
+      if (!clip) return false;
+      set({ clipboard: clip });
+      return true;
+    },
+
+    // Paste a fresh-id duplicate of the clipboard onto the active level, offset a
+    // touch from the original so it's visibly separate, and select it.
+    pasteClipboard: () => {
+      const clip = get().clipboard;
+      if (!clip) return false;
+      const off = (p: Vec2): Vec2 => ({
+        x: p.x + PASTE_OFFSET.x,
+        y: p.y + PASTE_OFFSET.y,
+      });
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = levelOf(design, s.currentLevelId);
+        let selection: Selection = null;
+        if (clip.kind === "wall") {
+          const w = cloneWallWithNewIds(clip.data);
+          w.start = off(w.start);
+          w.end = off(w.end);
+          level.walls.push(w);
+          selection = { kind: "wall", id: w.id };
+        } else if (clip.kind === "furniture") {
+          const f = clone(clip.data);
+          f.id = makeId("furn");
+          f.position = off(f.position);
+          level.furniture.push(f);
+          selection = { kind: "furniture", id: f.id };
+        } else if (clip.kind === "roof") {
+          const r = clone(clip.data);
+          r.id = makeId("roof");
+          r.position = off(r.position);
+          level.roofs.push(r);
+          selection = { kind: "roof", id: r.id };
+        } else if (clip.kind === "staircase") {
+          // A staircase needs a level above to ascend to (auto-create like place).
+          const idx = design.levels.findIndex((l) => l.id === s.currentLevelId);
+          if (!design.levels[idx + 1]) {
+            design.levels.push(createLevel(defaultLevelName(design.levels.length)));
+            restackElevations(design.levels);
+          }
+          const st = clone(clip.data);
+          st.id = makeId("stair");
+          st.position = off(st.position);
+          level.staircases.push(st);
+          selection = { kind: "staircase", id: st.id };
+        } else if (clip.kind === "ceilingLight") {
+          const l = clone(clip.data);
+          l.id = makeId("light");
+          l.position = off(l.position);
+          level.ceilingLights.push(l);
+          selection = { kind: "ceilingLight", id: l.id };
+        }
+        return { design, selection };
+      });
+      return true;
     },
 
     setDesign: (design) => {

@@ -192,6 +192,11 @@ npm run format   # Prettier
   drag the whole wall, edit length / thickness / height in the properties panel,
   delete.
 - **Undo / redo** for every committed action; a full drag is a single undo step.
+- **Copy / paste** (`Ctrl/Cmd`+`C` / `Ctrl/Cmd`+`V`) — duplicate the selected
+  wall, furniture item, roof, staircase, or ceiling light. The copy lands a touch
+  offset from the original on the **active** level and is selected; the clipboard
+  survives floor switches, so you can copy on one floor and paste on another. A
+  copied wall brings its windows/doors/wall-mounts along (under fresh ids).
 - **Persistence** — the open design autosaves (debounced) to its record in the
   design library (see below), plus New / Export JSON / Import JSON. Imports are
   validated against the schema version and added as a new library record.
@@ -415,6 +420,8 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 | Move a wall / window      | Drag its body / drag along the wall         |
 | Move an endpoint          | Drag an endpoint handle (Select tool)       |
 | Delete selection          | `Delete` or `Backspace`                     |
+| Copy selection            | `Ctrl/Cmd` + `C`                            |
+| Paste copy                | `Ctrl/Cmd` + `V`                            |
 | Pan                       | `Space`-drag or middle-mouse drag           |
 | Zoom                      | Scroll wheel (centered on cursor)           |
 | Undo                      | `Ctrl/Cmd` + `Z`                            |

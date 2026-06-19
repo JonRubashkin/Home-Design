@@ -41,19 +41,29 @@ npm run format   # Prettier
   **Stubs**, visible in **Cutaway** (the ceiling above is suppressed). Excluded
   from collision. Schema v10; round-trips through Export/Import.
 
-### Roofs (phase 5e)
+### Roofs (phase 5.1 — per-level, multi-section)
 
-- One **roof over the top level**, auto-generated from its wall footprint's
-  bounding rectangle: **flat**, **gabled**, **hipped**, or **pitched** (shed),
-  with adjustable **pitch** and **overhang** and a material. Edit it in the Roof
-  subsection of the **Floors** dropdown (all undoable).
-- In **Cutaway/Stubs** the roof suppresses like an upper floor slab so the
-  interior stays visible; in **Full** it's solid; a **Show roof** toggle hides it
-  in any mode. Adding a floor re-tops the roof onto the new top level. Pure tested
-  `computeRoof` in `src/geometry/roof.ts`; round-trips through Export/Import.
-- The flat roof is a real slab seated a hair above the wall tops (the `ROOF_LIFT`
-  offset in `preview/stacking.ts`) so it never sits coplanar with the wall-top
-  plane and z-fights ("flickers") as the camera orbits.
+- Roofs are **per level**: every connected wall group ("mass") on a level gets
+  its **own** roof section, so a building with a detached wing/garage is roofed by
+  separate roofs. An **L / T / U** footprint is split into rectangles and roofed by
+  matching pieces that meet at ridges/valleys (a cross-gable look).
+- Sections are **auto-created** as you draw masses and edited per section: choose
+  **flat**, **gabled**, **hipped**, or **pitched** (shed) with adjustable **pitch**
+  and **overhang** and a material — in the **Roofs** subsection of the **Floors**
+  dropdown (all undoable). Each row has a per-section **Show** toggle and
+  **Remove**; un-roofed masses show an **Add roof** button; a global **Show roofs**
+  toggle hides them all.
+- Roofs **stay on their level** — adding a floor above never moves or re-tops a
+  lower roof; remove a section if you build over it. Removing a roof keeps it
+  removed (no instant respawn) until that mass's walls change.
+- In **Cutaway/Stubs** each roof suppresses like an upper floor slab so the
+  interior stays visible; in **Full** it's solid. The flat roof is a real slab
+  seated a hair above the wall tops (the `ROOF_LIFT` offset in
+  `preview/stacking.ts`) so it never z-fights ("flickers") as the camera orbits.
+- Pure tested geometry: mass detection + footprint trace (`roofMass.ts`),
+  rectangle decomposition (`roofMass.ts`), per-rectangle `computeRoof`
+  (`roof.ts`), and section reconciliation (`roofReconcile.ts`). Round-trips
+  through Export/Import; old single-roof designs migrate to a top-level section.
 
 ### Corner posts (phase 5d)
 

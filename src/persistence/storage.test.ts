@@ -94,23 +94,27 @@ describe("validateDesign — windows, floors, materials", () => {
     }
   });
 
-  it("accepts and round-trips a roof", () => {
+  it("accepts and round-trips per-level roof sections", () => {
     const d = base();
-    d.roof = {
+    d.levels[0]!.roofs.push({
+      id: "roof1",
+      anchor: { x: 2, y: 1.5 },
       type: "gabled",
       pitch: 30,
       overhang: 0.4,
       visible: true,
       material: { kind: "solid", color: "#8a5a44" },
-    };
+    });
     const r = validateDesign(JSON.parse(JSON.stringify(d)));
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.design.roof).toEqual(d.roof);
+    if (r.ok) expect(r.design.levels[0]!.roofs).toEqual(d.levels[0]!.roofs);
   });
 
-  it("rejects a malformed roof", () => {
+  it("rejects a malformed roof section", () => {
     const d = base() as unknown as Record<string, unknown>;
-    d.roof = { type: "mansard", pitch: 30, overhang: 0.4, visible: true };
+    (d.levels as Record<string, unknown>[])[0]!.roofs = [
+      { id: "x", anchor: { x: 0, y: 0 }, type: "mansard", pitch: 30, overhang: 0.4, visible: true },
+    ];
     expect(validateDesign(d).ok).toBe(false);
   });
 

@@ -123,7 +123,63 @@ const migrations: Migration[] = [
     design.schemaVersion = 10;
     return design;
   },
+  // v10 -> v11: per-level, multi-section roofs (Phase 5.1). The single
+  // `Design.roof` is replaced by `Level.roofs: RoofSection[]`. Every level gains
+  // an empty `roofs` array; an existing top-level roof becomes one section over
+  // the top level, anchored at its wall-footprint centroid (site centroid if it
+  // has no walls). The old `Design.roof` is then dropped.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      if (!Array.isArray(level.roofs)) level.roofs = [];
+    }
+    const oldRoof = design.roof;
+    const top = levels[levels.length - 1];
+    if (oldRoof && typeof oldRoof === "object" && top) {
+      const roof = oldRoof as RawDesign;
+      top.roofs = [
+        {
+          id: `roof_${Math.random().toString(36).slice(2, 10)}`,
+          anchor: topFootprintCentroid(top, design),
+          type: roof.type,
+          pitch: roof.pitch,
+          overhang: roof.overhang,
+          visible: roof.visible,
+          material: roof.material,
+        },
+      ];
+    }
+    delete design.roof;
+    design.schemaVersion = 11;
+    return design;
+  },
 ];
+
+// Centroid of a level's wall endpoints (the old single roof spanned the wall
+// bbox); falls back to the site centre when the level has no walls. Used only by
+// the v10->v11 migration to anchor a migrated roof inside its footprint.
+function topFootprintCentroid(level: RawDesign, design: RawDesign): {
+  x: number;
+  y: number;
+} {
+  const walls = (level.walls as RawDesign[] | undefined) ?? [];
+  let sx = 0;
+  let sy = 0;
+  let n = 0;
+  for (const wall of walls) {
+    for (const key of ["start", "end"] as const) {
+      const p = wall[key] as { x?: number; y?: number } | undefined;
+      if (p && typeof p.x === "number" && typeof p.y === "number") {
+        sx += p.x;
+        sy += p.y;
+        n++;
+      }
+    }
+  }
+  if (n > 0) return { x: sx / n, y: sy / n };
+  const site = design.site as { width?: number; depth?: number } | undefined;
+  return { x: (site?.width ?? 0) / 2, y: (site?.depth ?? 0) / 2 };
+}
 
 // The newest schema version this build understands.
 export const LATEST_SCHEMA_VERSION = migrations.length + 1;

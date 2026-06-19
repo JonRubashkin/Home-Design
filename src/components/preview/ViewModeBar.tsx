@@ -18,6 +18,8 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
   const setViewMode = useStore((s) => s.setViewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
   const setCutawayStyle = useStore((s) => s.setCutawayStyle);
+  const hideRoofs = useStore((s) => s.hideRoofs);
+  const setHideRoofs = useStore((s) => s.setHideRoofs);
   const activeLevelOnly = useStore((s) => s.activeLevelOnly);
   const setActiveLevelOnly = useStore((s) => s.setActiveLevelOnly);
   const multiLevel = useStore((s) => s.design.levels.length > 1);
@@ -42,6 +44,16 @@ export function ViewModeBar({ onFit }: { onFit: () => void }) {
           </button>
         ))}
       </div>
+
+      <button
+        type="button"
+        className={`viewbar-fit${!hideRoofs ? " active" : ""}`}
+        aria-pressed={!hideRoofs}
+        title="Show or hide all roofs in the 3D view"
+        onClick={() => setHideRoofs(!hideRoofs)}
+      >
+        Show roofs
+      </button>
 
       {viewMode === "cutaway" && (
         <div className="seg" role="group" aria-label="Cutaway style">

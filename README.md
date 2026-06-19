@@ -51,8 +51,8 @@ npm run format   # Prettier
   **depth**, **rotation** (15° steps; also `R` / `Shift+R`), **type** (flat /
   gabled / hipped / pitched-shed), **pitch**, **overhang**, **material**, and a
   **Show this roof** toggle. Drag the body to move it; `Delete` removes it. All
-  edits are undoable. A global **Show roofs** toggle lives in the **Floors**
-  dropdown.
+  edits are undoable. A global **Show roofs** toggle lives in the **3D view bar**
+  (beside Full / Cutaway / Stubs).
 - Roofs **stay where you put them** — adding or copying a floor above never adds,
   moves, duplicates, or re-tops any roof. No auto-detection runs anywhere.
 - In **Cutaway/Stubs** each roof suppresses like an upper floor slab so the

@@ -75,7 +75,7 @@ import { patternDataUrl, representativeColor } from "../materials/textures";
 import { PATTERN_TILE_METERS } from "../materials/patterns";
 import { useElementSize } from "../lib/useElementSize";
 import { formatMeters } from "../lib/format";
-import { capturePlan, downloadCanvasPng, safeFileName } from "../lib/capture";
+import { capturePlan, setPlanCapturer, type PlanCapturer } from "../lib/capture";
 
 interface View {
   pan: Vec2;
@@ -505,16 +505,25 @@ export function PlanEditor() {
     );
   };
 
-  // Export the plan to a 2× PNG framed to the design content (Phase 5 Part A).
-  const exportPlanImage = async () => {
+  // Rasterize the plan to a 2× PNG framed to the design content (Phase 5 Part A).
+  // Registered with the capture bridge so the unified Export menu in the top bar
+  // can drive it; kept in a ref so the stable registered wrapper always reads the
+  // current SVG + bounds.
+  const capturePlanImpl = useRef<PlanCapturer>(async () => null);
+  capturePlanImpl.current = async (opts) => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return null;
     const bounds = unionBounds(siteBounds(site), geometryBounds());
-    if (!bounds) return;
-    const name = useStore.getState().design.name;
-    const canvas = await capturePlan(svg, bounds, { scale: 2 });
-    downloadCanvasPng(canvas, `${safeFileName(name)}-plan.png`);
+    if (!bounds) return null;
+    return capturePlan(svg, bounds, {
+      scale: opts?.scale ?? 2,
+      transparent: opts?.transparent,
+    });
   };
+  useEffect(() => {
+    setPlanCapturer((opts) => capturePlanImpl.current(opts));
+    return () => setPlanCapturer(null);
+  }, []);
 
   // Frame the site + content once, when the plan first gets a size (mirrors the
   // 3D preview, which fits on mount). Only on first measure, never on edits.
@@ -1910,14 +1919,6 @@ export function PlanEditor() {
           onClick={fitToContent}
         >
           Fit view
-        </button>
-        <button
-          type="button"
-          className="plan-control-button"
-          title="Download a 2× PNG of the plan, framed to content"
-          onClick={exportPlanImage}
-        >
-          Export image
         </button>
       </div>
 

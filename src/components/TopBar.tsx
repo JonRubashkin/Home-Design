@@ -5,6 +5,7 @@ import { LayoutToggle } from "./LayoutToggle";
 import { SettingsDialog } from "./SettingsDialog";
 import { ResizeAreaDialog } from "./ResizeAreaDialog";
 import { DesignLibraryModal } from "./DesignLibrary";
+import { ExportMenu } from "./ExportMenu";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -92,6 +93,7 @@ export function TopBar() {
         >
           {GearIcon}
         </button>
+        <ExportMenu />
         <span className="topbar-divider" />
         <button
           type="button"
@@ -115,14 +117,14 @@ export function TopBar() {
           onClick={onImportClick}
           title="Import a design JSON"
         >
-          Import
+          Import JSON
         </button>
         <button
           type="button"
           onClick={() => exportDesignToFile(design)}
           title="Export the design as JSON"
         >
-          Export
+          Export JSON
         </button>
         <input
           ref={fileInput}

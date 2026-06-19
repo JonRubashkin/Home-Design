@@ -401,9 +401,17 @@ in code under `src/catalog/`:
   its pan/zoom transform + screen-space dimming), frames it to the design bounds
   via a viewBox, and rasterizes to a 2× canvas.
 - The 3D handles (`gl`/`scene`/`camera`/`size`) reach the export UI via a
-  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref.
-- UI: **Export 3D image** + a Transparent toggle in the 3D view bar; **Export
-  image** in the plan controls. Both download a PNG via `downloadCanvasPng`.
+  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref AND a
+  module-level pointer (`setCaptureHandles`/`getCaptureHandles`); the plan editor
+  registers its capturer the same way (`setPlanCapturer`/`getPlanCapturer`), so
+  non-pane code can drive either capture on demand.
+- UI: a single **Export image** button in the **top bar** (`ExportMenu`, beside My
+  Designs and Settings) opens a popover to export the **2D plan**, the **3D
+  image**, or **Both** (two PNGs) — each at 2× via `downloadCanvasPng`, reusing
+  the capture utilities above. A **Transparent 3D background** toggle applies to
+  the 3D image only (the plan always exports on a white ground). Options for a
+  pane not currently shown (per `layout`) are disabled. The separate top-bar
+  **Export JSON** / **Import JSON** buttons handle the design document.
 
 ## Geometry rules
 

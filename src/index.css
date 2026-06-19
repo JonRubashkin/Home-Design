@@ -100,6 +100,41 @@ body {
   cursor: default;
 }
 
+/* unified image-export menu (top bar) */
+.export-menu {
+  position: relative;
+  display: inline-flex;
+}
+.export-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  background: rgba(24, 28, 38, 0.97);
+  border: 1px solid var(--chrome-border);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.export-popover button {
+  text-align: left;
+  width: 100%;
+}
+.export-transparent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 4px 2px 0;
+  font-size: 12px;
+  color: var(--text-dim, #9aa1b2);
+  cursor: pointer;
+}
+
 .topbar-error {
   position: absolute;
   top: 52px;

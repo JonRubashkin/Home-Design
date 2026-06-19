@@ -23,6 +23,22 @@ export function getCaptureHandles(): Capture3DHandles | null {
   return _liveHandles;
 }
 
+// The plan editor registers a capturer here (mirroring the 3D handles bridge)
+// so non-plan code — the unified Export menu in the top bar — can rasterize the
+// current plan to a 2× canvas without prop-drilling its SVG ref + bounds. It
+// returns null when there's nothing to frame (and the plan nulls it on unmount,
+// e.g. in the 3D-only layout).
+export type PlanCapturer = (
+  opts?: { scale?: number; transparent?: boolean },
+) => Promise<HTMLCanvasElement | null>;
+let _planCapturer: PlanCapturer | null = null;
+export function setPlanCapturer(fn: PlanCapturer | null): void {
+  _planCapturer = fn;
+}
+export function getPlanCapturer(): PlanCapturer | null {
+  return _planCapturer;
+}
+
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 

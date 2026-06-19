@@ -11,3 +11,5 @@ export * from "./furniture";
 export * from "./wallMount";
 export * from "./cornerPosts";
 export * from "./roof";
+export * from "./roofMass";
+export * from "./roofReconcile";

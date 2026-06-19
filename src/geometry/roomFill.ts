@@ -17,7 +17,9 @@ export interface RoomDetection {
   wallSides: { wallId: string; side: "A" | "B" }[];
 }
 
-interface Grid {
+// Exported so the roof mass-detection (roofMass.ts) can reuse the same grid
+// rasterization and boundary trace as room flood-fill.
+export interface Grid {
   minX: number;
   minY: number;
   cols: number;
@@ -25,7 +27,7 @@ interface Grid {
   cell: number;
 }
 
-function makeGrid(bounds: Bounds, cell: number): Grid {
+export function makeGrid(bounds: Bounds, cell: number): Grid {
   const minX = Math.floor(bounds.minX / cell) * cell;
   const minY = Math.floor(bounds.minY / cell) * cell;
   const cols = Math.max(1, Math.ceil((bounds.maxX - minX) / cell) + 1);
@@ -33,12 +35,12 @@ function makeGrid(bounds: Bounds, cell: number): Grid {
   return { minX, minY, cols, rows, cell };
 }
 
-const cellCenter = (g: Grid, c: number, r: number): Vec2 => ({
+export const cellCenter = (g: Grid, c: number, r: number): Vec2 => ({
   x: g.minX + (c + 0.5) * g.cell,
   y: g.minY + (r + 0.5) * g.cell,
 });
 
-const cellOf = (g: Grid, p: Vec2): { c: number; r: number } | null => {
+export const cellOf = (g: Grid, p: Vec2): { c: number; r: number } | null => {
   const c = Math.floor((p.x - g.minX) / g.cell);
   const r = Math.floor((p.y - g.minY) / g.cell);
   if (c < 0 || c >= g.cols || r < 0 || r >= g.rows) return null;
@@ -46,7 +48,7 @@ const cellOf = (g: Grid, p: Vec2): { c: number; r: number } | null => {
 };
 
 // Mark a cell a barrier when its center is within thickness/2 of any wall.
-function rasterizeWalls(walls: Wall[], g: Grid): Uint8Array {
+export function rasterizeWalls(walls: Wall[], g: Grid): Uint8Array {
   const barrier = new Uint8Array(g.cols * g.rows);
   for (const w of walls) {
     const half = w.thickness / 2;
@@ -78,7 +80,7 @@ function rasterizeWalls(walls: Wall[], g: Grid): Uint8Array {
 
 // 4-connected flood from `start`. `open` is true if it reaches the grid border
 // (the region leaks to the exterior). `interior` is the flooded cell mask.
-function flood(
+export function flood(
   barrier: Uint8Array,
   g: Grid,
   start: { c: number; r: number },
@@ -118,7 +120,7 @@ function flood(
 // Trace the interior mask boundary into a rectilinear polygon (interior on the
 // right of each directed edge), then drop collinear points. Corner (i,j) is at
 // world (minX + i*cell, minY + j*cell).
-function traceContour(interior: Uint8Array, g: Grid): Vec2[] {
+export function traceContour(interior: Uint8Array, g: Grid): Vec2[] {
   const isInt = (c: number, r: number) =>
     c >= 0 && c < g.cols && r >= 0 && r < g.rows && interior[r * g.cols + c] === 1;
   const next = new Map<string, string>();

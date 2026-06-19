@@ -6,7 +6,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
-  Roof,
+  RoofSection,
   Site,
   Staircase,
   Vec2,
@@ -205,11 +205,13 @@ export function createLevel(name = "First floor"): Level {
     furniture: [],
     staircases: [],
     ceilingLights: [],
+    roofs: [],
   };
 }
 
-// A sensible default roof (Phase 5e): a gentle gable in a muted roof-tile tone.
-export const DEFAULT_ROOF: Roof = {
+// Default roof-section settings (Phase 5.1): a gentle gable in a muted roof-tile
+// tone. Each detected wall mass gets a section with these defaults.
+export const DEFAULT_ROOF_SECTION: Omit<RoofSection, "id" | "anchor"> = {
   type: "gabled",
   pitch: 30,
   overhang: 0.4,
@@ -217,13 +219,20 @@ export const DEFAULT_ROOF: Roof = {
   material: { kind: "solid", color: "#8a5a44" },
 };
 
-export function createRoof(opts?: Partial<Roof>): Roof {
+export function createRoofSection(
+  anchor: Vec2,
+  opts?: Partial<Omit<RoofSection, "id" | "anchor">>,
+): RoofSection {
   return {
-    type: opts?.type ?? DEFAULT_ROOF.type,
-    pitch: opts?.pitch ?? DEFAULT_ROOF.pitch,
-    overhang: opts?.overhang ?? DEFAULT_ROOF.overhang,
-    visible: opts?.visible ?? DEFAULT_ROOF.visible,
-    material: opts?.material ? { ...opts.material } : { ...DEFAULT_ROOF.material },
+    id: makeId("roof"),
+    anchor: { ...anchor },
+    type: opts?.type ?? DEFAULT_ROOF_SECTION.type,
+    pitch: opts?.pitch ?? DEFAULT_ROOF_SECTION.pitch,
+    overhang: opts?.overhang ?? DEFAULT_ROOF_SECTION.overhang,
+    visible: opts?.visible ?? DEFAULT_ROOF_SECTION.visible,
+    material: opts?.material
+      ? { ...opts.material }
+      : { ...DEFAULT_ROOF_SECTION.material },
   };
 }
 
@@ -232,10 +241,9 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],
-    roof: null,
   };
 }

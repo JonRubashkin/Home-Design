@@ -20,6 +20,7 @@ export interface ViewPrefs {
   activeLevelId: string | null; // restore the active level across reloads
   collisionMode: CollisionMode; // furniture collision prevention
   showDimensions: boolean; // 2D: length label on every wall segment
+  hideRoofs: boolean; // 3D: global hide-roofs toggle (on top of per-section)
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -32,6 +33,7 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   activeLevelId: null,
   collisionMode: "soft",
   showDimensions: false,
+  hideRoofs: false,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -99,6 +101,10 @@ export function loadViewPrefs(): ViewPrefs {
         typeof parsed.showDimensions === "boolean"
           ? parsed.showDimensions
           : DEFAULT_VIEW_PREFS.showDimensions,
+      hideRoofs:
+        typeof parsed.hideRoofs === "boolean"
+          ? parsed.hideRoofs
+          : DEFAULT_VIEW_PREFS.hideRoofs,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

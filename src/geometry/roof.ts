@@ -23,13 +23,17 @@ const DEG = Math.PI / 180;
 // Build the roof parts. `bbox` is the footprint in plan coords (x→world x,
 // y→world z); `baseY` is the eave height (top of the top level's walls). The bbox
 // is expanded outward by `overhang` for the eaves. `pitch` (degrees) is ignored
-// for a flat roof.
+// for a flat roof. The caller lifts `baseY` a hair above the wall tops (see
+// `ROOF_LIFT`) so the roof never shares the wall-top plane and z-fights; for the
+// flat type `thickness` (meters, default 0) gives the slab a real body. The
+// sloped types ignore `thickness` (they already rise away from the eaves).
 export function computeRoof(
   bbox: Bounds,
   type: RoofType,
   pitch: number,
   overhang: number,
   baseY: number,
+  thickness = 0,
 ): RoofResult {
   const x0 = bbox.minX - overhang;
   const x1 = bbox.maxX + overhang;
@@ -40,10 +44,22 @@ export function computeRoof(
   const t = Math.tan(Math.max(0, pitch) * DEG);
 
   if (type === "flat") {
+    // A real slab (not a paper-thin coplanar plane): the underside sits at the
+    // lifted `baseY` (kept off the wall-top plane by the caller's ROOF_LIFT) and
+    // the top is `thickness` above it, so the roof reads as a slab edge.
+    const yb = baseY; // underside
+    const yt = baseY + Math.max(0, thickness); // top
     return {
-      ridgeY: baseY,
+      ridgeY: yt,
       parts: [
-        quad([x0, baseY, z0], [x1, baseY, z0], [x1, baseY, z1], [x0, baseY, z1]),
+        // Top + bottom faces.
+        quad([x0, yt, z0], [x1, yt, z0], [x1, yt, z1], [x0, yt, z1]),
+        quad([x0, yb, z1], [x1, yb, z1], [x1, yb, z0], [x0, yb, z0]),
+        // Four side faces (the slab edge).
+        quad([x0, yb, z0], [x1, yb, z0], [x1, yt, z0], [x0, yt, z0]),
+        quad([x1, yb, z1], [x0, yb, z1], [x0, yt, z1], [x1, yt, z1]),
+        quad([x0, yb, z1], [x0, yb, z0], [x0, yt, z0], [x0, yt, z1]),
+        quad([x1, yb, z0], [x1, yb, z1], [x1, yt, z1], [x1, yt, z0]),
       ],
     };
   }

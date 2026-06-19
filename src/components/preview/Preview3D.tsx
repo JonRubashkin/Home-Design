@@ -66,10 +66,7 @@ export function Preview3D() {
         pointerDownRef.current = { x: e.clientX, y: e.clientY };
       }}
     >
-      <ViewModeBar
-        onFit={() => setFitNonce((n) => n + 1)}
-        captureRef={captureRef}
-      />
+      <ViewModeBar onFit={() => setFitNonce((n) => n + 1)} />
       <Canvas
         flat
         dpr={[1, 2]}

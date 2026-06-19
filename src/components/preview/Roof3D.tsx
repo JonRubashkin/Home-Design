@@ -6,6 +6,8 @@ import { computeRoof, type RoofPart } from "../../geometry/roof";
 import { boundsOfPoints, siteBounds, type Bounds } from "../../geometry/planview";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
+import { ROOF_LIFT } from "./stacking";
+import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
 
 // Build a BufferGeometry for one planar roof polygon: fan-triangulate the
 // vertices, with planar UVs (projected on X/Z) so patterns tile.
@@ -68,8 +70,17 @@ export function Roof3D() {
     // Footprint = bounding rect of the top level's walls, else the site rect.
     const pts = top.walls.flatMap((w) => [w.start, w.end]);
     const bbox: Bounds = boundsOfPoints(pts) ?? siteBounds(site);
-    const baseY = top.elevation + top.wallHeight;
-    return computeRoof(bbox, roof.type, roof.pitch, roof.overhang, baseY);
+    // Seat the roof a hair ABOVE the wall tops so a flat slab never sits exactly
+    // on the wall-top plane (z-fighting); this also keeps sloped eave edges off it.
+    const baseY = top.elevation + top.wallHeight + ROOF_LIFT;
+    return computeRoof(
+      bbox,
+      roof.type,
+      roof.pitch,
+      roof.overhang,
+      baseY,
+      FLOOR_SLAB_THICKNESS,
+    );
   }, [roof, top, site]);
 
   if (!roof || !roof.visible || !result) return null;

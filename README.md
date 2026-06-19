@@ -51,6 +51,9 @@ npm run format   # Prettier
   interior stays visible; in **Full** it's solid; a **Show roof** toggle hides it
   in any mode. Adding a floor re-tops the roof onto the new top level. Pure tested
   `computeRoof` in `src/geometry/roof.ts`; round-trips through Export/Import.
+- The flat roof is a real slab seated a hair above the wall tops (the `ROOF_LIFT`
+  offset in `preview/stacking.ts`) so it never sits coplanar with the wall-top
+  plane and z-fights ("flickers") as the camera orbits.
 
 ### Corner posts (phase 5d)
 
@@ -83,13 +86,18 @@ npm run format   # Prettier
 
 ### Image export (phase 5a)
 
-- **Export 3D image** (in the 3D view bar) downloads a crisp **2× PNG** of the
-  current camera/scene, with a **Transparent** toggle that produces real alpha
-  (no opaque background fill).
-- **Export image** (in the plan controls) downloads a **2× PNG** of the plan,
-  framed to the design content like Fit view.
-- Both are built on a reusable `captureView` / `capture3D` / `capturePlan` utility
-  in `src/lib/capture.ts` (the design library reuses it for thumbnails).
+- A single **Export image** button in the top bar (beside My Designs and
+  Settings) opens a small menu to download a crisp **2× PNG** of the **2D plan**,
+  the **3D image**, or **Both** (two files). The plan is framed to the design
+  content like Fit view; the 3D image has a **Transparent 3D background** toggle
+  that produces real alpha (no opaque background fill). Options for a pane that
+  isn't currently shown (per the layout) are disabled.
+- Built on a reusable `captureView` / `capture3D` / `capturePlan` utility in
+  `src/lib/capture.ts` (the design library reuses it for thumbnails). The plan
+  registers its capturer via `setPlanCapturer` and the 3D pane its handles via
+  `setCaptureHandles`, so the top-bar menu can drive both.
+- JSON **Export JSON** / **Import JSON** (the design document) remain separate
+  buttons in the top bar.
 
 ### Fill Room (phase 3e)
 

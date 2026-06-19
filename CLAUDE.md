@@ -401,9 +401,17 @@ in code under `src/catalog/`:
   its pan/zoom transform + screen-space dimming), frames it to the design bounds
   via a viewBox, and rasterizes to a 2× canvas.
 - The 3D handles (`gl`/`scene`/`camera`/`size`) reach the export UI via a
-  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref.
-- UI: **Export 3D image** + a Transparent toggle in the 3D view bar; **Export
-  image** in the plan controls. Both download a PNG via `downloadCanvasPng`.
+  `SceneCapture` component inside the `<Canvas>` writing a parent-owned ref AND a
+  module-level pointer (`setCaptureHandles`/`getCaptureHandles`); the plan editor
+  registers its capturer the same way (`setPlanCapturer`/`getPlanCapturer`), so
+  non-pane code can drive either capture on demand.
+- UI: a single **Export image** button in the **top bar** (`ExportMenu`, beside My
+  Designs and Settings) opens a popover to export the **2D plan**, the **3D
+  image**, or **Both** (two PNGs) — each at 2× via `downloadCanvasPng`, reusing
+  the capture utilities above. A **Transparent 3D background** toggle applies to
+  the 3D image only (the plan always exports on a white ground). Options for a
+  pane not currently shown (per `layout`) are disabled. The separate top-bar
+  **Export JSON** / **Import JSON** buttons handle the design document.
 
 ## Geometry rules
 
@@ -564,13 +572,18 @@ in code under `src/catalog/`:
   rectangle (the site rect as a fallback when there are no walls). Multi-section /
   L-shaped / per-wing roofs are **deferred** — a single rectangular roof over the
   bbox is correct for this phase.
-- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY)` in
+- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY, thickness?)` in
   `src/geometry/roof.ts` → `RoofPart[]` (planar world-space polygons): **flat** =
-  one slab at the wall-top height over (bbox + overhang); **pitched** = a single
-  shed slope eave-to-eave; **gabled** = ridge along the longer bbox axis, two
-  slopes + triangular gable ends; **hipped** = central inset ridge with four
-  slopes. `baseY = topLevel.elevation + topLevel.wallHeight`; the bbox is expanded
-  by `overhang`.
+  a real **slab** over (bbox + overhang) — underside at `baseY`, top `thickness`
+  above (not a paper-thin coplanar plane); **pitched** = a single shed slope
+  eave-to-eave; **gabled** = ridge along the longer bbox axis, two slopes +
+  triangular gable ends; **hipped** = central inset ridge with four slopes. The
+  bbox is expanded by `overhang`. `Roof3D` passes `baseY = topLevel.elevation +
+  topLevel.wallHeight + ROOF_LIFT` and `thickness = FLOOR_SLAB_THICKNESS`. **No
+  surface may sit coplanar with the wall tops** (`elevation + wallHeight`) or it
+  z-fights: `ROOF_LIFT` (in `preview/stacking.ts`, mirroring the floor lifts)
+  raises every roof type a hair above that plane — so the flat slab's underside
+  and the sloped types' eave edges all clear the wall tops.
 - `Roof3D` fan-triangulates each part into a double-sided mesh (material via the
   shared helper, planar UVs so patterns tile). **View-mode (critical):** the roof
   suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)

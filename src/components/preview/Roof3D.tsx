@@ -1,16 +1,16 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import type { Level, MaterialRef, RoofSection } from "../../model/types";
+import type { Level, MaterialRef, Roof } from "../../model/types";
 import { useStore } from "../../store/store";
 import { computeRoof, type RoofPart } from "../../geometry/roof";
-import { detectMasses, type RoofMass } from "../../geometry/roofMass";
-import { decomposeRectangles } from "../../geometry/roofMass";
-import { pointInPolygon } from "../../geometry/polygon";
-import { siteBounds } from "../../geometry/planview";
+import { roofLocalBounds } from "../../geometry/roofPlacement";
+import { planToWorld } from "../../geometry/mapping";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
 import { ROOF_LIFT } from "./stacking";
 import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
+
+const DEG = Math.PI / 180;
 
 // Build a BufferGeometry for one planar roof polygon: fan-triangulate the
 // vertices, with planar UVs (projected on X/Z) so patterns tile.
@@ -54,71 +54,53 @@ function RoofFace({
   );
 }
 
-// One roof section over its wall mass: decompose the mass footprint into
-// rectangles and build a roof piece per rectangle, sharing the section's single
-// type/pitch/overhang (so an L/T/U gets matching pieces meeting at ridges).
-function RoofSectionMesh({
-  section,
-  masses,
+// One manually placed roof rectangle: build the roof over the LOCAL (centered,
+// axis-aligned) rectangle via `computeRoof`, then a parent group rotates it about
+// world Y (matching the plan's SVG-clockwise rotation, like furniture) and seats
+// it at the roof's plan position. Roofs are independent of walls — they cover the
+// drawn rectangle at the level's wall-top height.
+function RoofMesh({
+  roof,
   baseY,
-  emptyMassesFallback,
   ghost,
 }: {
-  section: RoofSection;
-  masses: RoofMass[];
+  roof: Roof;
   baseY: number;
-  emptyMassesFallback: ReturnType<typeof siteBounds> | null;
   ghost: boolean;
 }) {
   const parts = useMemo(() => {
-    if (!section.visible) return [];
-    const mass = masses.find((m) => pointInPolygon(section.anchor, m.footprint));
-    // No matching mass: only a wall-less level (e.g. a migrated roof) falls back
-    // to the site rectangle; otherwise the section is orphaned and draws nothing.
-    const rects = mass
-      ? decomposeRectangles(mass.footprint)
-      : emptyMassesFallback
-        ? [emptyMassesFallback]
-        : [];
-    const all: RoofPart[] = [];
-    for (const rect of rects) {
-      const r = computeRoof(
-        rect,
-        section.type,
-        section.pitch,
-        section.overhang,
-        baseY,
-        FLOOR_SLAB_THICKNESS,
-      );
-      all.push(...r.parts);
-    }
-    return all;
-  }, [section, masses, baseY, emptyMassesFallback]);
+    if (!roof.visible) return [];
+    return computeRoof(
+      roofLocalBounds(roof),
+      roof.type,
+      roof.pitch,
+      roof.overhang,
+      baseY,
+      FLOOR_SLAB_THICKNESS,
+    ).parts;
+  }, [roof, baseY]);
 
   if (parts.length === 0) return null;
+  const [wx, , wz] = planToWorld(roof.position, 0);
   return (
-    <>
+    <group position={[wx, 0, wz]} rotation={[0, -roof.rotation * DEG, 0]}>
       {parts.map((part, i) => (
-        <RoofFace key={i} part={part} material={section.material} ghost={ghost} />
+        <RoofFace key={i} part={part} material={roof.material} ghost={ghost} />
       ))}
-    </>
+    </group>
   );
 }
 
-// Every roof section over one level, seated a hair above the wall tops (so a flat
-// slab never z-fights the wall-top plane). Each section suppresses in
-// Cutaway/Stubs like an upper slab (Invisible/Ghost) so the iso interior stays
-// visible; solid in Full; kept solid in active-level-only. The global hide-roofs
-// toggle and each section's own `visible` flag also apply.
+// Every manual roof on one level, seated a hair above the wall tops (so a flat
+// slab never z-fights the wall-top plane). Each roof suppresses in Cutaway/Stubs
+// like an upper slab (Invisible/Ghost) so the iso interior stays visible; solid
+// in Full; kept solid in active-level-only. The global hide-roofs toggle and each
+// roof's own `visible` flag also apply.
 export function LevelRoofs3D({ level, baseY }: { level: Level; baseY: number }) {
   const viewMode = useStore((s) => s.viewMode);
   const cutawayStyle = useStore((s) => s.cutawayStyle);
   const activeLevelOnly = useStore((s) => s.activeLevelOnly);
   const hideRoofs = useStore((s) => s.hideRoofs);
-  const site = useStore((s) => s.design.site);
-
-  const masses = useMemo(() => detectMasses(level.walls), [level.walls]);
-  const emptyFallback = masses.length === 0 ? siteBounds(site) : null;
 
   if (hideRoofs || level.roofs.length === 0) return null;
 
@@ -129,13 +111,11 @@ export function LevelRoofs3D({ level, baseY }: { level: Level; baseY: number }) 
 
   return (
     <group>
-      {level.roofs.map((section) => (
-        <RoofSectionMesh
-          key={section.id}
-          section={section}
-          masses={masses}
+      {level.roofs.map((roof) => (
+        <RoofMesh
+          key={roof.id}
+          roof={roof}
           baseY={baseY + ROOF_LIFT}
-          emptyMassesFallback={emptyFallback}
           ghost={ghost}
         />
       ))}

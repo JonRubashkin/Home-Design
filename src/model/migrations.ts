@@ -153,6 +153,20 @@ const migrations: Migration[] = [
     design.schemaVersion = 11;
     return design;
   },
+  // v11 -> v12: manual roof tool (Phase 5.2). The automatic, per-mass roof system
+  // is replaced by manually placed roof rectangles. The old auto-generated
+  // `RoofSection[]` had a different shape (anchor-based, no rectangle) and was the
+  // unsatisfactory auto output, so we clear every level's roofs to `[]`; the user
+  // re-places roofs with the new Roof tool. Every level still has a `roofs` array
+  // (added in v11) — we just empty it.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      level.roofs = [];
+    }
+    design.schemaVersion = 12;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

@@ -50,12 +50,14 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 11;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 12;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
                             // (Phase 5e); v10 = ceiling lights (Phase 5f);
-                            // v11 = per-level multi-section roofs (Phase 5.1).
+                            // v11 = per-level multi-section auto roofs (Phase
+                            // 5.1, removed); v12 = manual roof tool (Phase 5.2 —
+                            // the v11 auto roofs are cleared on upgrade).
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -64,18 +66,20 @@ interface Design {
                             // multi-level NOW so storeys can be added without
                             // migration. Never hardcode levels[0] outside of a
                             // single "current level" selector. Roofs live on each
-                            // Level.roofs (Phase 5.1 — no top-level Design.roof).
+                            // Level.roofs (Phase 5.2 — manual; no top-level
+                            // Design.roof).
 }
 
-interface RoofSection {     // Phase 5.1. One roof over a single wall "mass".
+interface Roof {            // Phase 5.2. A manually placed roof rectangle.
   id: string;
-  anchor: Vec2;             // a representative INTERIOR point of the mass it caps;
-                            // re-associates the section with its footprint across
-                            // wall edits (see association rule).
+  position: Vec2;           // center of the rectangle, plan coords (grid-snapped)
+  width: number;            // meters (local X)
+  depth: number;            // meters (local Z)
+  rotation: number;         // degrees, 15° steps (orients the ridge)
   type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = shed/single-slope
   pitch: number;            // slope in degrees (ignored for flat)
-  overhang: number;         // meters beyond the footprint bbox (eaves)
-  visible: boolean;         // per-section hide toggle (default true)
+  overhang: number;         // meters beyond the rectangle (eaves)
+  visible: boolean;         // per-roof hide toggle (default true)
   material: MaterialRef;    // default a roof-tile solid
 }
 
@@ -100,7 +104,7 @@ interface Level {
   furniture: FurnitureItem[]; // Phase 2b
   staircases: Staircase[];    // Phase 3d
   ceilingLights: CeilingLight[]; // Phase 5f
-  roofs: RoofSection[];       // Phase 5.1: one per detected wall mass on this level
+  roofs: Roof[];              // Phase 5.2: manually placed roof rectangles
 }
 
 interface CeilingLight {    // Phase 5f. Hangs from THIS level's ceiling.
@@ -295,11 +299,11 @@ in code under `src/catalog/`:
   TV, floating shelf, wall sconce, wall mirror, range hood. **Phase 5f** adds three
   `mount:"ceiling"` lights (see "Ceiling lights"): pendant light, flush ceiling
   light, chandelier.
-  **Deferred** (do NOT add): curtains (a future fabric pass); true straight-
-  skeleton **valley mitering** and exact roofs over **angled (non-rectilinear)
-  footprints** (the bounding-rect fallback is fine) — multi-section / L-shaped
-  roofs themselves are now DONE (Phase 5.1); per-rectangle different types within
-  one mass; auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is
+  **Deferred** (do NOT add): curtains (a future fabric pass); **auto-fitting**
+  roofs to rooms (roofs are now manual rectangles — Phase 5.2); true valley
+  **mitering** between overlapping/adjacent roofs; roofs over **angled
+  (non-rectilinear) footprints** beyond the drawn rectangle (an L-shape is two
+  rectangles); auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is
   plan-position based and can't know a shelf's wall height; the floating shelf is
   decorative for now).
 
@@ -574,58 +578,55 @@ in code under `src/catalog/`:
   underlay). Selectable/draggable/rotatable with a properties panel (width,
   rotation, position, material, delete). `Selection` gains `{ kind: "staircase" }`.
 
-## Roofs (Phase 5.1 — per-level, multi-section, auto from masses)
+## Roofs (Phase 5.2 — manual roof tool, user-placed rectangles)
 
-- Roofs live **per level** as `Level.roofs: RoofSection[]` (NO top-level
-  `Design.roof`). A level with disconnected wall groups (e.g. a detached garage)
-  gets **one section per mass**; an L/T/U footprint is roofed by **rectangle
-  decomposition** (a roof piece per rectangle, meeting at ridges/valleys — a
-  cross-gable look; perfect valley mitering is out of scope). Roofs **stay on
-  their level** — adding a floor above never re-tops or touches lower-level
-  roofs; the user removes a level's section if they build over it.
-- **Mass detection** (`detectMasses` in `src/geometry/roofMass.ts`, tested):
-  group a level's walls into connected components by shared endpoints
-  (union-find, plus T-junctions), and trace each component's outer footprint
-  polygon by reusing the room flood-fill / boundary trace from `roomFill.ts`
-  (footprint = grid cells the exterior flood can't reach). Each component = one
-  mass with an interior `anchor` point.
-- **Rectilinear decomposition** (`decomposeRectangles`, tested): split a
-  rectilinear footprint into axis-aligned rectangles (vertex-line grid + greedy
-  maximal-rectangle merge). Angled/non-rectilinear footprints fall back to the
-  mass **bounding rectangle** (acceptable — exact angled roofs are deferred).
-- **Per-rectangle roof:** reuse pure tested `computeRoof(bbox, type, pitch,
-  overhang, baseY, thickness?)` (`src/geometry/roof.ts`) for **each** rectangle of
-  a section's mass; the section's single `type/pitch/overhang` applies to all its
-  rectangles. **flat** = a real slab over (bbox + overhang); **pitched** = a shed
-  slope; **gabled** = ridge along the longer axis; **hipped** = inset ridge, four
-  slopes. `ROOF_LIFT` (in `preview/stacking.ts`) raises every roof a hair above
-  the wall-top plane (`elevation + wallHeight`) so flat slabs never z-fight it.
-- **Auto-create + association** (`reconcileRoofSections` in
-  `src/geometry/roofReconcile.ts`, pure tested): after any structural wall change
-  (add/remove/move, room, copy-up, level add/remove) the store reconciles a
-  level's `roofs` against its current masses — a mass containing an existing
-  section's `anchor` keeps that section (re-anchored to track the mass); a section
-  inside no mass is **orphaned and removed**; a new bare mass **auto-creates** a
-  default section. **Removal** suppresses respawn: `removeRoofSection` records the
-  mass anchor in the transient store `removedRoofAnchors` so reconcile won't
-  instantly recreate it (until the mass's walls change out from under the anchor);
-  `addRoofSection` restores one over a bare mass. Adding a floor above only
-  reconciles the **target** level, never the lower ones.
-- **Render** (`LevelRoofs3D` per level, in `Building3D`): seats each section at
-  `level.elevation + level.wallHeight (+ ROOF_LIFT)`. Each section fan-
-  triangulates its parts into double-sided meshes (shared material helper, planar
-  UVs). **View-mode:** suppresses in Cutaway/Stubs exactly like an upper floor
-  slab (Invisible/Ghost) so it never blocks the iso interior; solid in Full; kept
-  solid in active-level-only. PLUS each section's `visible` flag and a **global
-  hide-roofs** UI pref (`hideRoofs`, persisted) remove it.
-- UI: a per-level Roofs subsection in the **Floors dropdown** (`RoofPanel`) lists
-  the active level's sections (type / pitch / overhang / material / per-section
-  Show / Remove) plus an **Add roof** affordance per un-roofed mass and a global
-  Show-roofs toggle. Edits are undoable store actions (`setRoofSection` coalesced
-  for sliders, `addRoofSection`, `removeRoofSection`). The v10→v11 migration moves
-  an old single `Design.roof` onto the **top** level as one section (anchored at
-  its footprint centroid) and gives every level `roofs: []`; Export/Import
-  round-trips per-level roofs.
+- Roofs are **objects the user places**, not auto-generated. They live **per
+  level** as `Level.roofs: Roof[]` (NO top-level `Design.roof`). The old
+  automatic per-mass system (Phase 5.1 — mass detection, rectilinear
+  decomposition, anchor association/reconciliation) is **removed**: there is no
+  `roofMass.ts` / `roofReconcile.ts`, no `reconcileRoofSections`, and no roof
+  logic runs on wall edits. An **L-shape is made by placing two rectangles**,
+  each independent. Roofs **stay put** — adding/copying a floor above never adds,
+  moves, duplicates, or re-tops any roof.
+- **Roof tool** (left toolbar, directly under the Stair button; shortcut **O**):
+  drag a rectangle (grid-snapped corners, live W × D labels, mirroring the Room
+  sub-tool); release creates a `Roof` centered on the dragged rect with the
+  default type (**gabled**), default pitch/overhang/material, `visible: true`, on
+  the active level. Esc cancels; a zero-area drag is ignored; the tool stays
+  active for repeat placement. One undo step per roof (`addRoof`).
+- **Editing** (Select tool): a roof is selectable via its (rotated) footprint
+  rectangle hit-test (`pointInFootprint` over `roofFootprint`, pure tested in
+  `src/geometry/roofPlacement.ts`). Drag the body to move it; **R / Shift+R**
+  rotate in 15° steps; resize via **Width/Depth number fields** in the panel
+  (handles were skipped to keep it low-risk). `Selection` gains `{ kind: "roof" }`.
+  Delete/Backspace removes it. The properties panel edits width, depth, rotation,
+  type, pitch, overhang, material, and the visible toggle — all undoable named
+  store actions (`addRoof`, `updateRoof` coalesced for sliders, `rotateRoof`,
+  `moveRoof`, `deleteRoof`).
+- **Per-rectangle geometry:** reuse pure tested `computeRoof(bbox, type, pitch,
+  overhang, baseY, thickness?)` (`src/geometry/roof.ts`) over the roof's **local**
+  (centered, axis-aligned) rectangle (`roofLocalBounds`). **flat** = a real slab
+  over (rect + overhang); **pitched** = a shed slope; **gabled** = ridge along the
+  longer axis; **hipped** = inset ridge, four slopes. `ROOF_LIFT` (in
+  `preview/stacking.ts`) raises every roof a hair above the wall-top plane
+  (`elevation + wallHeight`) so flat slabs never z-fight it.
+- **Render** (`LevelRoofs3D` per level, in `Building3D`): each roof's parts are
+  built in local space, then a parent group rotates about world Y by `-rotation`
+  (plan rotation is SVG-clockwise, like furniture) and seats it at the roof's
+  plan position; the meshes fan-triangulate double-sided (shared material helper,
+  planar UVs) at `level.elevation + level.wallHeight (+ ROOF_LIFT)`. Roofs are
+  **independent of walls** — they cover the drawn rectangle. **View-mode:**
+  suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)
+  so it never blocks the iso interior; solid in Full; kept solid in
+  active-level-only. PLUS each roof's `visible` flag and a **global hide-roofs**
+  UI pref (`hideRoofs`, persisted) remove it.
+- **2D plan:** each roof draws its (rotated) footprint rectangle with a faint
+  ridge line indicating orientation (along the longer axis; omitted for flat),
+  selectable. The Floors dropdown keeps only the **global Show-roofs toggle**
+  (`RoofPanel`); per-roof editing is via selecting the roof object.
+- The v11→v12 migration **clears** every level's `roofs` to `[]` (the old auto
+  output was unsatisfactory; the user re-places roofs with the new tool).
+  Export/Import round-trips the new `Roof[]`.
 
 ## Ceiling lights (Phase 5f — fixtures only, ceiling-attach)
 
@@ -720,9 +721,10 @@ in code under `src/catalog/`:
 - **Desktop, mouse + keyboard only.** Do not write touch handling.
 - Multiple levels are supported (Phase 3c). Editing acts on the **active level**
   only; staircases are NOT built yet (a later session).
-- Roofs exist (Phase 5e → 5.1, per-level multi-section); ceiling-light fixtures
-  exist (Phase 5f) but there is no real lighting/illumination design, and no
-  measurements/dimension annotations beyond wall length labels.
+- Roofs exist (Phase 5e → 5.1 → 5.2: now a **manual** roof tool — user-placed
+  rectangles, no auto-detection); ceiling-light fixtures exist (Phase 5f) but
+  there is no real lighting/illumination design, and no measurements/dimension
+  annotations beyond wall length labels.
 - Accessibility basics only: focus styles, button labels, no exotic ARIA work.
 
 ## Phase plan

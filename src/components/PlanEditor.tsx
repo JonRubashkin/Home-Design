@@ -4,6 +4,7 @@ import type { WallSide } from "../store/store";
 import type {
   Level,
   MaterialRef,
+  Roof,
   Site,
   Staircase,
   Vec2,
@@ -52,6 +53,7 @@ import {
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { wallMountPlanFootprint } from "../geometry/wallMount";
+import { roofFootprint } from "../geometry/roofPlacement";
 import {
   boundsOfPoints,
   unionBounds,
@@ -154,6 +156,16 @@ type DragState =
       basePos: Vec2;
       started: boolean;
     }
+  | {
+      kind: "roof";
+      pointerId: number;
+      itemId: string;
+      startScreen: Vec2;
+      startWorld: Vec2;
+      basePos: Vec2;
+      started: boolean;
+    }
+  | { kind: "roofDraw"; pointerId: number; startScreen: Vec2 }
   | { kind: "room"; pointerId: number; startScreen: Vec2 };
 
 const GRID_TIERS: { spacing: number; className: string }[] = [
@@ -291,6 +303,10 @@ export function PlanEditor() {
   const [roomRect, setRoomRect] = useState<{ start: Vec2; end: Vec2 } | null>(
     null,
   );
+  // Roof tool drag rectangle (grid-snapped corners; mirrors the Room sub-tool).
+  const [roofRect, setRoofRect] = useState<{ start: Vec2; end: Vec2 } | null>(
+    null,
+  );
   const [snapHint, setSnapHint] = useState<Vec2 | null>(null);
   // Furniture placement ghost.
   const placingCatalogId = useStore((s) => s.placingCatalogId);
@@ -331,7 +347,18 @@ export function PlanEditor() {
   const furniture = level.furniture;
   const staircases = level.staircases;
   const ceilingLights = level.ceilingLights;
+  const roofs = level.roofs;
   const storeyHeight = level.wallHeight + FLOOR_SLAB_THICKNESS;
+
+  // A roof whose (rotated) footprint rectangle is under the cursor, for select.
+  const roofUnderCursor = (world: Vec2): Roof | undefined => {
+    for (let i = roofs.length - 1; i >= 0; i--) {
+      const r = roofs[i]!;
+      if (pointInFootprint(world, r.position, r.rotation, roofFootprint(r)))
+        return r;
+    }
+    return undefined;
+  };
 
   // A staircase's footprint (width × run), and a hit-test for the select tool.
   const stairFootprint = (stair: Staircase): Footprint => ({
@@ -491,6 +518,8 @@ export function PlanEditor() {
         ),
       );
     }
+    for (const r of roofs)
+      pts.push(...footprintCorners(r.position, r.rotation, roofFootprint(r)));
     return boundsOfPoints(pts);
   };
 
@@ -759,6 +788,7 @@ export function PlanEditor() {
     setFurnGhost(null);
     setMountGhost(null);
     setCeilingGhost(null);
+    setRoofRect(null);
     setGhostRotation(0);
     useStore.getState().setSideHighlight(null);
     if (activeTool !== "furniture")
@@ -799,6 +829,7 @@ export function PlanEditor() {
         setStairGhost(null);
         setCeilingGhost(null);
         setRoomRect(null);
+        setRoofRect(null);
         setSnapHint(null);
         dragRef.current = { kind: "none" };
         useStore.getState().setPlacingCatalogId(null);
@@ -836,6 +867,8 @@ export function PlanEditor() {
           useStore.getState().rotateFurniture(sel.id, delta);
         } else if (sel?.kind === "staircase") {
           useStore.getState().rotateStaircase(sel.id, delta);
+        } else if (sel?.kind === "roof") {
+          useStore.getState().rotateRoof(sel.id, delta);
         }
       }
     };
@@ -973,6 +1006,19 @@ export function PlanEditor() {
     if (activeTool === "stair") {
       store.placeStaircase(snapToGrid(world), ghostRotation);
       // tool stays active for repeat placement
+      return;
+    }
+
+    if (activeTool === "roof") {
+      // Drag a rectangle (grid-snapped corners) to define the roof footprint.
+      const pt = snapToGrid(world);
+      dragRef.current = {
+        kind: "roofDraw",
+        pointerId: e.pointerId,
+        startScreen: screen,
+      };
+      setRoofRect({ start: pt, end: pt });
+      svgRef.current?.setPointerCapture(e.pointerId);
       return;
     }
 
@@ -1168,6 +1214,22 @@ export function PlanEditor() {
       return;
     }
 
+    const roofHit = roofUnderCursor(world);
+    if (roofHit) {
+      store.setSelection({ kind: "roof", id: roofHit.id });
+      dragRef.current = {
+        kind: "roof",
+        pointerId: e.pointerId,
+        itemId: roofHit.id,
+        startScreen: screen,
+        startWorld: world,
+        basePos: { ...roofHit.position },
+        started: false,
+      };
+      svgRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     for (let i = floors.length - 1; i >= 0; i--) {
       if (pointInPolygon(world, floors[i]!.polygon)) {
         store.setSelection({ kind: "floor", id: floors[i]!.id });
@@ -1258,6 +1320,13 @@ export function PlanEditor() {
       return;
     }
 
+    if (d.kind === "roofDraw") {
+      const world = clientToWorld(e.clientX, e.clientY);
+      const pt = snapToGrid(world);
+      setRoofRect((rect) => (rect ? { ...rect, end: pt } : rect));
+      return;
+    }
+
     if (
       d.kind === "body" ||
       d.kind === "endpoint" ||
@@ -1265,7 +1334,8 @@ export function PlanEditor() {
       d.kind === "door" ||
       d.kind === "furniture" ||
       d.kind === "staircase" ||
-      d.kind === "ceilingLight"
+      d.kind === "ceilingLight" ||
+      d.kind === "roof"
     ) {
       const screen = clientToScreen(e.clientX, e.clientY);
       if (!d.started && distance(screen, d.startScreen) < DRAG_THRESHOLD_PX)
@@ -1275,7 +1345,10 @@ export function PlanEditor() {
         d.started = true;
       }
       const world = clientToWorld(e.clientX, e.clientY);
-      if (d.kind === "ceilingLight") {
+      if (d.kind === "roof") {
+        const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
+        store.moveRoof(d.itemId, pos);
+      } else if (d.kind === "ceilingLight") {
         const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
         store.moveCeilingLight(d.itemId, pos);
       } else if (d.kind === "staircase") {
@@ -1418,7 +1491,8 @@ export function PlanEditor() {
         d.kind === "door" ||
         d.kind === "furniture" ||
         d.kind === "staircase" ||
-        d.kind === "ceilingLight") &&
+        d.kind === "ceilingLight" ||
+        d.kind === "roof") &&
       d.started
     ) {
       useStore.getState().endDrag();
@@ -1426,6 +1500,21 @@ export function PlanEditor() {
     if (d.kind === "room") {
       if (roomRect) useStore.getState().addRoom(roomRect.start, roomRect.end);
       setRoomRect(null);
+    }
+    if (d.kind === "roofDraw") {
+      // Create a roof centered on the dragged rect (zero-area drags ignored).
+      if (roofRect) {
+        const w = Math.abs(roofRect.end.x - roofRect.start.x);
+        const h = Math.abs(roofRect.end.y - roofRect.start.y);
+        if (w > 1e-6 && h > 1e-6) {
+          const center = {
+            x: (roofRect.start.x + roofRect.end.x) / 2,
+            y: (roofRect.start.y + roofRect.end.y) / 2,
+          };
+          useStore.getState().addRoof(center, w, h);
+        }
+      }
+      setRoofRect(null);
     }
     setSnapHint(null);
     if (d.kind !== "none") {
@@ -1668,6 +1757,15 @@ export function PlanEditor() {
             );
           })}
 
+          {/* Roof footprints (outline + ridge line), selectable. */}
+          {roofs.map((r) => (
+            <RoofSymbol
+              key={r.id}
+              roof={r}
+              selected={selection?.kind === "roof" && selection.id === r.id}
+            />
+          ))}
+
           {/* Paint / chip side-highlight. */}
           {highlightWall && sideHighlight && (
             <polygon
@@ -1816,6 +1914,18 @@ export function PlanEditor() {
               vectorEffect="non-scaling-stroke"
             />
           )}
+
+          {/* Roof tool drag preview. */}
+          {roofRect && (
+            <rect
+              className="roof-preview"
+              x={Math.min(roofRect.start.x, roofRect.end.x)}
+              y={Math.min(roofRect.start.y, roofRect.end.y)}
+              width={Math.abs(roofRect.end.x - roofRect.start.x)}
+              height={Math.abs(roofRect.end.y - roofRect.start.y)}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
         </g>
 
         <Overlay
@@ -1860,6 +1970,33 @@ export function PlanEditor() {
             const cy = (roomRect.start.y + roomRect.end.y) / 2;
             const leftEdge = worldToScreen({
               x: Math.min(roomRect.start.x, roomRect.end.x),
+              y: cy,
+            });
+            return (
+              <g className="length-label">
+                <RoomDimLabel x={top.x} y={top.y - 12} text={formatMeters(w)} />
+                <RoomDimLabel
+                  x={leftEdge.x - 30}
+                  y={leftEdge.y}
+                  text={formatMeters(d)}
+                />
+              </g>
+            );
+          })()}
+
+        {/* Roof tool width × depth labels (screen space). */}
+        {roofRect &&
+          (() => {
+            const w = Math.abs(roofRect.end.x - roofRect.start.x);
+            const d = Math.abs(roofRect.end.y - roofRect.start.y);
+            const cx = (roofRect.start.x + roofRect.end.x) / 2;
+            const top = worldToScreen({
+              x: cx,
+              y: Math.min(roofRect.start.y, roofRect.end.y),
+            });
+            const cy = (roofRect.start.y + roofRect.end.y) / 2;
+            const leftEdge = worldToScreen({
+              x: Math.min(roofRect.start.x, roofRect.end.x),
               y: cy,
             });
             return (
@@ -1941,6 +2078,8 @@ function hintFor(tool: string, chainStart: Vec2 | null, floorCount: number) {
       return "Drag a rectangle to make four joined walls · Esc cancels";
     case "stair":
       return "Click to place a staircase · R / Shift+R rotates · ascends to the floor above";
+    case "roof":
+      return "Drag a rectangle to place a roof · select it to edit type, pitch & size · Esc cancels";
     case "fill":
       return "Click inside an enclosed room to fill its floor / walls with the current material";
     case "window":
@@ -2322,6 +2461,38 @@ function StairSymbol({
         fill="none"
         {...ns}
       />
+    </g>
+  );
+}
+
+// Plan symbol for a manually placed roof: its rotated footprint rectangle plus a
+// faint ridge line indicating orientation (along the longer axis, like the 3D
+// ridge; omitted for flat roofs which have no ridge). Selectable.
+function RoofSymbol({ roof, selected }: { roof: Roof; selected: boolean }) {
+  const hw = roof.width / 2;
+  const hd = roof.depth / 2;
+  const ns = { vectorEffect: "non-scaling-stroke" as const };
+  // Ridge runs along the longer axis (matches computeRoof). Local +x is width.
+  const alongX = roof.width >= roof.depth;
+  const ridge =
+    roof.type === "flat" ? null : alongX
+      ? { x1: -hw, y1: 0, x2: hw, y2: 0 }
+      : { x1: 0, y1: -hd, x2: 0, y2: hd };
+  return (
+    <g
+      className={`roof-symbol${selected ? " selected" : ""}`}
+      transform={`translate(${roof.position.x} ${roof.position.y}) rotate(${roof.rotation})`}
+    >
+      <rect
+        className="roof-outline"
+        x={-hw}
+        y={-hd}
+        width={roof.width}
+        height={roof.depth}
+        fill="none"
+        {...ns}
+      />
+      {ridge && <line className="roof-ridge" {...ridge} {...ns} />}
     </g>
   );
 }

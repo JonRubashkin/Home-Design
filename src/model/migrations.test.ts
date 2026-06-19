@@ -151,38 +151,37 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.ceilingLights).toEqual([]);
   });
 
-  it("adds an empty roofs array to every level and drops Design.roof (-> v11)", () => {
+  it("adds an empty roofs array to every level and drops Design.roof", () => {
     const out = migrateToLatest(structuredClone(V1_FIXTURE));
     expect(out.levels[0]!.roofs).toEqual([]);
     expect((out as unknown as Record<string, unknown>).roof).toBeUndefined();
   });
 
-  it("moves an old single roof onto the top level as a section (v10 -> v11)", () => {
-    const v10 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
-    v10.schemaVersion = 10;
-    const lvl = (v10.levels as Record<string, unknown>[])[0]!;
+  it("clears auto-generated roofs to [] on every level (v11 -> v12, manual roofs)", () => {
+    // A v11 design with auto-generated (anchor-based) roof sections.
+    const v11 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v11.schemaVersion = 11;
+    const lvl = (v11.levels as Record<string, unknown>[])[0]!;
     lvl.staircases = [];
     lvl.furniture = [];
     lvl.ceilingLights = [];
     (lvl.walls as Record<string, unknown>[])[0]!.doors = [];
     (lvl.walls as Record<string, unknown>[])[0]!.mounts = [];
-    v10.roof = {
-      type: "hipped",
-      pitch: 25,
-      overhang: 0.5,
-      visible: true,
-      material: { kind: "solid", color: "#8a5a44" },
-    };
-    const out = migrateToLatest(v10);
-    expect((out as unknown as Record<string, unknown>).roof).toBeUndefined();
-    const roofs = out.levels[0]!.roofs;
-    expect(roofs).toHaveLength(1);
-    expect(roofs[0]!.type).toBe("hipped");
-    expect(roofs[0]!.pitch).toBe(25);
-    expect(roofs[0]!.overhang).toBe(0.5);
-    expect(roofs[0]!.material).toEqual({ kind: "solid", color: "#8a5a44" });
-    // Anchored at the wall-endpoint centroid (the single wall spans 0,0 -> 4,0).
-    expect(roofs[0]!.anchor).toEqual({ x: 2, y: 0 });
+    lvl.roofs = [
+      {
+        id: "old",
+        anchor: { x: 2, y: 0 },
+        type: "hipped",
+        pitch: 25,
+        overhang: 0.5,
+        visible: true,
+        material: { kind: "solid", color: "#8a5a44" },
+      },
+    ];
+    const out = migrateToLatest(v11);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    // The unsatisfactory auto output is cleared; the user re-places roofs.
+    expect(out.levels[0]!.roofs).toEqual([]);
   });
 
   it("leaves an already-current design unchanged", () => {

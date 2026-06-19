@@ -6,7 +6,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
-  RoofSection,
+  Roof,
   Site,
   Staircase,
   Vec2,
@@ -209,9 +209,10 @@ export function createLevel(name = "First floor"): Level {
   };
 }
 
-// Default roof-section settings (Phase 5.1): a gentle gable in a muted roof-tile
-// tone. Each detected wall mass gets a section with these defaults.
-export const DEFAULT_ROOF_SECTION: Omit<RoofSection, "id" | "anchor"> = {
+// Default roof settings (Phase 5.2): a gentle gable in a muted roof-tile tone.
+// A newly dragged roof rectangle gets these defaults.
+export const DEFAULT_ROOF: Omit<Roof, "id" | "position" | "width" | "depth"> = {
+  rotation: 0,
   type: "gabled",
   pitch: 30,
   overhang: 0.4,
@@ -219,20 +220,23 @@ export const DEFAULT_ROOF_SECTION: Omit<RoofSection, "id" | "anchor"> = {
   material: { kind: "solid", color: "#8a5a44" },
 };
 
-export function createRoofSection(
-  anchor: Vec2,
-  opts?: Partial<Omit<RoofSection, "id" | "anchor">>,
-): RoofSection {
+export function createRoof(
+  position: Vec2,
+  width: number,
+  depth: number,
+  opts?: Partial<Omit<Roof, "id" | "position" | "width" | "depth">>,
+): Roof {
   return {
     id: makeId("roof"),
-    anchor: { ...anchor },
-    type: opts?.type ?? DEFAULT_ROOF_SECTION.type,
-    pitch: opts?.pitch ?? DEFAULT_ROOF_SECTION.pitch,
-    overhang: opts?.overhang ?? DEFAULT_ROOF_SECTION.overhang,
-    visible: opts?.visible ?? DEFAULT_ROOF_SECTION.visible,
-    material: opts?.material
-      ? { ...opts.material }
-      : { ...DEFAULT_ROOF_SECTION.material },
+    position: { ...position },
+    width,
+    depth,
+    rotation: opts?.rotation ?? DEFAULT_ROOF.rotation,
+    type: opts?.type ?? DEFAULT_ROOF.type,
+    pitch: opts?.pitch ?? DEFAULT_ROOF.pitch,
+    overhang: opts?.overhang ?? DEFAULT_ROOF.overhang,
+    visible: opts?.visible ?? DEFAULT_ROOF.visible,
+    material: opts?.material ? { ...opts.material } : { ...DEFAULT_ROOF.material },
   };
 }
 
@@ -241,7 +245,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

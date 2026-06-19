@@ -15,7 +15,6 @@ beforeEach(() => {
     past: [],
     future: [],
     dragBaseline: null,
-    removedRoofAnchors: {},
   });
 });
 
@@ -842,72 +841,76 @@ describe("height-aware collision (hard mode tuck-under)", () => {
 
 const roofs = () => selectCurrentLevel(useStore.getState()).roofs;
 
-// Draw four joined walls around a rectangle to make one enclosed wall mass.
-function drawRoom(ox: number, oy: number, w: number, d: number) {
-  state().addRoom({ x: ox, y: oy }, { x: ox + w, y: oy + d });
-}
-
-describe("roof sections (Phase 5.1)", () => {
-  it("auto-creates one roof section when a wall mass is drawn", () => {
-    drawRoom(0, 0, 4, 3);
+describe("manual roofs (Phase 5.2)", () => {
+  it("places a roof centered on the dragged rectangle, defaulting to gabled", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
     expect(roofs()).toHaveLength(1);
     expect(roofs()[0]!.type).toBe("gabled");
+    expect(roofs()[0]!.position).toEqual({ x: 2, y: 1.5 });
+    expect(roofs()[0]!.width).toBe(4);
+    expect(roofs()[0]!.depth).toBe(3);
+    // Placing selects the new roof.
+    expect(state().selection).toEqual({ kind: "roof", id: roofs()[0]!.id });
   });
 
-  it("auto-creates a separate section per disconnected mass", () => {
-    drawRoom(0, 0, 4, 3);
-    drawRoom(10, 0, 4, 3);
+  it("never auto-generates a roof when walls are drawn", () => {
+    state().addRoom({ x: 0, y: 0 }, { x: 4, y: 3 });
+    expect(roofs()).toHaveLength(0);
+  });
+
+  it("places two independent roofs for an L-shape", () => {
+    state().addRoof({ x: 2, y: 2 }, 4, 4);
+    state().addRoof({ x: 6, y: 2 }, 4, 2);
     expect(roofs()).toHaveLength(2);
   });
 
-  it("edits a section's type/pitch independently and undoably", () => {
-    drawRoom(0, 0, 4, 3);
+  it("edits a roof's fields undoably", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
     const id = roofs()[0]!.id;
-    const levelId = useStore.getState().currentLevelId;
-    state().setRoofSection(levelId, id, { type: "hipped" });
+    state().updateRoof(id, { type: "hipped" });
     expect(roofs()[0]!.type).toBe("hipped");
     state().undo();
     expect(roofs()[0]!.type).toBe("gabled");
   });
 
-  it("keeps a removed section removed (no instant respawn) but allows re-adding", () => {
-    drawRoom(0, 0, 4, 3);
-    const levelId = useStore.getState().currentLevelId;
+  it("rotates a roof in 15° steps", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
     const id = roofs()[0]!.id;
-    state().removeRoofSection(levelId, id);
-    expect(roofs()).toHaveLength(0);
-    // A further wall edit must NOT respawn the removed roof.
-    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
-    expect(roofs()).toHaveLength(0);
+    state().rotateRoof(id, 20);
+    expect(roofs()[0]!.rotation).toBe(15);
   });
 
-  it("re-adds a roof over a bare mass via addRoofSection", () => {
-    drawRoom(0, 0, 4, 3);
-    const levelId = useStore.getState().currentLevelId;
-    state().removeRoofSection(levelId, roofs()[0]!.id);
+  it("deletes a roof and clears its selection", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    const id = roofs()[0]!.id;
+    state().deleteRoof(id);
     expect(roofs()).toHaveLength(0);
-    // Restore a roof over the bare mass (room centre point).
-    state().addRoofSection(levelId, { x: 2, y: 1.5 });
-    expect(roofs()).toHaveLength(1);
+    expect(state().selection).toBeNull();
   });
 
-  it("removes an orphaned section when its mass is deleted", () => {
-    drawRoom(0, 0, 4, 3);
-    expect(roofs()).toHaveLength(1);
-    for (const w of [...walls()]) state().deleteWall(w.id);
-    expect(roofs()).toHaveLength(0);
-  });
-
-  it("adding a floor above leaves the lower level's roof untouched", () => {
-    drawRoom(0, 0, 4, 3);
+  it("leaves roofs untouched when a floor above is added", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
     const groundId = useStore.getState().currentLevelId;
     expect(roofs()).toHaveLength(1);
     state().addLevelAbove();
-    // The new top level has no roof; the ground level still has its one section.
-    expect(roofs()).toHaveLength(0); // active level is now the upper one
+    expect(roofs()).toHaveLength(0); // active level is now the (roofless) upper one
     const ground = useStore
       .getState()
       .design.levels.find((l) => l.id === groundId)!;
     expect(ground.roofs).toHaveLength(1);
+  });
+
+  it("never re-tops or moves a lower roof when walls are copied up", () => {
+    state().addRoom({ x: 0, y: 0 }, { x: 4, y: 3 });
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    const groundId = useStore.getState().currentLevelId;
+    state().copyWallsToAbove();
+    // Upper level got walls but NO roof; the ground roof is unchanged.
+    expect(roofs()).toHaveLength(0);
+    const ground = useStore
+      .getState()
+      .design.levels.find((l) => l.id === groundId)!;
+    expect(ground.roofs).toHaveLength(1);
+    expect(ground.roofs[0]!.position).toEqual({ x: 2, y: 1.5 });
   });
 });

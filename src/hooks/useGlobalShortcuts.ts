@@ -60,6 +60,10 @@ export function useGlobalShortcuts(): void {
         case "S":
           s.setActiveTool("stair");
           break;
+        case "o":
+        case "O":
+          s.setActiveTool("roof");
+          break;
         case "g":
         case "G":
           s.setActiveTool("fill");
@@ -81,6 +85,7 @@ export function useGlobalShortcuts(): void {
             else if (sel.kind === "furniture") s.deleteFurniture(sel.id);
             else if (sel.kind === "staircase") s.deleteStaircase(sel.id);
             else if (sel.kind === "ceilingLight") s.deleteCeilingLight(sel.id);
+            else if (sel.kind === "roof") s.deleteRoof(sel.id);
             else if (sel.kind === "floor") s.deleteFloor(sel.id);
           }
           break;

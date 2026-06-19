@@ -1543,6 +1543,32 @@ button:focus-visible,
   stroke-width: 2;
   stroke-dasharray: 6 4;
 }
+
+/* --- roof tool + roof plan symbol --- */
+.roof-preview {
+  fill: rgba(138, 90, 68, 0.12);
+  stroke: #8a5a44;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.roof-symbol {
+  pointer-events: none;
+}
+.roof-outline {
+  fill: rgba(138, 90, 68, 0.06);
+  stroke: #8a5a44;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.roof-ridge {
+  stroke: #8a5a44;
+  stroke-width: 1.5;
+}
+.roof-symbol.selected .roof-outline,
+.roof-symbol.selected .roof-ridge {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
 .snap-ring {
   fill: none;
   stroke: #16a34a;

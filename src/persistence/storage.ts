@@ -122,14 +122,17 @@ function structuralError(obj: Record<string, unknown>): string | null {
     for (const roof of level.roofs) {
       if (
         !isObj(roof) ||
-        !isVec2(roof.anchor) ||
+        !isVec2(roof.position) ||
+        !isNum(roof.width) ||
+        !isNum(roof.depth) ||
+        !isNum(roof.rotation) ||
         !ROOF_TYPES.includes(roof.type as string) ||
         !isNum(roof.pitch) ||
         !isNum(roof.overhang) ||
         typeof roof.visible !== "boolean" ||
         !isMaterial(roof.material)
       )
-        return "A roof section is malformed.";
+        return "A roof is malformed.";
     }
 
     if (!Array.isArray(level.ceilingLights))

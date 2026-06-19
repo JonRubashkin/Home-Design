@@ -94,11 +94,14 @@ describe("validateDesign — windows, floors, materials", () => {
     }
   });
 
-  it("accepts and round-trips per-level roof sections", () => {
+  it("accepts and round-trips per-level manual roofs", () => {
     const d = base();
     d.levels[0]!.roofs.push({
       id: "roof1",
-      anchor: { x: 2, y: 1.5 },
+      position: { x: 2, y: 1.5 },
+      width: 4,
+      depth: 3,
+      rotation: 15,
       type: "gabled",
       pitch: 30,
       overhang: 0.4,
@@ -110,10 +113,10 @@ describe("validateDesign — windows, floors, materials", () => {
     if (r.ok) expect(r.design.levels[0]!.roofs).toEqual(d.levels[0]!.roofs);
   });
 
-  it("rejects a malformed roof section", () => {
+  it("rejects a malformed roof", () => {
     const d = base() as unknown as Record<string, unknown>;
     (d.levels as Record<string, unknown>[])[0]!.roofs = [
-      { id: "x", anchor: { x: 0, y: 0 }, type: "mansard", pitch: 30, overhang: 0.4, visible: true },
+      { id: "x", position: { x: 0, y: 0 }, width: 4, depth: 3, rotation: 0, type: "mansard", pitch: 30, overhang: 0.4, visible: true },
     ];
     expect(validateDesign(d).ok).toBe(false);
   });

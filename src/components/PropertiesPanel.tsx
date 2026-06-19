@@ -181,7 +181,15 @@ type EditTarget =
   | { kind: "lightMat"; id: string; slot: string }
   | { kind: "furnSlot"; id: string; slot: string }
   | { kind: "stairMat"; id: string }
+  | { kind: "roofMat"; id: string }
   | { kind: "floor"; id: string };
+
+const ROOF_TYPES: { type: "flat" | "gabled" | "hipped" | "pitched"; label: string }[] = [
+  { type: "flat", label: "Flat" },
+  { type: "gabled", label: "Gabled" },
+  { type: "hipped", label: "Hipped" },
+  { type: "pitched", label: "Shed" },
+];
 
 // One placeable palette button: a catalog entry, optionally narrowed to a single
 // shape variant. Variant-bearing entries (trees, shrubs) expand to one button
@@ -462,6 +470,8 @@ export function PropertiesPanel() {
   const deleteFurniture = useStore((s) => s.deleteFurniture);
   const updateStaircase = useStore((s) => s.updateStaircase);
   const deleteStaircase = useStore((s) => s.deleteStaircase);
+  const updateRoof = useStore((s) => s.updateRoof);
+  const deleteRoof = useStore((s) => s.deleteRoof);
   const updateCeilingLight = useStore((s) => s.updateCeilingLight);
   const setCeilingLightMaterial = useStore((s) => s.setCeilingLightMaterial);
   const setCeilingLightScale = useStore((s) => s.setCeilingLightScale);
@@ -788,6 +798,132 @@ export function PropertiesPanel() {
           onClick={() => deleteCeilingLight(light.id)}
         >
           Delete light
+        </button>
+      </aside>
+    );
+  }
+
+  // --- roof selected ---
+  if (selection?.kind === "roof") {
+    const roof = level.roofs.find((r) => r.id === selection.id);
+    if (!roof) return <aside className="properties">{EMPTY_TIPS}</aside>;
+
+    if (edit?.kind === "roofMat") {
+      return (
+        <aside className="properties" aria-label="Roof material">
+          <PickerHeader title="Roof material" onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={roof.material}
+            onChange={(m) => updateRoof(roof.id, { material: m })}
+          />
+        </aside>
+      );
+    }
+
+    return (
+      <aside className="properties" aria-label="Roof">
+        <h2 className="properties-title">Roof</h2>
+        <div className="properties-fields">
+          <NumberField
+            label="Width"
+            value={roof.width}
+            min={0.1}
+            step={0.1}
+            onCommit={(v) => updateRoof(roof.id, { width: v })}
+          />
+          <NumberField
+            label="Depth"
+            value={roof.depth}
+            min={0.1}
+            step={0.1}
+            onCommit={(v) => updateRoof(roof.id, { depth: v })}
+          />
+          <label className="field">
+            <span className="field-label">Rotation</span>
+            <span className="field-input">
+              <input
+                type="number"
+                step={15}
+                value={Math.round(roof.rotation)}
+                onChange={(e) => {
+                  const deg = Number(e.target.value);
+                  if (Number.isFinite(deg)) {
+                    const snapped =
+                      (((Math.round(deg / 15) * 15) % 360) + 360) % 360;
+                    updateRoof(roof.id, { rotation: snapped });
+                  }
+                }}
+              />
+              <span className="field-unit">°</span>
+            </span>
+          </label>
+        </div>
+
+        <h3 className="properties-subhead">Type</h3>
+        <div className="seg roof-types" role="group" aria-label="Roof type">
+          {ROOF_TYPES.map(({ type, label }) => (
+            <button
+              key={type}
+              type="button"
+              className={`seg-button${roof.type === type ? " active" : ""}`}
+              aria-pressed={roof.type === type}
+              onClick={() => updateRoof(roof.id, { type })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <label className="roof-slider">
+          <span>Pitch {Math.round(roof.pitch)}°</span>
+          <input
+            type="range"
+            min={5}
+            max={60}
+            step={1}
+            value={roof.pitch}
+            disabled={roof.type === "flat"}
+            onChange={(e) => updateRoof(roof.id, { pitch: Number(e.target.value) })}
+          />
+        </label>
+
+        <label className="roof-slider">
+          <span>Overhang {roof.overhang.toFixed(2)} m</span>
+          <input
+            type="range"
+            min={0}
+            max={1.5}
+            step={0.05}
+            value={roof.overhang}
+            onChange={(e) =>
+              updateRoof(roof.id, { overhang: Number(e.target.value) })
+            }
+          />
+        </label>
+
+        <label className="roof-visible">
+          <input
+            type="checkbox"
+            checked={roof.visible}
+            onChange={(e) => updateRoof(roof.id, { visible: e.target.checked })}
+          />
+          Show this roof
+        </label>
+
+        <h3 className="properties-subhead">Material</h3>
+        <div className="chip-row">
+          <MaterialChip
+            material={roof.material}
+            label="Roof"
+            onClick={() => setEdit({ kind: "roofMat", id: roof.id })}
+          />
+        </div>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={() => deleteRoof(roof.id)}
+        >
+          Delete roof
         </button>
       </aside>
     );

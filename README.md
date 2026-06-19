@@ -41,29 +41,28 @@ npm run format   # Prettier
   **Stubs**, visible in **Cutaway** (the ceiling above is suppressed). Excluded
   from collision. Schema v10; round-trips through Export/Import.
 
-### Roofs (phase 5.1 — per-level, multi-section)
+### Roofs (phase 5.2 — manual roof tool)
 
-- Roofs are **per level**: every connected wall group ("mass") on a level gets
-  its **own** roof section, so a building with a detached wing/garage is roofed by
-  separate roofs. An **L / T / U** footprint is split into rectangles and roofed by
-  matching pieces that meet at ridges/valleys (a cross-gable look).
-- Sections are **auto-created** as you draw masses and edited per section: choose
-  **flat**, **gabled**, **hipped**, or **pitched** (shed) with adjustable **pitch**
-  and **overhang** and a material — in the **Roofs** subsection of the **Floors**
-  dropdown (all undoable). Each row has a per-section **Show** toggle and
-  **Remove**; un-roofed masses show an **Add roof** button; a global **Show roofs**
-  toggle hides them all.
-- Roofs **stay on their level** — adding a floor above never moves or re-tops a
-  lower roof; remove a section if you build over it. Removing a roof keeps it
-  removed (no instant respawn) until that mass's walls change.
+- Roofs are **objects you place**, not auto-generated. Pick the **Roof tool**
+  (left toolbar, under Stair; shortcut `O`) and **drag a rectangle** (grid-snapped,
+  with live W × D labels) to drop a roof on the active level — gabled by default.
+  Make an **L-shape** by placing **two rectangles**, each independent.
+- **Select** a roof (Select tool) to edit it in the properties panel: **width**,
+  **depth**, **rotation** (15° steps; also `R` / `Shift+R`), **type** (flat /
+  gabled / hipped / pitched-shed), **pitch**, **overhang**, **material**, and a
+  **Show this roof** toggle. Drag the body to move it; `Delete` removes it. All
+  edits are undoable. A global **Show roofs** toggle lives in the **Floors**
+  dropdown.
+- Roofs **stay where you put them** — adding or copying a floor above never adds,
+  moves, duplicates, or re-tops any roof. No auto-detection runs anywhere.
 - In **Cutaway/Stubs** each roof suppresses like an upper floor slab so the
   interior stays visible; in **Full** it's solid. The flat roof is a real slab
   seated a hair above the wall tops (the `ROOF_LIFT` offset in
   `preview/stacking.ts`) so it never z-fights ("flickers") as the camera orbits.
-- Pure tested geometry: mass detection + footprint trace (`roofMass.ts`),
-  rectangle decomposition (`roofMass.ts`), per-rectangle `computeRoof`
-  (`roof.ts`), and section reconciliation (`roofReconcile.ts`). Round-trips
-  through Export/Import; old single-roof designs migrate to a top-level section.
+- Pure tested geometry: per-rectangle `computeRoof` (`roof.ts`) built over the
+  roof's local rectangle (`roofPlacement.ts`), then positioned/rotated in 3D.
+  Round-trips through Export/Import; old auto-roof designs migrate to **no roofs**
+  (you re-place them with the tool).
 
 ### Corner posts (phase 5d)
 
@@ -399,8 +398,9 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 | Paint tool                | `P`                                         |
 | Fill Room tool            | `G`                                         |
 | Staircase tool            | `S`                                         |
+| Roof tool                 | `O`                                         |
 | Furniture tool            | `U`                                         |
-| Rotate furniture / ghost  | `R` (+15°) · `Shift`+`R` (−15°)             |
+| Rotate furniture / roof / ghost | `R` (+15°) · `Shift`+`R` (−15°)       |
 | Draw / place point        | Click (Wall / Floor tools)                  |
 | Chain walls               | Keep clicking                               |
 | Finish wall chain         | `Enter` or double-click                     |

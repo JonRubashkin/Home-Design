@@ -122,19 +122,21 @@ export interface CeilingLight {
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
-// One roof section over a single wall "mass" (a connected wall group) on a level
-// (Phase 5.1). Per-level, multi-section: a building with disconnected masses gets
-// one section per mass, and an L/T/U footprint is roofed by decomposing it into
-// rectangles that share the section's single type/pitch. The `anchor` is a
-// representative interior point of the mass it caps, used to re-associate the
-// section with its footprint across wall edits (see reconcileRoofSections).
-export interface RoofSection {
+// A roof the user places by dragging a rectangle (Phase 5.2). A manual, fully
+// editable object stored per level — roofs never auto-generate or re-top. An
+// L-shape is made by placing two rectangles, each independent. The rectangle is
+// centered on `position`, sized width × depth, oriented by `rotation` (which
+// orients the ridge), and seated at its level's wall-top height when rendered.
+export interface Roof {
   id: string;
-  anchor: Vec2; // interior point of the mass; survives edits to track the mass
+  position: Vec2; // center of the roof rectangle, plan coords (grid-snapped)
+  width: number; // meters (local X)
+  depth: number; // meters (local Z)
+  rotation: number; // degrees, 15° steps (orients the ridge)
   type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = single-slope/shed
   pitch: number; // slope in degrees (ignored for flat)
-  overhang: number; // meters beyond the footprint bbox (eaves)
-  visible: boolean; // per-section hide toggle (default true)
+  overhang: number; // meters beyond the rectangle (eaves)
+  visible: boolean; // per-roof hide toggle (default true)
   material: MaterialRef; // default a roof-tile solid
 }
 
@@ -148,7 +150,7 @@ export interface Level {
   furniture: FurnitureItem[];
   staircases: Staircase[];
   ceilingLights: CeilingLight[]; // Phase 5f
-  roofs: RoofSection[]; // Phase 5.1: per-mass roof sections over this level
+  roofs: Roof[]; // Phase 5.2: manually placed roof rectangles on this level
 }
 
 // The work area ("site"): a soft, buildable rectangle. Never enforced — it frames
@@ -160,11 +162,11 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 11;
+  schemaVersion: 12;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can
   // be added without migration. Never hardcode levels[0] outside the current-level
-  // selector. Roofs live per-level on each Level.roofs (Phase 5.1).
+  // selector. Roofs live per-level on each Level.roofs (Phase 5.2 — manual).
   levels: Level[];
 }

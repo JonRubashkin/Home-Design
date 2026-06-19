@@ -17,8 +17,8 @@ export interface RoomDetection {
   wallSides: { wallId: string; side: "A" | "B" }[];
 }
 
-// Exported so the roof mass-detection (roofMass.ts) can reuse the same grid
-// rasterization and boundary trace as room flood-fill.
+// Exported so other features can reuse the same grid rasterization and boundary
+// trace as room flood-fill.
 export interface Grid {
   minX: number;
   minY: number;

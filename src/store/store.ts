@@ -7,7 +7,7 @@ import type {
   FurnitureItem,
   Level,
   MaterialRef,
-  Roof,
+  RoofSection,
   Site,
   Staircase,
   Vec2,
@@ -32,6 +32,7 @@ import {
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
 import { detectRoom, ROOM_FILL_MARGIN } from "../geometry/roomFill";
+import { reconcileRoofSections } from "../geometry/roofReconcile";
 import {
   boundsOfPoints,
   siteBounds,
@@ -44,7 +45,7 @@ import {
   createFloor,
   createFurniture,
   createLevel,
-  createRoof,
+  createRoofSection,
   createStaircase,
   createWall,
   createWallMount,
@@ -199,6 +200,11 @@ const clone = <T>(value: T): T => structuredClone(value);
 const SEG_EPS = 1e-6;
 const samePoint = (p: Vec2, q: Vec2) =>
   Math.abs(p.x - q.x) < SEG_EPS && Math.abs(p.y - q.y) < SEG_EPS;
+
+// Two roof-mass anchors refer to the same mass when they nearly coincide (both
+// come from the same pure mass detection, so exact-ish equality is enough).
+const sameAnchor = (p: Vec2, q: Vec2) =>
+  Math.abs(p.x - q.x) < 1e-3 && Math.abs(p.y - q.y) < 1e-3;
 
 // Two walls are the "same segment" if their endpoints match in either order.
 function sameSegment(a: Pick<Wall, "start" | "end">, b: Pick<Wall, "start" | "end">): boolean {
@@ -374,6 +380,13 @@ interface AppState {
   showDimensions: boolean;
   // Furniture collision prevention (persisted UI pref, never in the Design).
   collisionMode: CollisionMode;
+  // Global hide-roofs toggle (persisted UI pref, never in the Design). Applies on
+  // top of each section's own `visible` flag.
+  hideRoofs: boolean;
+  // Roof masses the user explicitly un-roofed, keyed by level id (anchors of the
+  // removed sections). Transient — suppresses auto-respawn until the mass's walls
+  // change. Not persisted, not in undo history.
+  removedRoofAnchors: Record<string, Vec2[]>;
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -412,6 +425,7 @@ interface AppState {
   setShowUnderlay: (show: boolean) => void;
   setShowDimensions: (show: boolean) => void;
   setCollisionMode: (mode: CollisionMode) => void;
+  setHideRoofs: (hide: boolean) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
   setCurrentLevel: (id: string) => void;
@@ -502,10 +516,16 @@ interface AppState {
   setCeilingLightScale: (id: string, scale: Vec3) => void;
   deleteCeilingLight: (id: string) => void;
   setSite: (site: Site) => void;
-  // Roof (Phase 5e): set/clear the whole roof, or patch fields. updateRoof starts
-  // from a default roof if none exists yet.
-  setRoof: (roof: Roof | null) => void;
-  updateRoof: (patch: Partial<Roof>) => void;
+  // Roof sections (Phase 5.1): per-level, per-mass. `setRoofSection` patches one
+  // section (coalesced for slider drags); `addRoofSection` restores a roof over a
+  // bare mass; `removeRoofSection` deletes one and suppresses its auto-respawn.
+  setRoofSection: (
+    levelId: string,
+    id: string,
+    patch: Partial<Omit<RoofSection, "id" | "anchor">>,
+  ) => void;
+  addRoofSection: (levelId: string, anchor: Vec2) => void;
+  removeRoofSection: (levelId: string, id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
   // Welcome actions.
@@ -559,6 +579,25 @@ export const useStore = create<AppState>((set, get) => {
     set({ design, coalesceKey: key, coalesceAt: now });
   };
 
+  // Re-detect a level's wall masses and reconcile its roof sections after any
+  // structural wall change (mutating `design` in place). Returns the updated
+  // per-level removed-anchor suppression map (transient store state).
+  const reconcileLevelRoofs = (
+    design: Design,
+    levelId: string,
+    removed: Record<string, Vec2[]>,
+  ): Record<string, Vec2[]> => {
+    const level = design.levels.find((l) => l.id === levelId);
+    if (!level) return removed;
+    const res = reconcileRoofSections(
+      level.walls,
+      level.roofs,
+      removed[levelId] ?? [],
+    );
+    level.roofs = res.sections;
+    return { ...removed, [levelId]: res.suppressed };
+  };
+
   // Drop a selection that no longer points at an existing entity.
   const sanitizeSelection = (
     design: Design,
@@ -580,6 +619,7 @@ export const useStore = create<AppState>((set, get) => {
       showUnderlay,
       showDimensions,
       collisionMode,
+      hideRoofs,
       currentLevelId,
     } = get();
     saveViewPrefs({
@@ -591,6 +631,7 @@ export const useStore = create<AppState>((set, get) => {
       showUnderlay,
       showDimensions,
       collisionMode,
+      hideRoofs,
       activeLevelId: currentLevelId,
     });
   };
@@ -615,6 +656,8 @@ export const useStore = create<AppState>((set, get) => {
     showUnderlay: prefs.showUnderlay,
     showDimensions: prefs.showDimensions,
     collisionMode: prefs.collisionMode,
+    hideRoofs: prefs.hideRoofs,
+    removedRoofAnchors: {},
     past: [],
     future: [],
     dragBaseline: null,
@@ -696,6 +739,10 @@ export const useStore = create<AppState>((set, get) => {
       set({ collisionMode });
       persistViewPrefs();
     },
+    setHideRoofs: (hideRoofs) => {
+      set({ hideRoofs });
+      persistViewPrefs();
+    },
 
     setCurrentLevel: (id) => {
       if (!get().design.levels.some((l) => l.id === id)) return;
@@ -727,7 +774,8 @@ export const useStore = create<AppState>((set, get) => {
           ? s.currentLevelId
           : next.levels[0]!.id;
         const selection = sanitizeSelection(next, currentLevelId, s.selection);
-        return { design: next, currentLevelId, selection };
+        const { [id]: _dropped, ...removedRoofAnchors } = s.removedRoofAnchors;
+        return { design: next, currentLevelId, selection, removedRoofAnchors };
       });
       persistViewPrefs();
     },
@@ -750,7 +798,16 @@ export const useStore = create<AppState>((set, get) => {
       set((s) => {
         const design = clone(s.design);
         levelOf(design, s.currentLevelId).walls.push(wall);
-        return { design, selection: { kind: "wall", id: wall.id } };
+        const removedRoofAnchors = reconcileLevelRoofs(
+          design,
+          s.currentLevelId,
+          s.removedRoofAnchors,
+        );
+        return {
+          design,
+          removedRoofAnchors,
+          selection: { kind: "wall", id: wall.id },
+        };
       });
     },
 
@@ -770,7 +827,12 @@ export const useStore = create<AppState>((set, get) => {
           createWall({ ...c }, { ...corners[(i + 1) % 4]! }),
         );
         level.walls.push(...built);
-        return { design };
+        const removedRoofAnchors = reconcileLevelRoofs(
+          design,
+          s.currentLevelId,
+          s.removedRoofAnchors,
+        );
+        return { design, removedRoofAnchors };
       });
     },
 
@@ -808,7 +870,19 @@ export const useStore = create<AppState>((set, get) => {
           copy.end = snapEndpoint(copy.end, preExisting).point;
           target.walls.push(copy);
         }
-        return { design: next, currentLevelId: target.id, selection: null };
+        // The TARGET (upper) level's masses changed; reconcile its roofs only.
+        // Lower levels are untouched (adding a floor never re-tops their roofs).
+        const removedRoofAnchors = reconcileLevelRoofs(
+          next,
+          target.id,
+          s.removedRoofAnchors,
+        );
+        return {
+          design: next,
+          removedRoofAnchors,
+          currentLevelId: target.id,
+          selection: null,
+        };
       });
       persistViewPrefs();
     },
@@ -821,7 +895,12 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const wall = findWall(design, s.currentLevelId, id);
         if (wall) Object.assign(wall, patch);
-        return { design };
+        const removedRoofAnchors = reconcileLevelRoofs(
+          design,
+          s.currentLevelId,
+          s.removedRoofAnchors,
+        );
+        return { design, removedRoofAnchors };
       });
     },
 
@@ -833,12 +912,21 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const level = levelOf(design, s.currentLevelId);
         level.walls = level.walls.filter((w) => w.id !== id);
+        const removedRoofAnchors = reconcileLevelRoofs(
+          design,
+          s.currentLevelId,
+          s.removedRoofAnchors,
+        );
         const stillThere = selectionExists(
           design,
           s.currentLevelId,
           s.selection,
         );
-        return { design, selection: stillThere ? s.selection : null };
+        return {
+          design,
+          removedRoofAnchors,
+          selection: stillThere ? s.selection : null,
+        };
       });
     },
 
@@ -1345,21 +1433,47 @@ export const useStore = create<AppState>((set, get) => {
 
     // Import: load a design into a brand-new library record (fresh id) with a
     // clean history, so an imported file becomes its own saved design.
-    setRoof: (roof) => {
-      pushHistory();
-      set((s) => {
-        const design = clone(s.design);
-        design.roof = roof ? clone(roof) : null;
-        return { design };
+    setRoofSection: (levelId, id, patch) => {
+      // Coalesce slider drags (pitch/overhang) into one undo step, like scaling.
+      const key = Object.keys(patch).join(",");
+      commitCoalesced(`roofsec:${levelId}:${id}:${key}`, (design) => {
+        const level = design.levels.find((l) => l.id === levelId);
+        const sec = level?.roofs.find((r) => r.id === id);
+        if (sec) Object.assign(sec, patch);
       });
     },
 
-    updateRoof: (patch) => {
-      // Coalesce slider drags (pitch/overhang) into one undo step, like scaling.
-      const key = Object.keys(patch).join(",");
-      commitCoalesced(`roof:${key}`, (design) => {
-        const base = design.roof ?? createRoof();
-        design.roof = { ...base, ...patch };
+    addRoofSection: (levelId, anchor) => {
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const level = design.levels.find((l) => l.id === levelId);
+        if (!level) return {};
+        level.roofs.push(createRoofSection(anchor));
+        // Lift suppression for this mass so it stays roofed from now on.
+        const removed = { ...s.removedRoofAnchors };
+        removed[levelId] = (removed[levelId] ?? []).filter(
+          (a) => !sameAnchor(a, anchor),
+        );
+        return { design, removedRoofAnchors: removed };
+      });
+    },
+
+    removeRoofSection: (levelId, id) => {
+      const level = get().design.levels.find((l) => l.id === levelId);
+      const sec = level?.roofs.find((r) => r.id === id);
+      if (!sec) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const lvl = design.levels.find((l) => l.id === levelId);
+        const target = lvl?.roofs.find((r) => r.id === id);
+        if (lvl && target) lvl.roofs = lvl.roofs.filter((r) => r.id !== id);
+        // Remember the removed mass so reconcile won't instantly respawn it.
+        const removed = { ...s.removedRoofAnchors };
+        if (target)
+          removed[levelId] = [...(removed[levelId] ?? []), { ...target.anchor }];
+        return { design, removedRoofAnchors: removed };
       });
     },
 
@@ -1371,6 +1485,7 @@ export const useStore = create<AppState>((set, get) => {
         selection: null,
         past: [],
         future: [],
+        removedRoofAnchors: {},
         openDesignId: makeId("design"),
       });
     },
@@ -1383,6 +1498,7 @@ export const useStore = create<AppState>((set, get) => {
         selection: null,
         past: [],
         future: [],
+        removedRoofAnchors: {},
         openDesignId: makeId("design"),
       });
     },
@@ -1399,6 +1515,7 @@ export const useStore = create<AppState>((set, get) => {
         past: [],
         future: [],
         started: true,
+        removedRoofAnchors: {},
         openDesignId: makeId("design"),
       });
     },
@@ -1413,6 +1530,7 @@ export const useStore = create<AppState>((set, get) => {
         past: [],
         future: [],
         started: true,
+        removedRoofAnchors: {},
         openDesignId: id,
       });
     },
@@ -1514,7 +1632,21 @@ export const useStore = create<AppState>((set, get) => {
         if (!changed) return { dragBaseline: null };
         const next = [...s.past, baseline];
         while (next.length > HISTORY_CAP) next.shift();
-        return { past: next, future: [], dragBaseline: null };
+        // A wall-endpoint/translate drag changed the active level's masses;
+        // reconcile its roof sections (no-op for furniture/window drags).
+        const design = clone(s.design);
+        const removedRoofAnchors = reconcileLevelRoofs(
+          design,
+          s.currentLevelId,
+          s.removedRoofAnchors,
+        );
+        return {
+          design,
+          removedRoofAnchors,
+          past: next,
+          future: [],
+          dragBaseline: null,
+        };
       }),
 
     cancelDrag: () =>

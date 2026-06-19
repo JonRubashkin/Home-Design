@@ -888,6 +888,26 @@ describe("manual roofs (Phase 5.2)", () => {
     expect(state().selection).toBeNull();
   });
 
+  it("reassigns a roof to another floor and follows it (active level switches)", () => {
+    state().addRoof({ x: 2, y: 1.5 }, 4, 3);
+    const roofId = roofs()[0]!.id;
+    const groundId = useStore.getState().currentLevelId;
+    state().addLevelAbove(); // creates + switches to the upper level
+    const upperId = useStore.getState().currentLevelId;
+    state().setCurrentLevel(groundId); // back to the roof's level
+    state().moveRoofToLevel(roofId, upperId);
+    // The active level follows the roof to the target, where it now lives.
+    expect(useStore.getState().currentLevelId).toBe(upperId);
+    expect(roofs()).toHaveLength(1);
+    const ground = useStore
+      .getState()
+      .design.levels.find((l) => l.id === groundId)!;
+    expect(ground.roofs).toHaveLength(0);
+    expect(state().selection).toEqual({ kind: "roof", id: roofId });
+    state().undo();
+    expect(useStore.getState().currentLevelId).toBe(upperId);
+  });
+
   it("leaves roofs untouched when a floor above is added", () => {
     state().addRoof({ x: 2, y: 1.5 }, 4, 3);
     const groundId = useStore.getState().currentLevelId;

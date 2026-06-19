@@ -524,6 +524,9 @@ interface AppState {
   addRoof: (position: Vec2, width: number, depth: number) => void;
   updateRoof: (id: string, patch: Partial<Omit<Roof, "id">>) => void;
   rotateRoof: (id: string, deltaDeg: number) => void;
+  // Reassign a roof to a different level; switches the active level to the
+  // target so the moved roof stays visible/selected.
+  moveRoofToLevel: (id: string, targetLevelId: string) => void;
   deleteRoof: (id: string) => void;
   setDesign: (design: Design) => void;
   newDesign: () => void;
@@ -1415,6 +1418,31 @@ export const useStore = create<AppState>((set, get) => {
         if (r) r.rotation = deg;
         return { design };
       });
+    },
+
+    // Move a roof from the active level to another level (keeps it selected and
+    // switches the active level to the target so it stays in view). One undo step.
+    moveRoofToLevel: (id, targetLevelId) => {
+      const cur = get().currentLevelId;
+      if (targetLevelId === cur) return;
+      if (!findRoof(get().design, cur, id)) return;
+      if (!get().design.levels.some((l) => l.id === targetLevelId)) return;
+      pushHistory();
+      set((s) => {
+        const design = clone(s.design);
+        const from = levelOf(design, s.currentLevelId);
+        const moved = from.roofs.find((r) => r.id === id);
+        const target = design.levels.find((l) => l.id === targetLevelId);
+        if (!moved || !target) return {};
+        from.roofs = from.roofs.filter((r) => r.id !== id);
+        target.roofs.push(moved);
+        return {
+          design,
+          currentLevelId: targetLevelId,
+          selection: { kind: "roof", id },
+        };
+      });
+      persistViewPrefs();
     },
 
     deleteRoof: (id) => {

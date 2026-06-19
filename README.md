@@ -105,8 +105,9 @@ npm run format   # Prettier
   `src/lib/capture.ts` (the design library reuses it for thumbnails). The plan
   registers its capturer via `setPlanCapturer` and the 3D pane its handles via
   `setCaptureHandles`, so the top-bar menu can drive both.
-- JSON **Export JSON** / **Import JSON** (the design document) remain separate
-  buttons in the top bar.
+- The design **document** (JSON) has its own unified **Design JSON** menu in the
+  top bar (same popover style as Export image) with **Import JSON…** / **Export
+  JSON** options.
 
 ### Fill Room (phase 3e)
 

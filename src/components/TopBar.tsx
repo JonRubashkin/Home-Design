@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useStore } from "../store/store";
-import { exportDesignToFile, parseImportedDesign } from "../persistence/io";
 import { LayoutToggle } from "./LayoutToggle";
 import { SettingsDialog } from "./SettingsDialog";
 import { ResizeAreaDialog } from "./ResizeAreaDialog";
 import { DesignLibraryModal } from "./DesignLibrary";
 import { ExportMenu } from "./ExportMenu";
+import { DesignFileMenu } from "./DesignFileMenu";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -26,31 +26,11 @@ export function TopBar() {
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const newDesign = useStore((s) => s.newDesign);
-  const setDesign = useStore((s) => s.setDesign);
 
-  const fileInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resizeOpen, setResizeOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
-
-  const onImportClick = () => {
-    setError(null);
-    fileInput.current?.click();
-  };
-
-  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-importing the same file
-    if (!file) return;
-    try {
-      const text = await file.text();
-      setDesign(parseImportedDesign(text));
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not import file.");
-    }
-  };
 
   const onNew = () => {
     // The current design is already autosaved to its library record; New just
@@ -112,27 +92,7 @@ export function TopBar() {
         <button type="button" onClick={onNew} title="New design">
           New
         </button>
-        <button
-          type="button"
-          onClick={onImportClick}
-          title="Import a design JSON"
-        >
-          Import JSON
-        </button>
-        <button
-          type="button"
-          onClick={() => exportDesignToFile(design)}
-          title="Export the design as JSON"
-        >
-          Export JSON
-        </button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={onFileChosen}
-        />
+        <DesignFileMenu onError={setError} />
       </div>
 
       {error && (

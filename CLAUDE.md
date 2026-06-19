@@ -407,7 +407,8 @@ in code under `src/catalog/`:
   The welcome screen and the in-app **My Designs** menu list records (New / Open /
   Duplicate / Rename / Delete; Continue = most recent; Save As forks a new record
   via `saveAs`). Import (`setDesign`) and New (`newDesign`) start a fresh record
-  id. Still: explicit "Export JSON" / "Import JSON"; per-design `schemaVersion`
+  id. Still: explicit "Export JSON" / "Import JSON" (the unified **Design JSON**
+  top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
   rather than corrupting data.
 
@@ -432,8 +433,9 @@ in code under `src/catalog/`:
   image**, or **Both** (two PNGs) — each at 2× via `downloadCanvasPng`, reusing
   the capture utilities above. A **Transparent 3D background** toggle applies to
   the 3D image only (the plan always exports on a white ground). Options for a
-  pane not currently shown (per `layout`) are disabled. The separate top-bar
-  **Export JSON** / **Import JSON** buttons handle the design document.
+  pane not currently shown (per `layout`) are disabled. The design **document**
+  (JSON) has its own unified top-bar **Design JSON** menu (`DesignFileMenu`, same
+  popover pattern) with **Import JSON…** / **Export JSON** options.
 
 ## Geometry rules
 

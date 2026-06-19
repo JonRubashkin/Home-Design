@@ -472,6 +472,9 @@ export function PropertiesPanel() {
   const deleteStaircase = useStore((s) => s.deleteStaircase);
   const updateRoof = useStore((s) => s.updateRoof);
   const deleteRoof = useStore((s) => s.deleteRoof);
+  const moveRoofToLevel = useStore((s) => s.moveRoofToLevel);
+  const levels = useStore((s) => s.design.levels);
+  const currentLevelId = useStore((s) => s.currentLevelId);
   const updateCeilingLight = useStore((s) => s.updateCeilingLight);
   const setCeilingLightMaterial = useStore((s) => s.setCeilingLightMaterial);
   const setCeilingLightScale = useStore((s) => s.setCeilingLightScale);
@@ -918,6 +921,27 @@ export function PropertiesPanel() {
             onClick={() => setEdit({ kind: "roofMat", id: roof.id })}
           />
         </div>
+        {levels.length > 1 && (
+          <>
+            <h3 className="properties-subhead">Floor</h3>
+            <label className="field">
+              <span className="field-label">On floor</span>
+              <span className="field-input">
+                <select
+                  className="field-select"
+                  value={currentLevelId}
+                  onChange={(e) => moveRoofToLevel(roof.id, e.target.value)}
+                >
+                  {levels.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
+          </>
+        )}
         <button
           type="button"
           className="danger-button"

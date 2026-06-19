@@ -6,16 +6,27 @@ const BBOX: Bounds = { minX: 0, minY: 0, maxX: 6, maxY: 4 };
 const BASE_Y = 2.4;
 
 describe("computeRoof", () => {
-  it("flat: one horizontal slab over the overhung bbox at eave height", () => {
-    const r = computeRoof(BBOX, "flat", 30, 0.5, BASE_Y);
-    expect(r.parts).toHaveLength(1);
-    expect(r.ridgeY).toBeCloseTo(BASE_Y, 6);
-    // Every vertex sits at the eave height and spans bbox + overhang.
-    const ys = r.parts[0]!.vertices.map((v) => v[1]);
-    expect(ys.every((y) => Math.abs(y - BASE_Y) < 1e-9)).toBe(true);
-    const xs = r.parts[0]!.vertices.map((v) => v[0]);
+  it("flat: a real slab over the overhung bbox, underside at the eave height", () => {
+    const TH = 0.2;
+    const r = computeRoof(BBOX, "flat", 30, 0.5, BASE_Y, TH);
+    // Top + bottom + four sides.
+    expect(r.parts).toHaveLength(6);
+    // The slab spans [baseY, baseY + thickness]; nothing dips below the eave.
+    const ys = r.parts.flatMap((p) => p.vertices.map((v) => v[1]));
+    expect(Math.min(...ys)).toBeCloseTo(BASE_Y, 6);
+    expect(Math.max(...ys)).toBeCloseTo(BASE_Y + TH, 6);
+    expect(r.ridgeY).toBeCloseTo(BASE_Y + TH, 6);
+    // Spans bbox + overhang in X.
+    const xs = r.parts.flatMap((p) => p.vertices.map((v) => v[0]));
     expect(Math.min(...xs)).toBeCloseTo(-0.5, 6);
     expect(Math.max(...xs)).toBeCloseTo(6.5, 6);
+  });
+
+  it("flat with zero thickness degenerates to a coplanar slab at the eave", () => {
+    const r = computeRoof(BBOX, "flat", 30, 0, BASE_Y);
+    const ys = r.parts.flatMap((p) => p.vertices.map((v) => v[1]));
+    expect(ys.every((y) => Math.abs(y - BASE_Y) < 1e-9)).toBe(true);
+    expect(r.ridgeY).toBeCloseTo(BASE_Y, 6);
   });
 
   it("gabled: two slopes + two gable ends; ridge above the eaves", () => {

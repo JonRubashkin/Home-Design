@@ -572,13 +572,18 @@ in code under `src/catalog/`:
   rectangle (the site rect as a fallback when there are no walls). Multi-section /
   L-shaped / per-wing roofs are **deferred** — a single rectangular roof over the
   bbox is correct for this phase.
-- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY)` in
+- Pure tested `computeRoof(bbox, type, pitch, overhang, baseY, thickness?)` in
   `src/geometry/roof.ts` → `RoofPart[]` (planar world-space polygons): **flat** =
-  one slab at the wall-top height over (bbox + overhang); **pitched** = a single
-  shed slope eave-to-eave; **gabled** = ridge along the longer bbox axis, two
-  slopes + triangular gable ends; **hipped** = central inset ridge with four
-  slopes. `baseY = topLevel.elevation + topLevel.wallHeight`; the bbox is expanded
-  by `overhang`.
+  a real **slab** over (bbox + overhang) — underside at `baseY`, top `thickness`
+  above (not a paper-thin coplanar plane); **pitched** = a single shed slope
+  eave-to-eave; **gabled** = ridge along the longer bbox axis, two slopes +
+  triangular gable ends; **hipped** = central inset ridge with four slopes. The
+  bbox is expanded by `overhang`. `Roof3D` passes `baseY = topLevel.elevation +
+  topLevel.wallHeight + ROOF_LIFT` and `thickness = FLOOR_SLAB_THICKNESS`. **No
+  surface may sit coplanar with the wall tops** (`elevation + wallHeight`) or it
+  z-fights: `ROOF_LIFT` (in `preview/stacking.ts`, mirroring the floor lifts)
+  raises every roof type a hair above that plane — so the flat slab's underside
+  and the sloped types' eave edges all clear the wall tops.
 - `Roof3D` fan-triangulates each part into a double-sided mesh (material via the
   shared helper, planar UVs so patterns tile). **View-mode (critical):** the roof
   suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)

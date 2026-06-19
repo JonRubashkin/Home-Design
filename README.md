@@ -51,6 +51,9 @@ npm run format   # Prettier
   interior stays visible; in **Full** it's solid; a **Show roof** toggle hides it
   in any mode. Adding a floor re-tops the roof onto the new top level. Pure tested
   `computeRoof` in `src/geometry/roof.ts`; round-trips through Export/Import.
+- The flat roof is a real slab seated a hair above the wall tops (the `ROOF_LIFT`
+  offset in `preview/stacking.ts`) so it never sits coplanar with the wall-top
+  plane and z-fights ("flickers") as the camera orbits.
 
 ### Corner posts (phase 5d)
 

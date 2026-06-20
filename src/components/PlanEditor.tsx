@@ -2025,6 +2025,15 @@ export function PlanEditor() {
           })()}
       </svg>
 
+      {/* Empty-state nudge: shown whenever the active level has no walls (the
+          primary "nothing to see" case). Non-interactive, centered, and it
+          reappears if the user deletes everything. */}
+      {walls.length === 0 && (
+        <div className="plan-empty-hint" aria-hidden="true">
+          Draw a wall to begin
+        </div>
+      )}
+
       <div className="plan-controls">
         <div className="floors-menu">
           <button

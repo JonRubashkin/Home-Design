@@ -746,6 +746,23 @@ in code under `src/catalog/`:
   side with the plan or toggled via a Plan / 3D / Split control — Split is the
   default on wide screens.
 
+## Help panel & empty-state nudge (Phase 6 Part C)
+
+- **Help panel** (`HelpPanel`): a **?** button in the top bar (beside Settings)
+  opens a modal listing tools + keyboard shortcuts, grouped (Tools / Edit /
+  Drawing & placement / View). It is a short, skimmable reference — no guided
+  tour. **The shortcut list (`SHORTCUT_GROUPS` in `HelpPanel.tsx`) is
+  HAND-MAINTAINED** and is NOT derived from the keymap/toolbar: whenever a tool
+  shortcut (`useGlobalShortcuts.ts` / `Toolbar.tsx`) or an edit/rotate/copy-paste
+  binding changes, update that list too or the panel silently drifts. A prominent
+  comment at the list says so.
+- **Empty-state nudge:** when the **active level has no walls** (the primary
+  "nothing to see" case), the plan shows a faint centered hint
+  ("Draw a wall to begin", `.plan-empty-hint`). It is **non-interactive**
+  (`pointer-events: none`), is **contextual** (reappears if the user deletes
+  every wall — keyed off `walls.length === 0`, not first-visit), and is plan-only
+  (a simple centered text hint, never pointing at the toolbar).
+
 ## Verification (do this every session)
 
 - `npm run dev` must start clean; interact with the changed features and check the

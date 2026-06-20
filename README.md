@@ -416,6 +416,18 @@ windows and doors — so they move with the wall and are deleted with it.
 
 _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 
+### Help panel & empty-state nudge (phase 6)
+
+- **Help panel** — a **?** button in the top bar (beside Settings) opens a concise,
+  skimmable list of tools and keyboard shortcuts, grouped (Tools / Edit / Drawing
+  & placement / View). The shortcut list in `HelpPanel.tsx` is **hand-maintained**
+  (not generated from the keymap) — a comment at the list and CLAUDE.md note that
+  it must be updated whenever a shortcut changes, so it doesn't silently drift.
+- **Empty-state nudge** — when the active level has no walls, the plan shows a
+  faint centered "Draw a wall to begin" hint. It's non-interactive (never blocks
+  clicks) and contextual: it disappears as soon as a wall exists and reappears if
+  every wall is deleted.
+
 ## Controls & keyboard shortcuts
 
 | Action                    | Control                                     |
@@ -451,6 +463,7 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 | Zoom                      | Scroll wheel (centered on cursor)           |
 | Undo                      | `Ctrl/Cmd` + `Z`                            |
 | Redo                      | `Ctrl/Cmd` + `Shift` + `Z`, or `Ctrl` + `Y` |
+| Help & shortcuts          | **?** button (top bar)                      |
 | Orbit the 3D view         | Drag in the 3D preview                      |
 | Zoom the 3D view          | Scroll wheel in the 3D preview              |
 | Frame the design (3D)     | **Fit view** button                         |

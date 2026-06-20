@@ -51,8 +51,8 @@ npm run format   # Prettier
   **depth**, **rotation** (15° steps; also `R` / `Shift+R`), **type** (flat /
   gabled / hipped / pitched-shed), **pitch**, **overhang**, **material**, and a
   **Show this roof** toggle. Drag the body to move it; `Delete` removes it. All
-  edits are undoable. A global **Show roofs** toggle lives in the **Floors**
-  dropdown.
+  edits are undoable. A global **Show roofs** toggle lives in the **3D view bar**
+  (beside Full / Cutaway / Stubs).
 - Roofs **stay where you put them** — adding or copying a floor above never adds,
   moves, duplicates, or re-tops any roof. No auto-detection runs anywhere.
 - In **Cutaway/Stubs** each roof suppresses like an upper floor slab so the
@@ -105,8 +105,9 @@ npm run format   # Prettier
   `src/lib/capture.ts` (the design library reuses it for thumbnails). The plan
   registers its capturer via `setPlanCapturer` and the 3D pane its handles via
   `setCaptureHandles`, so the top-bar menu can drive both.
-- JSON **Export JSON** / **Import JSON** (the design document) remain separate
-  buttons in the top bar.
+- The design **document** (JSON) has its own unified **Design JSON** menu in the
+  top bar (same popover style as Export image) with **Import JSON…** / **Export
+  JSON** options.
 
 ### Fill Room (phase 3e)
 

@@ -407,7 +407,8 @@ in code under `src/catalog/`:
   The welcome screen and the in-app **My Designs** menu list records (New / Open /
   Duplicate / Rename / Delete; Continue = most recent; Save As forks a new record
   via `saveAs`). Import (`setDesign`) and New (`newDesign`) start a fresh record
-  id. Still: explicit "Export JSON" / "Import JSON"; per-design `schemaVersion`
+  id. Still: explicit "Export JSON" / "Import JSON" (the unified **Design JSON**
+  top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
   rather than corrupting data.
 
@@ -432,8 +433,9 @@ in code under `src/catalog/`:
   image**, or **Both** (two PNGs) — each at 2× via `downloadCanvasPng`, reusing
   the capture utilities above. A **Transparent 3D background** toggle applies to
   the 3D image only (the plan always exports on a white ground). Options for a
-  pane not currently shown (per `layout`) are disabled. The separate top-bar
-  **Export JSON** / **Import JSON** buttons handle the design document.
+  pane not currently shown (per `layout`) are disabled. The design **document**
+  (JSON) has its own unified top-bar **Design JSON** menu (`DesignFileMenu`, same
+  popover pattern) with **Import JSON…** / **Export JSON** options.
 
 ## Geometry rules
 
@@ -628,11 +630,12 @@ in code under `src/catalog/`:
   suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)
   so it never blocks the iso interior; solid in Full; kept solid in
   active-level-only. PLUS each roof's `visible` flag and a **global hide-roofs**
-  UI pref (`hideRoofs`, persisted) remove it.
+  UI pref (`hideRoofs`, persisted) remove it — toggled by a **Show roofs** button
+  in the 3D **`ViewModeBar`** (beside Full/Cutaway/Stubs), NOT in the 2D editor.
 - **2D plan:** each roof draws its (rotated) footprint rectangle with a faint
   ridge line indicating orientation (along the longer axis; omitted for flat),
-  selectable. The Floors dropdown keeps only the **global Show-roofs toggle**
-  (`RoofPanel`); per-roof editing is via selecting the roof object.
+  selectable. Per-roof editing is via selecting the roof object; the only global
+  roof control is the **Show roofs** toggle in the 3D view bar (above).
 - The v11→v12 migration **clears** every level's `roofs` to `[]` (the old auto
   output was unsatisfactory; the user re-places roofs with the new tool).
   Export/Import round-trips the new `Roof[]`.

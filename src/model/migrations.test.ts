@@ -211,6 +211,24 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.walls[0]!.doors[0]!.style).toBe("single");
   });
 
+  it("gives every window style 'plain' (v13 -> v14)", () => {
+    // A v13 design whose wall carries a window without a `style` field.
+    const v13 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v13.schemaVersion = 13;
+    const lvl = (v13.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    lvl.roofs = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [];
+    // its window (from V1_FIXTURE) still has no `style`.
+    const out = migrateToLatest(v13);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.walls[0]!.windows[0]!.style).toBe("plain");
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

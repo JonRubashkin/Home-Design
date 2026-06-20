@@ -940,7 +940,7 @@ export function PlanEditor() {
           sillHeight: DEFAULT_WINDOW_SILL_HEIGHT,
         };
         if (validateWindow(wall, candidate).ok)
-          store.addWindow(wall.id, candidate);
+          store.addWindow(wall.id, { ...candidate, style: "plain" });
       }
       return;
     }
@@ -1721,6 +1721,7 @@ export function PlanEditor() {
                     wall={w}
                     t={win.t}
                     width={win.width}
+                    style={win.style}
                     selected={
                       selection?.kind === "window" && selection.id === win.id
                     }
@@ -2104,12 +2105,14 @@ function WindowSymbol({
   wall,
   t,
   width,
+  style = "plain",
   selected,
   ghost,
 }: {
   wall: Wall;
   t: number;
   width: number;
+  style?: "plain" | "grid" | "divided" | "picture";
   selected?: boolean;
   ghost?: "valid" | "invalid";
 }) {
@@ -2134,6 +2137,11 @@ function WindowSymbol({
       vectorEffect="non-scaling-stroke"
     />
   );
+  // Plan hint for the vertical glazing bar(s): divided/grid both carry a central
+  // mullion (the horizontal bars of a grid aren't visible top-down). Draw it as a
+  // tick across the opening thickness at the window center.
+  const mid = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+  const hasMullion = style === "divided" || style === "grid";
   return (
     <g className={cls}>
       {seg(add(A, o), add(B, o), "fa")}
@@ -2141,6 +2149,16 @@ function WindowSymbol({
       {seg(A, B, "c")}
       {seg(add(A, o), sub(A, o), "ja")}
       {seg(add(B, o), sub(B, o), "jb")}
+      {hasMullion && (
+        <line
+          className="window-mullion"
+          x1={add(mid, o).x}
+          y1={add(mid, o).y}
+          x2={sub(mid, o).x}
+          y2={sub(mid, o).y}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
     </g>
   );
 }

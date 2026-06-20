@@ -242,9 +242,17 @@ npm run format   # Prettier
 
 - **Window tool (N)** — hover a wall to preview a window (invalid spots show
   red), click to place. Windows are selectable, drag along their wall, and edit
-  (width / height / sill / position) in the panel. In 3D the opening is a real
-  hole (sub-boxes) with a translucent glass pane that ghosts/suppresses with its
-  wall and disappears in Stubs mode.
+  (width / height / sill / position / **style**) in the panel. In 3D the opening
+  is a real hole (sub-boxes) with a translucent glass pane that ghosts/suppresses
+  with its wall and disappears in Stubs mode.
+- **Window styles (phase 6)** — each window has a **style** that changes the
+  muntins inside the same hole (the opening size never changes): **plain** (single
+  pane, today's look), **divided** (one centered vertical glazing bar), **grid**
+  /colonial (a 2×3 grid of bars), or **picture** (a large single pane, no
+  divisions). Bars render as thin opaque frame geometry in 3D and a central
+  mullion tick in the 2D plan symbol; cutaway/stubs behavior is unchanged.
+  **Schema v14** adds `style`; older designs migrate (every window becomes
+  `plain`).
 - **Paint tool (P)** — hover a wall to highlight the **near side**, click to
   paint that face with the current material. Each wall's two sides are also
   editable from its properties panel (the chips highlight their side on hover).

@@ -225,6 +225,50 @@ export function slidingDoorBoxes(
   return { panel, track };
 }
 
+export type WindowMuntinStyle = "plain" | "grid" | "divided" | "picture";
+
+// Glazing-bar (muntin) boxes inside a window opening, by style — cosmetic only,
+// the hole is unchanged. "plain"/"picture" = no bars (single pane); "divided" =
+// one centered VERTICAL bar (splits the pane left/right); "grid"/colonial = a
+// 2x3 layout (1 vertical + 2 horizontal bars → two columns, three rows). Bars
+// sit a hair proud of the glass so they read on both faces.
+export function windowMuntinBoxes(
+  wall: Wall,
+  win: {
+    t: number;
+    width: number;
+    height: number;
+    sillHeight: number;
+    style?: WindowMuntinStyle;
+  },
+  elevation = 0,
+): Box3Spec[] {
+  const style = win.style ?? "plain";
+  if (style === "plain" || style === "picture") return [];
+
+  const L = wallLength(wall);
+  const { a, b } = windowSpan(L, win.t, win.width);
+  const y0 = win.sillHeight;
+  const y1 = win.sillHeight + win.height;
+  const barW = 0.04; // bar cross-section in the glazing plane
+  const depth = Math.min(0.06, wall.thickness * 0.6); // slightly proud of glass
+  const midAlong = (a + b) / 2;
+
+  const boxes: Box3Spec[] = [
+    // Central vertical bar (divided and grid both have it → 2 columns).
+    orientedBox(wall, midAlong - barW / 2, midAlong + barW / 2, y0, y1, depth, elevation),
+  ];
+  if (style === "grid") {
+    // Two horizontal bars split the height into three rows.
+    const h = win.height;
+    for (const k of [1, 2]) {
+      const yc = y0 + (h * k) / 3;
+      boxes.push(orientedBox(wall, a, b, yc - barW / 2, yc + barW / 2, depth, elevation));
+    }
+  }
+  return boxes;
+}
+
 // A thin oriented box filling one window opening, for the translucent glass pane.
 // Thinner than the wall so it sits inside the reveal.
 export function windowGlassBox(

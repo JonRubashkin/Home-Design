@@ -1128,6 +1128,17 @@ export function PropertiesPanel() {
             }}
           />
         </div>
+        <ToggleField
+          label="Style"
+          value={win.style}
+          options={[
+            { value: "plain", label: "Plain" },
+            { value: "divided", label: "Divided" },
+            { value: "grid", label: "Grid" },
+            { value: "picture", label: "Picture" },
+          ]}
+          onChange={(v) => updateWindow(wall.id, win.id, { style: v })}
+        />
         <button
           type="button"
           className="danger-button"

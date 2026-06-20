@@ -127,6 +127,7 @@ export function createWindow(
     width: opts?.width ?? DEFAULT_WINDOW_WIDTH,
     height: opts?.height ?? DEFAULT_WINDOW_HEIGHT,
     sillHeight: opts?.sillHeight ?? DEFAULT_WINDOW_SILL_HEIGHT,
+    style: opts?.style ?? "plain",
   };
 }
 
@@ -246,7 +247,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 13,
+    schemaVersion: 14,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

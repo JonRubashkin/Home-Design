@@ -34,6 +34,11 @@ export interface WindowOpening {
   width: number; // meters
   height: number; // meters
   sillHeight: number; // meters from floor to bottom of window
+  // Phase 6: muntin/frame pattern inside the same opening (cosmetic — the hole
+  // size is unchanged). "plain" = today's single pane; "divided" = one centered
+  // vertical glazing bar; "grid"/colonial = a 2x3 grid of bars; "picture" = a
+  // large single pane, no divisions. Default "plain" (pre-v14 windows migrate).
+  style: "plain" | "grid" | "divided" | "picture";
 }
 
 export interface DoorOpening {
@@ -168,7 +173,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 13;
+  schemaVersion: 14;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

@@ -50,7 +50,7 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 13;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 14;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
@@ -59,7 +59,8 @@ interface Design {
                             // 5.1, removed); v12 = manual roof tool (Phase 5.2 —
                             // the v11 auto roofs are cleared on upgrade); v13 =
                             // door styles (Phase 6 — every door gains
-                            // style:"single").
+                            // style:"single"); v14 = window styles (Phase 6 —
+                            // every window gains style:"plain").
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -162,6 +163,12 @@ interface WindowOpening {
   width: number;            // meters
   height: number;           // meters
   sillHeight: number;       // meters from floor to bottom of window
+  style: "plain" | "grid" | "divided" | "picture"; // Phase 6. muntin/frame inside
+                            // the SAME opening (cosmetic — hole size unchanged).
+                            // default "plain". plain = single pane; divided = one
+                            // centered VERTICAL bar; grid/colonial = a 2x3 grid of
+                            // bars; picture = large single pane, no divisions.
+                            // Muntin boxes: windowMuntinBoxes (geometry/boxes.ts).
 }
 
 interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.

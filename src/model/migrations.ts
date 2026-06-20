@@ -183,6 +183,22 @@ const migrations: Migration[] = [
     design.schemaVersion = 13;
     return design;
   },
+  // v13 -> v14: window styles (Phase 6 Part B). Every existing window gains
+  // `style: "plain"` — today's single-pane look.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const walls = (level.walls as RawDesign[] | undefined) ?? [];
+      for (const wall of walls) {
+        const windows = (wall.windows as RawDesign[] | undefined) ?? [];
+        for (const win of windows) {
+          if (win.style === undefined) win.style = "plain";
+        }
+      }
+    }
+    design.schemaVersion = 14;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

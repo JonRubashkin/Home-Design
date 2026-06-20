@@ -879,19 +879,44 @@ button:focus-visible,
 .palette {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 4px;
 }
-.palette-group-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.palette-group {
+  display: flex;
+  flex-direction: column;
+}
+.palette-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text);
+  background: var(--chrome-bg-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.palette-group-header:hover {
+  border-color: var(--accent);
+}
+.palette-group-header.open {
+  border-color: var(--accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.palette-group-caret {
+  font-size: 10px;
   color: var(--text-dim);
-  margin: 0 0 6px;
 }
 .palette-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
+  padding: 8px 0 6px;
 }
 .palette-item {
   display: flex;

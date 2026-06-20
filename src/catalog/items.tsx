@@ -1460,19 +1460,22 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
       { name: "keyboard", default: solid("#2b2e35") },
     ],
     build: () => {
-      const D = 0.5;
+      // Monitor sits left-of-center on its stand at the back; the tower stands
+      // to its RIGHT on the desk so the two never intersect; keyboard in front.
+      const monX = -0.07; // shift the monitor left to clear the tower
       return [
-        box("monitor", [0.46, 0.28, 0.03], [0, 0.34, -D / 2 + 0.1]), // screen
-        box("stand", [0.06, 0.14, 0.06], [0, 0.16, -D / 2 + 0.1]), // neck
-        box("stand", [0.2, 0.02, 0.14], [0, 0.1, -D / 2 + 0.1]), // base
-        box("keyboard", [0.42, 0.02, 0.14], [0, 0.1, 0.1]),
-        box("stand", [0.18, 0.34, 0.4], [0.18, 0.17, 0.02]), // small tower
+        box("monitor", [0.36, 0.27, 0.03], [monX, 0.32, -0.17]), // screen
+        box("stand", [0.05, 0.16, 0.04], [monX, 0.1, -0.16]), // neck
+        box("stand", [0.18, 0.02, 0.12], [monX, 0.02, -0.15]), // base
+        box("keyboard", [0.34, 0.02, 0.13], [monX, 0.015, 0.13]),
+        box("stand", [0.13, 0.36, 0.4], [0.19, 0.18, -0.02]), // upright tower (right)
       ];
     },
     glyph: (w, d): ReactNode => (
       <>
-        {gl(-w / 2 + 0.05, -d / 2 + 0.08, w / 2 - 0.18, -d / 2 + 0.08, "mon")}
-        {gr(-w / 2 + 0.08, d / 2 - 0.16, w - 0.3, 0.1, "kbd")}
+        {gl(-w / 2 + 0.06, -d / 2 + 0.08, w / 2 - 0.2, -d / 2 + 0.08, "mon")}
+        {gr(-w / 2 + 0.08, d / 2 - 0.16, w - 0.32, 0.1, "kbd")}
+        {gr(w / 2 - 0.16, -d / 2 + 0.06, 0.12, d - 0.18, "twr")}
       </>
     ),
   },

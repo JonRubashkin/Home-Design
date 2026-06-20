@@ -21,6 +21,9 @@ export interface ViewPrefs {
   collisionMode: CollisionMode; // furniture collision prevention
   showDimensions: boolean; // 2D: length label on every wall segment
   hideRoofs: boolean; // 3D: global hide-roofs toggle (on top of per-section)
+  // Furniture palette: the one accordion category group left open (null = all
+  // collapsed). Restored when the Furniture tool is reopened.
+  openPaletteCategory: string | null;
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -34,6 +37,7 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   collisionMode: "soft",
   showDimensions: false,
   hideRoofs: false,
+  openPaletteCategory: null,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -105,6 +109,10 @@ export function loadViewPrefs(): ViewPrefs {
         typeof parsed.hideRoofs === "boolean"
           ? parsed.hideRoofs
           : DEFAULT_VIEW_PREFS.hideRoofs,
+      openPaletteCategory:
+        typeof parsed.openPaletteCategory === "string"
+          ? parsed.openPaletteCategory
+          : null,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

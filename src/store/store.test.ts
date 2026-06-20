@@ -149,7 +149,7 @@ describe("windows", () => {
   it("adds, selects, and undoes a window", () => {
     state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
     const id = firstWallId();
-    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9, style: "plain" });
     expect(walls()[0]!.windows).toHaveLength(1);
     expect(state().selection).toEqual({
       kind: "window",
@@ -163,7 +163,7 @@ describe("windows", () => {
   it("moves a window as a single drag step", () => {
     state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
     const id = firstWallId();
-    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9, style: "plain" });
     const winId = walls()[0]!.windows[0]!.id;
     const pastBefore = state().past.length;
     state().beginDrag();
@@ -179,7 +179,7 @@ describe("windows", () => {
   it("deletes a window and clears its selection", () => {
     state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
     const id = firstWallId();
-    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 });
+    state().addWindow(id, { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9, style: "plain" });
     const winId = walls()[0]!.windows[0]!.id;
     state().deleteWindow(id, winId);
     expect(walls()[0]!.windows).toHaveLength(0);
@@ -300,6 +300,7 @@ describe("doors", () => {
     t: 0.5,
     width: 0.9,
     height: 2.0,
+    style: "single" as const,
     hinge: "start" as const,
     swing: "A" as const,
     material: { kind: "solid" as const, color: "#9a6b4f" },
@@ -546,7 +547,7 @@ describe("copyWallsToAbove", () => {
   it("creates the floor above, copies walls + openings with fresh ids, switches active", () => {
     state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
     const wallId = walls()[0]!.id;
-    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9 });
+    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9, style: "plain" });
     const groundId = state().currentLevelId;
     state().copyWallsToAbove();
     expect(state().design.levels).toHaveLength(2);
@@ -966,7 +967,7 @@ describe("copy / paste", () => {
   it("copies a wall with its openings under fresh ids", () => {
     state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
     const wallId = walls()[0]!.id;
-    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9 });
+    state().addWindow(wallId, { t: 0.5, width: 1, height: 1, sillHeight: 0.9, style: "plain" });
     state().setSelection({ kind: "wall", id: wallId });
     state().copySelection();
     state().pasteClipboard();

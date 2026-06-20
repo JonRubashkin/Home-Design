@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { wallToBoxes } from "./boxes";
+import {
+  wallToBoxes,
+  doorLeafBox,
+  doubleDoorLeafBoxes,
+  slidingDoorBoxes,
+  windowMuntinBoxes,
+} from "./boxes";
 import { createWall } from "../model/defaults";
 import type { Wall, WindowOpening } from "../model/types";
 
@@ -11,6 +17,7 @@ const win = (over: Partial<WindowOpening>): WindowOpening => ({
   width: 1.2,
   height: 1.2,
   sillHeight: 0.9,
+  style: "plain",
   ...over,
 });
 
@@ -118,6 +125,7 @@ describe("wallToBoxes — doors", () => {
     t: 0.5,
     width: 0.9,
     height: 2.0,
+    style: "single" as const,
     hinge: "start" as const,
     swing: "A" as const,
     material: { kind: "solid" as const, color: "#9a6b4f" },
@@ -146,7 +154,14 @@ describe("wallToBoxes — doors", () => {
   });
 
   it("handles a wall with both a window and a door", () => {
-    const win = { id: "w", t: 0.25, width: 1.0, height: 1.2, sillHeight: 0.9 };
+    const win = {
+      id: "w",
+      t: 0.25,
+      width: 1.0,
+      height: 1.2,
+      sillHeight: 0.9,
+      style: "plain" as const,
+    };
     const w: Wall = {
       ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
       windows: [win],
@@ -155,5 +170,79 @@ describe("wallToBoxes — doors", () => {
     const boxes = wallToBoxes(w);
     // pier, window under-sill, window over-head, pier, door header, pier = 6
     expect(boxes).toHaveLength(6);
+  });
+});
+
+describe("door leaf styles", () => {
+  // 4 m wall along +x; door centred at t=0.5, width 0.9 -> opening [1.55, 2.45].
+  const w: Wall = {
+    ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
+    doors: [],
+  };
+  const d = { t: 0.5, width: 0.9, height: 2.0 };
+
+  it("single leaf spans the opening (one box, centred)", () => {
+    const leaf = doorLeafBox(w, d);
+    expect(leaf.center[0]).toBeCloseTo(2.0); // opening centre
+    expect(leaf.size[0]).toBeGreaterThan(0.7); // ~width minus the frame
+    expect(leaf.size[0]).toBeLessThan(0.9);
+  });
+
+  it("double = two half-width leaves on either side of the opening centre", () => {
+    const leaves = doubleDoorLeafBoxes(w, d);
+    expect(leaves).toHaveLength(2);
+    const [start, end] = leaves;
+    // each leaf is roughly half the single-leaf width
+    const single = doorLeafBox(w, d);
+    expect(start!.size[0]).toBeCloseTo(single.size[0] / 2, 1);
+    // they sit on opposite sides of the opening centre (2.0)
+    expect(start!.center[0]).toBeLessThan(2.0);
+    expect(end!.center[0]).toBeGreaterThan(2.0);
+  });
+
+  it("sliding parks the panel beside the opening, offset onto side A's face", () => {
+    const { panel, track } = slidingDoorBoxes(w, d);
+    // panel is parked toward the wall start, ending at the opening start (1.55)
+    expect(panel.center[0]).toBeLessThan(1.55);
+    expect(panel.size[0]).toBeCloseTo(0.9, 6); // full door width
+    // offset onto the face: side A normal of a +x wall points to -y -> -z world.
+    expect(panel.center[2]).toBeLessThan(0);
+    // the track rides at the door head, above the panel
+    expect(track.center[1]).toBeGreaterThan(panel.center[1]);
+  });
+});
+
+describe("window muntin styles", () => {
+  // 4 m wall along +x; window centred at t=0.5, width 1.2, height 1.2, sill 0.9.
+  const w: Wall = {
+    ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
+    windows: [],
+  };
+  const win = { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 };
+
+  it("plain and picture have no muntins", () => {
+    expect(windowMuntinBoxes(w, { ...win, style: "plain" })).toHaveLength(0);
+    expect(windowMuntinBoxes(w, { ...win, style: "picture" })).toHaveLength(0);
+  });
+
+  it("divided has a single centered vertical bar", () => {
+    const bars = windowMuntinBoxes(w, { ...win, style: "divided" });
+    expect(bars).toHaveLength(1);
+    // the bar is centered along the opening (t=0.5 -> x=2) and spans the height
+    expect(bars[0]!.center[0]).toBeCloseTo(2.0);
+    expect(bars[0]!.size[1]).toBeCloseTo(1.2); // full window height
+  });
+
+  it("grid is a 2x3 layout: 1 vertical + 2 horizontal bars", () => {
+    const bars = windowMuntinBoxes(w, { ...win, style: "grid" });
+    expect(bars).toHaveLength(3);
+    const verticals = bars.filter((b) => b.size[1] > b.size[0]);
+    const horizontals = bars.filter((b) => b.size[0] > b.size[1]);
+    expect(verticals).toHaveLength(1);
+    expect(horizontals).toHaveLength(2);
+    // horizontals split the height into thirds: y = sill + h/3 and + 2h/3
+    const ys = horizontals.map((b) => b.center[1]).sort((p, q) => p - q);
+    expect(ys[0]).toBeCloseTo(0.9 + 1.2 / 3);
+    expect(ys[1]).toBeCloseTo(0.9 + (2 * 1.2) / 3);
   });
 });

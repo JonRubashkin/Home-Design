@@ -5,6 +5,9 @@ import {
   windowGlassBox,
   doorFrameBoxes,
   doorLeafBox,
+  doubleDoorLeafBoxes,
+  slidingDoorBoxes,
+  windowMuntinBoxes,
   type Box3Spec,
 } from "../../geometry/boxes";
 import { faceTextureTransform } from "../../materials/faceUV";
@@ -15,6 +18,7 @@ import { WallMount3D } from "./WallMount3D";
 const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
 const NEUTRAL_END: MaterialRef = { kind: "solid", color: "#c4bfb5" };
 const DOOR_TRIM: MaterialRef = { kind: "solid", color: "#d9d2c6" };
+const WINDOW_FRAME: MaterialRef = { kind: "solid", color: "#eef0f2" };
 const GLASS_COLOR = "#bcd4e6";
 
 // A box with a single material on every face (door frame trim and leaf).
@@ -200,39 +204,76 @@ export function Wall3D({
         />
       ))}
 
-      {/* Translucent glass panes (not in stub mode). */}
+      {/* Translucent glass panes + style muntins (not in stub mode). */}
       {!stub &&
         wall.windows.map((win) => {
           const g = windowGlassBox(wall, win, elevation);
           return (
-            <mesh
-              key={win.id}
-              position={g.center}
-              rotation={[0, g.rotationY, 0]}
-              renderOrder={3}
-            >
-              <boxGeometry args={g.size} />
-              <meshStandardMaterial
-                color={GLASS_COLOR}
-                transparent
-                opacity={ghost ? 0.12 : 0.28}
-                depthWrite={false}
-                roughness={0.1}
-                metalness={0}
-              />
-            </mesh>
+            <group key={win.id}>
+              <mesh
+                position={g.center}
+                rotation={[0, g.rotationY, 0]}
+                renderOrder={3}
+              >
+                <boxGeometry args={g.size} />
+                <meshStandardMaterial
+                  color={GLASS_COLOR}
+                  transparent
+                  opacity={ghost ? 0.12 : 0.28}
+                  depthWrite={false}
+                  roughness={0.1}
+                  metalness={0}
+                />
+              </mesh>
+              {/* Opaque glazing bars for grid/divided (none for plain/picture). */}
+              {windowMuntinBoxes(wall, win, elevation).map((b, i) => (
+                <SolidBoxMesh
+                  key={i}
+                  box={b}
+                  material={WINDOW_FRAME}
+                  selected={selected}
+                  ghost={ghost}
+                />
+              ))}
+            </group>
           );
         })}
 
-      {/* Door frame (jambs + head) and closed leaf (not in stub mode). */}
+      {/* Door frame/track and closed leaf/leaves, by style (not in stub mode). */}
       {!stub &&
         wall.doors.map((door) => {
-          const leaf = doorLeafBox(wall, door, elevation);
-          const lt = faceTextureTransform(
-            leaf.face,
-            PATTERN_TILE_METERS,
-            false,
-          );
+          // Sliding: a panel parked on the wall face + a track rail, no frame.
+          if (door.style === "sliding") {
+            const { panel, track } = slidingDoorBoxes(wall, door, elevation);
+            const pt = faceTextureTransform(
+              panel.face,
+              PATTERN_TILE_METERS,
+              false,
+            );
+            return (
+              <group key={door.id}>
+                <SolidBoxMesh
+                  box={track}
+                  material={DOOR_TRIM}
+                  selected={selected}
+                  ghost={ghost}
+                />
+                <SolidBoxMesh
+                  box={panel}
+                  material={door.material}
+                  repeat={pt.repeat}
+                  offset={pt.offset}
+                  selected={selected}
+                  ghost={ghost}
+                />
+              </group>
+            );
+          }
+          // Single / double: opening frame (jambs + head) + closed leaf(es).
+          const leaves =
+            door.style === "double"
+              ? doubleDoorLeafBoxes(wall, door, elevation)
+              : [doorLeafBox(wall, door, elevation)];
           return (
             <group key={door.id}>
               {doorFrameBoxes(wall, door, elevation).map((b, i) => (
@@ -244,14 +285,24 @@ export function Wall3D({
                   ghost={ghost}
                 />
               ))}
-              <SolidBoxMesh
-                box={leaf}
-                material={door.material}
-                repeat={lt.repeat}
-                offset={lt.offset}
-                selected={selected}
-                ghost={ghost}
-              />
+              {leaves.map((leaf, i) => {
+                const lt = faceTextureTransform(
+                  leaf.face,
+                  PATTERN_TILE_METERS,
+                  false,
+                );
+                return (
+                  <SolidBoxMesh
+                    key={i}
+                    box={leaf}
+                    material={door.material}
+                    repeat={lt.repeat}
+                    offset={lt.offset}
+                    selected={selected}
+                    ghost={ghost}
+                  />
+                );
+              })}
             </group>
           );
         })}

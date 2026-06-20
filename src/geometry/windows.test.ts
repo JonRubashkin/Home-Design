@@ -21,6 +21,7 @@ const win = (over: Partial<WindowOpening>): WindowOpening => ({
   width: 1.2,
   height: 1.2,
   sillHeight: 0.9,
+  style: "plain",
   ...over,
 });
 

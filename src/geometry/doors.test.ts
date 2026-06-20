@@ -8,6 +8,7 @@ const door = (over: Partial<DoorOpening>): DoorOpening => ({
   t: 0.5,
   width: 0.9,
   height: 2.0,
+  style: "single",
   hinge: "start",
   swing: "A",
   material: { kind: "solid", color: "#9a6b4f" },
@@ -43,6 +44,7 @@ describe("validateDoor", () => {
       width: 1.2,
       height: 1.2,
       sillHeight: 0.9,
+      style: "plain",
     };
     const r = validateDoor(wall([win]), door({ t: 0.5 }));
     expect(r.ok).toBe(false);
@@ -67,6 +69,7 @@ describe("validateDoor", () => {
       width: 0.8,
       height: 1.2,
       sillHeight: 0.9,
+      style: "plain",
     };
     expect(validateDoor(wall([win]), door({ t: 0.8 })).ok).toBe(true);
   });

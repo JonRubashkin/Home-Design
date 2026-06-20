@@ -1,5 +1,5 @@
 import type { Wall } from "../model/types";
-import { wallLength, wallDirection } from "./wall";
+import { wallLength, wallDirection, wallNormal } from "./wall";
 import { planToWorld } from "./mapping";
 import { windowSpan } from "./windows";
 
@@ -96,7 +96,9 @@ export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
 }
 
 // Build an oriented sub-box from along-wall span [a,b], vertical [y0,y1], and a
-// custom thickness (centered on the wall centerline).
+// custom thickness. Centered on the wall centerline unless `lateral` offsets it
+// along the wall normal (+ = toward side A; used to park a sliding door on a
+// wall face).
 function orientedBox(
   wall: Wall,
   a: number,
@@ -105,12 +107,14 @@ function orientedBox(
   y1: number,
   thickness: number,
   elevation: number,
+  lateral = 0,
 ): Box3Spec {
   const dir = wallDirection(wall);
+  const n = wallNormal(wall); // unit normal toward side A
   const rotationY = Math.atan2(-dir.y, dir.x);
   const alongCenter = (a + b) / 2;
-  const px = wall.start.x + dir.x * alongCenter;
-  const py = wall.start.y + dir.y * alongCenter;
+  const px = wall.start.x + dir.x * alongCenter + n.x * lateral;
+  const py = wall.start.y + dir.y * alongCenter + n.y * lateral;
   const [wx, , wz] = planToWorld({ x: px, y: py }, elevation);
   return {
     center: [wx, elevation + (y0 + y1) / 2, wz],
@@ -140,7 +144,12 @@ export function doorFrameBoxes(
   ];
 }
 
-// The closed door leaf filling the opening (inside the frame).
+// Leaf panel thickness (meters), slimmer than the wall so it sits in the reveal.
+const doorLeafThickness = (wall: Wall) => Math.min(0.045, wall.thickness * 0.5);
+
+export type DoorLeafStyle = "single" | "double" | "sliding";
+
+// The closed door leaf filling the opening (inside the frame). Single style.
 export function doorLeafBox(
   wall: Wall,
   door: { t: number; width: number; height: number },
@@ -149,8 +158,115 @@ export function doorLeafBox(
   const L = wallLength(wall);
   const { a, b } = windowSpan(L, door.t, door.width);
   const fw = Math.min(DOOR_FRAME_W, (b - a) / 3);
-  const t = Math.min(0.045, wall.thickness * 0.5);
+  const t = doorLeafThickness(wall);
   return orientedBox(wall, a + fw, b - fw, 0, door.height - fw, t, elevation);
+}
+
+// Closed leaves for a "double"/French door: two half-width panels meeting at the
+// opening center, hinged at opposite jambs. A thin seam separates them.
+export function doubleDoorLeafBoxes(
+  wall: Wall,
+  door: { t: number; width: number; height: number },
+  elevation = 0,
+): Box3Spec[] {
+  const L = wallLength(wall);
+  const { a, b } = windowSpan(L, door.t, door.width);
+  const fw = Math.min(DOOR_FRAME_W, (b - a) / 3);
+  const t = doorLeafThickness(wall);
+  const mid = (a + b) / 2;
+  const seam = Math.min(0.01, (b - a) / 20);
+  const h = door.height - fw;
+  return [
+    orientedBox(wall, a + fw, mid - seam, 0, h, t, elevation), // start leaf
+    orientedBox(wall, mid + seam, b - fw, 0, h, t, elevation), // end leaf
+  ];
+}
+
+// A sliding door: one panel parked on side A's face, slid toward the wall START
+// (so the opening reads open), plus a thin track rail above. hinge/swing are
+// ignored. The panel rides on the face (offset out by half the wall + half the
+// panel) and spans the door's width ending at the opening's start edge.
+export function slidingDoorBoxes(
+  wall: Wall,
+  door: { t: number; width: number; height: number },
+  elevation = 0,
+): { panel: Box3Spec; track: Box3Spec } {
+  const L = wallLength(wall);
+  const { a } = windowSpan(L, door.t, door.width);
+  const t = doorLeafThickness(wall);
+  // Park the panel just behind the start jamb; clamp so it stays on the wall.
+  const panelEnd = a;
+  const panelStart = Math.max(0, a - door.width);
+  // Sit the panel against side A's outer face.
+  const lateral = wall.thickness / 2 + t / 2;
+  const railH = 0.05;
+  const panel = orientedBox(
+    wall,
+    panelStart,
+    panelEnd,
+    0,
+    door.height,
+    t,
+    elevation,
+    lateral,
+  );
+  // The track spans the parked panel plus the opening, at the head.
+  const trackEnd = a + door.width;
+  const track = orientedBox(
+    wall,
+    panelStart,
+    Math.min(L, trackEnd),
+    door.height,
+    door.height + railH,
+    t,
+    elevation,
+    lateral,
+  );
+  return { panel, track };
+}
+
+export type WindowMuntinStyle = "plain" | "grid" | "divided" | "picture";
+
+// Glazing-bar (muntin) boxes inside a window opening, by style — cosmetic only,
+// the hole is unchanged. "plain"/"picture" = no bars (single pane); "divided" =
+// one centered VERTICAL bar (splits the pane left/right); "grid"/colonial = a
+// 2x3 layout (1 vertical + 2 horizontal bars → two columns, three rows). Bars
+// sit a hair proud of the glass so they read on both faces.
+export function windowMuntinBoxes(
+  wall: Wall,
+  win: {
+    t: number;
+    width: number;
+    height: number;
+    sillHeight: number;
+    style?: WindowMuntinStyle;
+  },
+  elevation = 0,
+): Box3Spec[] {
+  const style = win.style ?? "plain";
+  if (style === "plain" || style === "picture") return [];
+
+  const L = wallLength(wall);
+  const { a, b } = windowSpan(L, win.t, win.width);
+  const y0 = win.sillHeight;
+  const y1 = win.sillHeight + win.height;
+  const barW = 0.04; // bar cross-section in the glazing plane
+  const depth = Math.min(0.06, wall.thickness * 0.6); // slightly proud of glass
+  const midAlong = (a + b) / 2;
+
+  const boxes: Box3Spec[] = [
+    // Central vertical bar (divided and grid both have it → 2 columns).
+    orientedBox(wall, midAlong - barW / 2, midAlong + barW / 2, y0, y1, depth, elevation),
+  ];
+  if (style === "grid") {
+    // Two horizontal bars split the height into three rows.
+    const h = win.height;
+    for (const k of [1, 2]) {
+      const yc = y0 + (h * k) / 3;
+      boxes.push(orientedBox(wall, a, b, yc - barW / 2, yc + barW / 2, depth, elevation));
+    }
+  }
+  return boxes;
 }
 
 // A thin oriented box filling one window opening, for the translucent glass pane.

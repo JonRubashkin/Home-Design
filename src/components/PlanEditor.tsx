@@ -940,7 +940,7 @@ export function PlanEditor() {
           sillHeight: DEFAULT_WINDOW_SILL_HEIGHT,
         };
         if (validateWindow(wall, candidate).ok)
-          store.addWindow(wall.id, candidate);
+          store.addWindow(wall.id, { ...candidate, style: "plain" });
       }
       return;
     }
@@ -957,6 +957,7 @@ export function PlanEditor() {
         if (validateDoor(wall, candidate).ok)
           store.addDoor(wall.id, {
             ...candidate,
+            style: "single",
             // Hinge defaults to the nearer wall end; swing to side A.
             hinge: t < 0.5 ? "start" : "end",
             swing: "A",
@@ -1720,6 +1721,7 @@ export function PlanEditor() {
                     wall={w}
                     t={win.t}
                     width={win.width}
+                    style={win.style}
                     selected={
                       selection?.kind === "window" && selection.id === win.id
                     }
@@ -2023,6 +2025,15 @@ export function PlanEditor() {
           })()}
       </svg>
 
+      {/* Empty-state nudge: shown whenever the active level has no walls (the
+          primary "nothing to see" case). Non-interactive, centered, and it
+          reappears if the user deletes everything. */}
+      {walls.length === 0 && (
+        <div className="plan-empty-hint" aria-hidden="true">
+          Draw a wall to begin
+        </div>
+      )}
+
       <div className="plan-controls">
         <div className="floors-menu">
           <button
@@ -2103,12 +2114,14 @@ function WindowSymbol({
   wall,
   t,
   width,
+  style = "plain",
   selected,
   ghost,
 }: {
   wall: Wall;
   t: number;
   width: number;
+  style?: "plain" | "grid" | "divided" | "picture";
   selected?: boolean;
   ghost?: "valid" | "invalid";
 }) {
@@ -2133,6 +2146,11 @@ function WindowSymbol({
       vectorEffect="non-scaling-stroke"
     />
   );
+  // Plan hint for the vertical glazing bar(s): divided/grid both carry a central
+  // mullion (the horizontal bars of a grid aren't visible top-down). Draw it as a
+  // tick across the opening thickness at the window center.
+  const mid = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+  const hasMullion = style === "divided" || style === "grid";
   return (
     <g className={cls}>
       {seg(add(A, o), add(B, o), "fa")}
@@ -2140,6 +2158,16 @@ function WindowSymbol({
       {seg(A, B, "c")}
       {seg(add(A, o), sub(A, o), "ja")}
       {seg(add(B, o), sub(B, o), "jb")}
+      {hasMullion && (
+        <line
+          className="window-mullion"
+          x1={add(mid, o).x}
+          y1={add(mid, o).y}
+          x2={sub(mid, o).x}
+          y2={sub(mid, o).y}
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
     </g>
   );
 }
@@ -2228,44 +2256,18 @@ function CeilingLightSymbol({
   );
 }
 
-// Standard architectural door symbol: jamb ticks across the opening, the leaf
-// drawn open (perpendicular from the hinge), and a quarter-circle swing arc.
-function DoorSymbolShape({
+// One swinging leaf + quarter-circle arc (the standard architectural symbol),
+// used directly for single doors and twice (mirrored) for double doors.
+function SwingLeaf({
   wall,
   door,
-  selected,
-  ghost,
 }: {
   wall: Wall;
   door: { t: number; width: number; hinge: "start" | "end"; swing: "A" | "B" };
-  selected?: boolean;
-  ghost?: "valid" | "invalid";
 }) {
-  const L = wallLength(wall);
-  if (L === 0) return null;
   const { hinge, jamb, leafEnd, sweepFlag, radius } = doorSymbol(wall, door);
-  const n = vscale(wallNormal(wall), wall.thickness / 2);
-  const cls = ghost
-    ? `door-symbol ghost-${ghost}`
-    : `door-symbol${selected ? " selected" : ""}`;
   return (
-    <g className={cls}>
-      {/* jamb ticks across the wall thickness at both opening edges */}
-      <line
-        x1={add(hinge, n).x}
-        y1={add(hinge, n).y}
-        x2={sub(hinge, n).x}
-        y2={sub(hinge, n).y}
-        vectorEffect="non-scaling-stroke"
-      />
-      <line
-        x1={add(jamb, n).x}
-        y1={add(jamb, n).y}
-        x2={sub(jamb, n).x}
-        y2={sub(jamb, n).y}
-        vectorEffect="non-scaling-stroke"
-      />
-      {/* door leaf (open) */}
+    <>
       <line
         className="door-leaf"
         x1={hinge.x}
@@ -2274,12 +2276,131 @@ function DoorSymbolShape({
         y2={leafEnd.y}
         vectorEffect="non-scaling-stroke"
       />
-      {/* swing arc from the closed position to the open leaf */}
       <path
         className="door-arc"
         d={`M ${jamb.x} ${jamb.y} A ${radius} ${radius} 0 0 ${sweepFlag} ${leafEnd.x} ${leafEnd.y}`}
         vectorEffect="non-scaling-stroke"
       />
+    </>
+  );
+}
+
+// Door plan symbol, by style. single = jamb ticks + open leaf + swing arc;
+// double = two mirrored half-leaves hinged at opposite jambs; sliding = a track
+// line across the opening with the panel parked to one side (no arc). hinge/swing
+// are ignored for sliding.
+function DoorSymbolShape({
+  wall,
+  door,
+  selected,
+  ghost,
+}: {
+  wall: Wall;
+  door: {
+    t: number;
+    width: number;
+    hinge: "start" | "end";
+    swing: "A" | "B";
+    style?: "single" | "double" | "sliding";
+  };
+  selected?: boolean;
+  ghost?: "valid" | "invalid";
+}) {
+  const L = wallLength(wall);
+  if (L === 0) return null;
+  const style = door.style ?? "single";
+  const dir = wallDirection(wall);
+  const n = vscale(wallNormal(wall), wall.thickness / 2);
+  const { a, b } = windowSpan(L, door.t, door.width);
+  const cls = ghost
+    ? `door-symbol ghost-${ghost}`
+    : `door-symbol${selected ? " selected" : ""}`;
+
+  // Jamb tick across the wall thickness at along-wall distance `s`.
+  const jambTick = (s: number, key: string) => {
+    const p = add(wall.start, vscale(dir, s));
+    return (
+      <line
+        key={key}
+        x1={add(p, n).x}
+        y1={add(p, n).y}
+        x2={sub(p, n).x}
+        y2={sub(p, n).y}
+        vectorEffect="non-scaling-stroke"
+      />
+    );
+  };
+
+  if (style === "sliding") {
+    // Track line across the opening (extended toward the parked panel) and the
+    // panel rectangle parked on side A, slid toward the wall start.
+    const panelStart = Math.max(0, a - door.width);
+    const trackEnd = Math.min(L, a + door.width);
+    const tA = add(wall.start, vscale(dir, panelStart));
+    const tB = add(wall.start, vscale(dir, trackEnd));
+    const off1 = wall.thickness / 2;
+    const off2 = off1 + 0.06;
+    const corner = (s: number, off: number) =>
+      add(add(wall.start, vscale(dir, s)), vscale(wallNormal(wall), off));
+    const panelPts = [
+      corner(panelStart, off1),
+      corner(a, off1),
+      corner(a, off2),
+      corner(panelStart, off2),
+    ];
+    return (
+      <g className={cls}>
+        {jambTick(a, "ja")}
+        {jambTick(b, "jb")}
+        <line
+          className="door-track"
+          x1={tA.x}
+          y1={tA.y}
+          x2={tB.x}
+          y2={tB.y}
+          vectorEffect="non-scaling-stroke"
+        />
+        <polygon
+          className="door-panel"
+          points={toPoints(panelPts)}
+          vectorEffect="non-scaling-stroke"
+        />
+      </g>
+    );
+  }
+
+  if (style === "double") {
+    const mid = (a + b) / 2;
+    const half = door.width / 2;
+    // Start leaf occupies [a, mid] hinged at a; end leaf [mid, b] hinged at b.
+    const startLeaf = {
+      t: (a + mid) / 2 / L,
+      width: half,
+      hinge: "start" as const,
+      swing: door.swing,
+    };
+    const endLeaf = {
+      t: (mid + b) / 2 / L,
+      width: half,
+      hinge: "end" as const,
+      swing: door.swing,
+    };
+    return (
+      <g className={cls}>
+        {jambTick(a, "ja")}
+        {jambTick(b, "jb")}
+        <SwingLeaf wall={wall} door={startLeaf} />
+        <SwingLeaf wall={wall} door={endLeaf} />
+      </g>
+    );
+  }
+
+  // single
+  return (
+    <g className={cls}>
+      {jambTick(a, "ja")}
+      {jambTick(b, "jb")}
+      <SwingLeaf wall={wall} door={door} />
     </g>
   );
 }

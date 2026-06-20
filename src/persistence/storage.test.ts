@@ -56,7 +56,14 @@ describe("validateDesign — windows, floors, materials", () => {
         colorB: "#b",
       },
       windows: [
-        { id: "win", t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 },
+        {
+          id: "win",
+          t: 0.5,
+          width: 1.2,
+          height: 1.2,
+          sillHeight: 0.9,
+          style: "plain",
+        },
       ],
       doors: [],
       mounts: [],

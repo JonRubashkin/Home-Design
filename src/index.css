@@ -337,6 +337,22 @@ body {
   pointer-events: none;
 }
 
+/* Empty-state nudge: a faint centered hint when the level has no walls. */
+.plan-empty-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  color: var(--text-dim);
+  opacity: 0.5;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  user-select: none;
+  text-align: center;
+}
+
 /* --- properties --- */
 .properties {
   width: 264px;
@@ -801,6 +817,28 @@ button:focus-visible,
   stroke-dasharray: 4 3;
   fill: none;
 }
+/* sliding-door plan marks: a thin track line and the parked panel rectangle */
+.door-symbol .door-track {
+  stroke-dasharray: 3 2;
+}
+.door-symbol polygon.door-panel {
+  fill: rgba(55, 65, 81, 0.18);
+  stroke: #374151;
+  stroke-width: 1.2;
+}
+.door-symbol.selected polygon.door-panel {
+  fill: rgba(37, 99, 235, 0.2);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.door-symbol.ghost-valid polygon.door-panel {
+  fill: rgba(22, 163, 74, 0.15);
+  stroke: #16a34a;
+}
+.door-symbol.ghost-invalid polygon.door-panel {
+  fill: rgba(220, 38, 38, 0.12);
+  stroke: #dc2626;
+}
 
 /* --- toggle buttons (door hinge / swing) --- */
 .toggle-row {
@@ -1217,6 +1255,50 @@ button:focus-visible,
   margin: 0 0 16px;
   color: var(--text-dim);
   font-size: 13px;
+}
+
+/* --- help panel (the "?" button) --- */
+.help-card {
+  width: min(560px, 100%);
+}
+.help-groups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+  margin: 14px 0 18px;
+}
+.help-group-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.help-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.help-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+.help-keys {
+  flex: 0 0 auto;
+  background: var(--chrome-bg-2);
+  border: 1px solid var(--chrome-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.help-label {
+  color: var(--text);
 }
 
 /* --- design library ("My Designs") --- */

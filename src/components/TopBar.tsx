@@ -6,6 +6,7 @@ import { ResizeAreaDialog } from "./ResizeAreaDialog";
 import { DesignLibraryModal } from "./DesignLibrary";
 import { ExportMenu } from "./ExportMenu";
 import { DesignFileMenu } from "./DesignFileMenu";
+import { HelpPanel } from "./HelpPanel";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -31,6 +32,7 @@ export function TopBar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resizeOpen, setResizeOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const onNew = () => {
     // The current design is already autosaved to its library record; New just
@@ -73,6 +75,15 @@ export function TopBar() {
         >
           {GearIcon}
         </button>
+        <button
+          type="button"
+          className="topbar-icon-button"
+          onClick={() => setHelpOpen(true)}
+          title="Help & keyboard shortcuts"
+          aria-label="Help"
+        >
+          ?
+        </button>
         <ExportMenu />
         <span className="topbar-divider" />
         <button
@@ -108,6 +119,7 @@ export function TopBar() {
         </div>
       )}
 
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
       {libraryOpen && (

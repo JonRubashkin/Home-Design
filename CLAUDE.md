@@ -50,14 +50,17 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 12;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 14;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
                             // (Phase 5e); v10 = ceiling lights (Phase 5f);
                             // v11 = per-level multi-section auto roofs (Phase
                             // 5.1, removed); v12 = manual roof tool (Phase 5.2 —
-                            // the v11 auto roofs are cleared on upgrade).
+                            // the v11 auto roofs are cleared on upgrade); v13 =
+                            // door styles (Phase 6 — every door gains
+                            // style:"single"); v14 = window styles (Phase 6 —
+                            // every window gains style:"plain").
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -160,6 +163,12 @@ interface WindowOpening {
   width: number;            // meters
   height: number;           // meters
   sillHeight: number;       // meters from floor to bottom of window
+  style: "plain" | "grid" | "divided" | "picture"; // Phase 6. muntin/frame inside
+                            // the SAME opening (cosmetic — hole size unchanged).
+                            // default "plain". plain = single pane; divided = one
+                            // centered VERTICAL bar; grid/colonial = a 2x3 grid of
+                            // bars; picture = large single pane, no divisions.
+                            // Muntin boxes: windowMuntinBoxes (geometry/boxes.ts).
 }
 
 interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.
@@ -167,6 +176,13 @@ interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.
   t: number;                // center along wall, 0..1
   width: number;            // meters (default 0.9)
   height: number;           // meters (default 2.0)
+  style: "single" | "double" | "sliding"; // Phase 6. leaf + plan symbol. default
+                            // "single". single = one swinging leaf; double/French
+                            // = two leaves meeting at center, hinged at opposite
+                            // jambs, same swing side; sliding = one leaf sliding
+                            // along the wall (no swing). hinge/swing apply only to
+                            // single & double; ignored for sliding. The opening
+                            // hole is unchanged for all styles (still wallToBoxes).
   hinge: "start" | "end";   // hinge side relative to wall start→end direction
   swing: "A" | "B";         // which wall side the door opens toward
   material: MaterialRef;    // leaf material (default solid #9a6b4f)
@@ -729,6 +745,23 @@ in code under `src/catalog/`:
 - Layout: toolbar left, plan center, properties right, 3D preview either side-by-
   side with the plan or toggled via a Plan / 3D / Split control — Split is the
   default on wide screens.
+
+## Help panel & empty-state nudge (Phase 6 Part C)
+
+- **Help panel** (`HelpPanel`): a **?** button in the top bar (beside Settings)
+  opens a modal listing tools + keyboard shortcuts, grouped (Tools / Edit /
+  Drawing & placement / View). It is a short, skimmable reference — no guided
+  tour. **The shortcut list (`SHORTCUT_GROUPS` in `HelpPanel.tsx`) is
+  HAND-MAINTAINED** and is NOT derived from the keymap/toolbar: whenever a tool
+  shortcut (`useGlobalShortcuts.ts` / `Toolbar.tsx`) or an edit/rotate/copy-paste
+  binding changes, update that list too or the panel silently drifts. A prominent
+  comment at the list says so.
+- **Empty-state nudge:** when the **active level has no walls** (the primary
+  "nothing to see" case), the plan shows a faint centered hint
+  ("Draw a wall to begin", `.plan-empty-hint`). It is **non-interactive**
+  (`pointer-events: none`), is **contextual** (reappears if the user deletes
+  every wall — keyed off `walls.length === 0`, not first-visit), and is plan-only
+  (a simple centered text hint, never pointing at the toolbar).
 
 ## Verification (do this every session)
 

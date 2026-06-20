@@ -34,6 +34,11 @@ export interface WindowOpening {
   width: number; // meters
   height: number; // meters
   sillHeight: number; // meters from floor to bottom of window
+  // Phase 6: muntin/frame pattern inside the same opening (cosmetic — the hole
+  // size is unchanged). "plain" = today's single pane; "divided" = one centered
+  // vertical glazing bar; "grid"/colonial = a 2x3 grid of bars; "picture" = a
+  // large single pane, no divisions. Default "plain" (pre-v14 windows migrate).
+  style: "plain" | "grid" | "divided" | "picture";
 }
 
 export interface DoorOpening {
@@ -41,6 +46,12 @@ export interface DoorOpening {
   t: number; // center along wall, 0..1
   width: number; // meters
   height: number; // meters
+  // Phase 6: leaf + plan-symbol style. "single" = one swinging leaf (today's
+  // behavior); "double"/French = two leaves meeting at the center; "sliding" =
+  // one leaf that slides along the wall (no swing). hinge/swing are only
+  // meaningful for single & double; they are ignored for sliding. Default
+  // "single" (pre-v13 doors migrate to it).
+  style: "single" | "double" | "sliding";
   hinge: "start" | "end"; // hinge side relative to wall start->end direction
   swing: "A" | "B"; // which wall side the door opens toward
   material: MaterialRef;
@@ -162,7 +173,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 12;
+  schemaVersion: 14;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

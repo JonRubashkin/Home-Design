@@ -242,9 +242,17 @@ npm run format   # Prettier
 
 - **Window tool (N)** — hover a wall to preview a window (invalid spots show
   red), click to place. Windows are selectable, drag along their wall, and edit
-  (width / height / sill / position) in the panel. In 3D the opening is a real
-  hole (sub-boxes) with a translucent glass pane that ghosts/suppresses with its
-  wall and disappears in Stubs mode.
+  (width / height / sill / position / **style**) in the panel. In 3D the opening
+  is a real hole (sub-boxes) with a translucent glass pane that ghosts/suppresses
+  with its wall and disappears in Stubs mode.
+- **Window styles (phase 6)** — each window has a **style** that changes the
+  muntins inside the same hole (the opening size never changes): **plain** (single
+  pane, today's look), **divided** (one centered vertical glazing bar), **grid**
+  /colonial (a 2×3 grid of bars), or **picture** (a large single pane, no
+  divisions). Bars render as thin opaque frame geometry in 3D and a central
+  mullion tick in the 2D plan symbol; cutaway/stubs behavior is unchanged.
+  **Schema v14** adds `style`; older designs migrate (every window becomes
+  `plain`).
 - **Paint tool (P)** — hover a wall to highlight the **near side**, click to
   paint that face with the current material. Each wall's two sides are also
   editable from its properties panel (the chips highlight their side on hover).
@@ -273,6 +281,15 @@ npm run format   # Prettier
   as clean gaps in Stubs mode.
 - **Schema v2** — designs now store `doors`; older (v1) designs migrate
   automatically on load/import (every wall gains an empty `doors` array).
+- **Door styles (phase 6)** — each door has a **style**: **single** (one swinging
+  leaf, today's behavior), **double**/French (two half-width leaves meeting at the
+  center, hinged at opposite jambs and swinging to the same side — two mirrored
+  arcs in plan), or **sliding** (one leaf that slides along the wall on its face,
+  shown as a track line with the panel parked to one side — no swing arc). The
+  opening hole is identical for all three. `hinge`/`swing` apply only to
+  single/double; the panel hides those controls for sliding. Set the style in the
+  door properties panel (undoable). **Schema v13** adds `style`; older designs
+  migrate (every door becomes `single`).
 
 ### Furniture (phase 2b)
 
@@ -399,6 +416,18 @@ windows and doors — so they move with the wall and are deleted with it.
 
 _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 
+### Help panel & empty-state nudge (phase 6)
+
+- **Help panel** — a **?** button in the top bar (beside Settings) opens a concise,
+  skimmable list of tools and keyboard shortcuts, grouped (Tools / Edit / Drawing
+  & placement / View). The shortcut list in `HelpPanel.tsx` is **hand-maintained**
+  (not generated from the keymap) — a comment at the list and CLAUDE.md note that
+  it must be updated whenever a shortcut changes, so it doesn't silently drift.
+- **Empty-state nudge** — when the active level has no walls, the plan shows a
+  faint centered "Draw a wall to begin" hint. It's non-interactive (never blocks
+  clicks) and contextual: it disappears as soon as a wall exists and reappears if
+  every wall is deleted.
+
 ## Controls & keyboard shortcuts
 
 | Action                    | Control                                     |
@@ -434,6 +463,7 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 | Zoom                      | Scroll wheel (centered on cursor)           |
 | Undo                      | `Ctrl/Cmd` + `Z`                            |
 | Redo                      | `Ctrl/Cmd` + `Shift` + `Z`, or `Ctrl` + `Y` |
+| Help & shortcuts          | **?** button (top bar)                      |
 | Orbit the 3D view         | Drag in the 3D preview                      |
 | Zoom the 3D view          | Scroll wheel in the 3D preview              |
 | Frame the design (3D)     | **Fit view** button                         |

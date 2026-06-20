@@ -64,7 +64,11 @@ function structuralError(obj: Record<string, unknown>): string | null {
           !isNum(win.t) ||
           !isNum(win.width) ||
           !isNum(win.height) ||
-          !isNum(win.sillHeight)
+          !isNum(win.sillHeight) ||
+          (win.style !== "plain" &&
+            win.style !== "grid" &&
+            win.style !== "divided" &&
+            win.style !== "picture")
         )
           return "A window is malformed.";
       }
@@ -75,6 +79,9 @@ function structuralError(obj: Record<string, unknown>): string | null {
           !isNum(door.t) ||
           !isNum(door.width) ||
           !isNum(door.height) ||
+          (door.style !== "single" &&
+            door.style !== "double" &&
+            door.style !== "sliding") ||
           (door.hinge !== "start" && door.hinge !== "end") ||
           (door.swing !== "A" && door.swing !== "B") ||
           !isMaterial(door.material)

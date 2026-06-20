@@ -277,6 +277,15 @@ in code under `src/catalog/`:
 - Furniture renders in **all** wall view modes (Full/Cutaway/Stubs never hide it).
   `#catalog` in the URL opens a dev-only 3D QA line-up of every item (it iterates
   `CATALOG_ITEMS`, so new items appear there automatically).
+- **Palette UI.** The Furniture tool's right-panel palette (`FurniturePalette` in
+  `PropertiesPanel.tsx`) groups items into **collapsible category headers** behaving
+  as an **accordion — exactly one group open at a time** (clicking a header opens it
+  and collapses the rest; clicking the open header closes it, so all can be closed).
+  Groups derive from each entry's `category` (empty categories are skipped, so new
+  items land in the right group automatically). The open category is the persisted
+  UI pref `openPaletteCategory` (string | null in `ViewPrefs`/the store, NOT in the
+  Design; `setOpenPaletteCategory`), restored when the tool reopens; **default is
+  all-collapsed** (null). Picking an item to place is unchanged.
 - **Catalog inventory (Phase 4a/4b/4d/5f).** 74 items across seven categories:
   *Living* (3-seat sofa, sectional sofa, loveseat, armchair, ottoman, coffee
   table, side table, console table, TV stand, fireplace, rug, bookshelf, floor

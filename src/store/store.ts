@@ -404,6 +404,9 @@ interface AppState {
   // Global hide-roofs toggle (persisted UI pref, never in the Design). Applies on
   // top of each roof's own `visible` flag.
   hideRoofs: boolean;
+  // Furniture palette: the one accordion category group left open (null = all
+  // collapsed). Persisted UI pref, never in the Design.
+  openPaletteCategory: string | null;
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -446,6 +449,7 @@ interface AppState {
   setShowDimensions: (show: boolean) => void;
   setCollisionMode: (mode: CollisionMode) => void;
   setHideRoofs: (hide: boolean) => void;
+  setOpenPaletteCategory: (category: string | null) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
   setCurrentLevel: (id: string) => void;
@@ -629,6 +633,7 @@ export const useStore = create<AppState>((set, get) => {
       showDimensions,
       collisionMode,
       hideRoofs,
+      openPaletteCategory,
       currentLevelId,
     } = get();
     saveViewPrefs({
@@ -641,6 +646,7 @@ export const useStore = create<AppState>((set, get) => {
       showDimensions,
       collisionMode,
       hideRoofs,
+      openPaletteCategory,
       activeLevelId: currentLevelId,
     });
   };
@@ -666,6 +672,7 @@ export const useStore = create<AppState>((set, get) => {
     showDimensions: prefs.showDimensions,
     collisionMode: prefs.collisionMode,
     hideRoofs: prefs.hideRoofs,
+    openPaletteCategory: prefs.openPaletteCategory,
     clipboard: null,
     past: [],
     future: [],
@@ -750,6 +757,10 @@ export const useStore = create<AppState>((set, get) => {
     },
     setHideRoofs: (hideRoofs) => {
       set({ hideRoofs });
+      persistViewPrefs();
+    },
+    setOpenPaletteCategory: (openPaletteCategory) => {
+      set({ openPaletteCategory });
       persistViewPrefs();
     },
 

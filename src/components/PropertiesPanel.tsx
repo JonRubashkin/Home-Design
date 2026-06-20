@@ -213,50 +213,77 @@ function paletteButtons(entry: CatalogEntry): PaletteButton[] {
   }));
 }
 
-// The Furniture tool's right-panel palette: catalog items grouped by category.
+// The Furniture tool's right-panel palette: catalog items in collapsible
+// category groups behaving as an accordion (one group open at a time). The open
+// group is a persisted UI pref restored when the tool reopens; default is all
+// collapsed. Empty categories are skipped so new items land in the right group
+// automatically (groups derive from the catalog `category` field).
 function FurniturePalette() {
   const placingCatalogId = useStore((s) => s.placingCatalogId);
   const placingVariant = useStore((s) => s.placingVariant);
   const setPlacingCatalogId = useStore((s) => s.setPlacingCatalogId);
+  const openCategory = useStore((s) => s.openPaletteCategory);
+  const setOpenPaletteCategory = useStore((s) => s.setOpenPaletteCategory);
+
+  // Only categories that have at least one catalog item show a header.
+  const groups = CATEGORIES.filter((cat) =>
+    CATALOG_ITEMS.some((e) => e.category === cat),
+  );
+
   return (
     <aside className="properties" aria-label="Furniture catalog">
       <h2 className="properties-title">Furniture</h2>
       <p className="properties-hint">
-        Pick an item, then click in the plan to place it. <kbd>R</kbd> rotates;
-        wall-huggers snap to nearby walls.
+        Open a category, pick an item, then click in the plan to place it.{" "}
+        <kbd>R</kbd> rotates; wall-huggers snap to nearby walls.
       </p>
       <div className="palette">
-        {CATEGORIES.map((cat) => (
-          <section key={cat}>
-            <h3 className="palette-group-title">{CATEGORY_LABELS[cat]}</h3>
-            <div className="palette-grid">
-              {CATALOG_ITEMS.filter((e) => e.category === cat)
-                .flatMap(paletteButtons)
-                .map(({ entry, variant, key, label }) => {
-                  const active =
-                    placingCatalogId === entry.id &&
-                    (placingVariant ?? undefined) === variant;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`palette-item${active ? " active" : ""}`}
-                      title={label}
-                      onClick={() =>
-                        setPlacingCatalogId(
-                          active ? null : entry.id,
-                          variant ?? null,
-                        )
-                      }
-                    >
-                      <FurnitureThumb entry={entry} variant={variant} />
-                      <span className="palette-name">{label}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </section>
-        ))}
+        {groups.map((cat) => {
+          const open = openCategory === cat;
+          return (
+            <section key={cat} className="palette-group">
+              <button
+                type="button"
+                className={`palette-group-header${open ? " open" : ""}`}
+                aria-expanded={open}
+                onClick={() => setOpenPaletteCategory(open ? null : cat)}
+              >
+                <span className="palette-group-caret" aria-hidden="true">
+                  {open ? "▾" : "▸"}
+                </span>
+                {CATEGORY_LABELS[cat]}
+              </button>
+              {open && (
+                <div className="palette-grid">
+                  {CATALOG_ITEMS.filter((e) => e.category === cat)
+                    .flatMap(paletteButtons)
+                    .map(({ entry, variant, key, label }) => {
+                      const active =
+                        placingCatalogId === entry.id &&
+                        (placingVariant ?? undefined) === variant;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`palette-item${active ? " active" : ""}`}
+                          title={label}
+                          onClick={() =>
+                            setPlacingCatalogId(
+                              active ? null : entry.id,
+                              variant ?? null,
+                            )
+                          }
+                        >
+                          <FurnitureThumb entry={entry} variant={variant} />
+                          <span className="palette-name">{label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
     </aside>
   );

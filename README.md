@@ -276,8 +276,14 @@ npm run format   # Prettier
 
 ### Furniture (phase 2b)
 
-- **Furniture tool (U)** — the right panel becomes a catalog palette grouped by
-  category, each item shown as a rendered plan symbol. Pick an item, then a ghost
+- **Furniture tool (U)** — the right panel becomes a catalog palette of
+  **collapsible category groups** (Living, Bedroom, Kitchen, …) behaving as an
+  **accordion**: clicking a category header opens it (revealing its item
+  thumbnails) and collapses any other open group; clicking the open header closes
+  it. Groups derive from each item's `category`, so new items appear in the right
+  group automatically, and empty categories are hidden. The open category is a
+  persisted UI pref restored when the tool reopens (default: all collapsed). Each
+  item is a rendered plan symbol. Pick an item, then a ghost
   footprint follows the cursor (grid-snapped); `R` / `Shift+R` rotate in 15°
   steps, click to place (the tool stays active for repeat placement), `Esc`
   cancels. **Wall-hugger soft snap:** items like sofas and beds snap their back

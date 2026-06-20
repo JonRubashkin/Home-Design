@@ -336,8 +336,9 @@ npm run format   # Prettier
   stool, bench, kettle, toaster, coffee maker.
 - _Bathroom:_ toilet, bidet, sink vanity, bathtub, shower stall, towel rack,
   bathroom cabinet.
-- _Office:_ desk, office chair, filing cabinet, desk lamp, computer (the
-  bookshelf is reused for the office too).
+- _Office:_ desk, office chair, filing cabinet, desk lamp, computer (monitor on a
+  stand with the tower standing beside it and the keyboard in front — the parts no
+  longer intersect; the bookshelf is reused for the office too).
 - _Utility / laundry:_ washing machine, dryer.
 - _Outdoor:_ patio table, patio chair, sun lounger, parasol, BBQ grill, garden
   bench, planter box, fire pit, tree, shrub, fence panel.

@@ -225,13 +225,13 @@ export function slidingDoorBoxes(
   return { panel, track };
 }
 
-export type WindowMuntinStyle = "plain" | "grid" | "divided" | "picture";
+export type WindowMuntinStyle = "grid" | "divided" | "picture";
 
 // Glazing-bar (muntin) boxes inside a window opening, by style — cosmetic only,
-// the hole is unchanged. "plain"/"picture" = no bars (single pane); "divided" =
-// one centered VERTICAL bar (splits the pane left/right); "grid"/colonial = a
-// 2x3 layout (1 vertical + 2 horizontal bars → two columns, three rows). Bars
-// sit a hair proud of the glass so they read on both faces.
+// the hole is unchanged. "picture" = no bars (single pane); "divided" = one
+// centered VERTICAL bar (splits the pane left/right); "grid"/colonial = a 2x3
+// layout (1 vertical + 2 horizontal bars → two columns, three rows). Bars sit a
+// hair proud of the glass so they read on both faces.
 export function windowMuntinBoxes(
   wall: Wall,
   win: {
@@ -243,8 +243,8 @@ export function windowMuntinBoxes(
   },
   elevation = 0,
 ): Box3Spec[] {
-  const style = win.style ?? "plain";
-  if (style === "plain" || style === "picture") return [];
+  const style = win.style ?? "picture";
+  if (style === "picture") return [];
 
   const L = wallLength(wall);
   const { a, b } = windowSpan(L, win.t, win.width);

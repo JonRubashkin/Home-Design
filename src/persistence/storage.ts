@@ -65,10 +65,10 @@ function structuralError(obj: Record<string, unknown>): string | null {
           !isNum(win.width) ||
           !isNum(win.height) ||
           !isNum(win.sillHeight) ||
-          (win.style !== "plain" &&
-            win.style !== "grid" &&
+          (win.style !== "grid" &&
             win.style !== "divided" &&
-            win.style !== "picture")
+            win.style !== "picture") ||
+          !isMaterial(win.muntinMaterial)
         )
           return "A window is malformed.";
       }

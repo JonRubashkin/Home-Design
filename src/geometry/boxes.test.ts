@@ -17,7 +17,8 @@ const win = (over: Partial<WindowOpening>): WindowOpening => ({
   width: 1.2,
   height: 1.2,
   sillHeight: 0.9,
-  style: "plain",
+  style: "picture",
+  muntinMaterial: { kind: "solid", color: "#eef0f2" },
   ...over,
 });
 
@@ -160,7 +161,8 @@ describe("wallToBoxes — doors", () => {
       width: 1.0,
       height: 1.2,
       sillHeight: 0.9,
-      style: "plain" as const,
+      style: "picture" as const,
+      muntinMaterial: { kind: "solid" as const, color: "#eef0f2" },
     };
     const w: Wall = {
       ...createWall({ x: 0, y: 0 }, { x: 4, y: 0 }),
@@ -220,8 +222,7 @@ describe("window muntin styles", () => {
   };
   const win = { t: 0.5, width: 1.2, height: 1.2, sillHeight: 0.9 };
 
-  it("plain and picture have no muntins", () => {
-    expect(windowMuntinBoxes(w, { ...win, style: "plain" })).toHaveLength(0);
+  it("picture has no muntins (single pane)", () => {
     expect(windowMuntinBoxes(w, { ...win, style: "picture" })).toHaveLength(0);
   });
 

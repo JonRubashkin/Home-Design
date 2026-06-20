@@ -21,7 +21,8 @@ const win = (over: Partial<WindowOpening>): WindowOpening => ({
   width: 1.2,
   height: 1.2,
   sillHeight: 0.9,
-  style: "plain",
+  style: "picture",
+  muntinMaterial: { kind: "solid", color: "#eef0f2" },
   ...over,
 });
 

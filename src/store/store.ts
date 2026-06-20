@@ -470,6 +470,11 @@ interface AppState {
     id: string,
     patch: Partial<Omit<WindowOpening, "id">>,
   ) => void;
+  setWindowMuntinMaterial: (
+    wallId: string,
+    id: string,
+    material: MaterialRef,
+  ) => void;
   deleteWindow: (wallId: string, id: string) => void;
   addDoor: (wallId: string, door: Omit<DoorOpening, "id">) => void;
   updateDoor: (
@@ -957,6 +962,14 @@ export const useStore = create<AppState>((set, get) => {
         const win = findWindow(design, s.currentLevelId, wallId, id);
         if (win) Object.assign(win, patch);
         return { design };
+      });
+    },
+
+    setWindowMuntinMaterial: (wallId, id, material) => {
+      if (!findWindow(get().design, get().currentLevelId, wallId, id)) return;
+      commitCoalesced(`win-muntin:${wallId}:${id}`, (design) => {
+        const win = findWindow(design, get().currentLevelId, wallId, id);
+        if (win) win.muntinMaterial = clone(material);
       });
     },
 

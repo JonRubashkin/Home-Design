@@ -35,10 +35,12 @@ export interface WindowOpening {
   height: number; // meters
   sillHeight: number; // meters from floor to bottom of window
   // Phase 6: muntin/frame pattern inside the same opening (cosmetic — the hole
-  // size is unchanged). "plain" = today's single pane; "divided" = one centered
-  // vertical glazing bar; "grid"/colonial = a 2x3 grid of bars; "picture" = a
-  // large single pane, no divisions. Default "plain" (pre-v14 windows migrate).
-  style: "plain" | "grid" | "divided" | "picture";
+  // size is unchanged). "divided" = one centered vertical glazing bar;
+  // "grid"/colonial = a 2x3 grid of bars; "picture" = a large single pane, no
+  // divisions. Default "picture" (the single-pane look; pre-v15 "plain" windows
+  // migrate to it). The muntin bars (divided/grid) are colored by muntinMaterial.
+  style: "grid" | "divided" | "picture";
+  muntinMaterial: MaterialRef; // color of the glazing bars (default near-white)
 }
 
 export interface DoorOpening {
@@ -173,7 +175,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 14;
+  schemaVersion: 15;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

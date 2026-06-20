@@ -199,6 +199,27 @@ const migrations: Migration[] = [
     design.schemaVersion = 14;
     return design;
   },
+  // v14 -> v15: drop the "plain" window style (it duplicated "picture") and add
+  // a per-window muntin color. Every "plain" window becomes "picture" (the same
+  // single-pane look); every window gains a default near-white `muntinMaterial`
+  // for its glazing bars.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const walls = (level.walls as RawDesign[] | undefined) ?? [];
+      for (const wall of walls) {
+        const windows = (wall.windows as RawDesign[] | undefined) ?? [];
+        for (const win of windows) {
+          if (win.style === "plain" || win.style === undefined)
+            win.style = "picture";
+          if (win.muntinMaterial === undefined)
+            win.muntinMaterial = { kind: "solid", color: "#eef0f2" };
+        }
+      }
+    }
+    design.schemaVersion = 15;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

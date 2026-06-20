@@ -246,13 +246,15 @@ npm run format   # Prettier
   is a real hole (sub-boxes) with a translucent glass pane that ghosts/suppresses
   with its wall and disappears in Stubs mode.
 - **Window styles (phase 6)** — each window has a **style** that changes the
-  muntins inside the same hole (the opening size never changes): **plain** (single
-  pane, today's look), **divided** (one centered vertical glazing bar), **grid**
-  /colonial (a 2×3 grid of bars), or **picture** (a large single pane, no
-  divisions). Bars render as thin opaque frame geometry in 3D and a central
-  mullion tick in the 2D plan symbol; cutaway/stubs behavior is unchanged.
-  **Schema v14** adds `style`; older designs migrate (every window becomes
-  `plain`).
+  muntins inside the same hole (the opening size never changes): **picture** (a
+  large single pane, the default), **divided** (one centered vertical glazing
+  bar), or **grid**/colonial (a 2×3 grid of bars). Bars render as thin opaque
+  geometry in 3D and a central mullion tick in the 2D plan symbol; cutaway/stubs
+  behavior is unchanged. The **muntin (bar) color** is editable per window via a
+  "Muntin color" picker — shown only for divided/grid, since picture has no bars.
+  **Schema v14** added `style`; **v15** dropped the old `plain` style (it
+  duplicated `picture`, so it migrates to it) and adds a per-window
+  `muntinMaterial` (default near-white). Older designs migrate automatically.
 - **Paint tool (P)** — hover a wall to highlight the **near side**, click to
   paint that face with the current material. Each wall's two sides are also
   editable from its properties panel (the chips highlight their side on hover).

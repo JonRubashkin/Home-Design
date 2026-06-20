@@ -1193,23 +1193,38 @@ export function PropertiesPanel() {
           />
         </div>
         <ToggleField
-          label="Hinge"
-          value={door.hinge}
+          label="Style"
+          value={door.style}
           options={[
-            { value: "start", label: "Start" },
-            { value: "end", label: "End" },
+            { value: "single", label: "Single" },
+            { value: "double", label: "Double" },
+            { value: "sliding", label: "Sliding" },
           ]}
-          onChange={(v) => updateDoor(wall.id, door.id, { hinge: v })}
+          onChange={(v) => updateDoor(wall.id, door.id, { style: v })}
         />
-        <ToggleField
-          label="Opens toward"
-          value={door.swing}
-          options={[
-            { value: "A", label: "Side A" },
-            { value: "B", label: "Side B" },
-          ]}
-          onChange={(v) => updateDoor(wall.id, door.id, { swing: v })}
-        />
+        {/* Hinge & swing only apply to swinging doors (single/double). */}
+        {door.style !== "sliding" && (
+          <>
+            <ToggleField
+              label="Hinge"
+              value={door.hinge}
+              options={[
+                { value: "start", label: "Start" },
+                { value: "end", label: "End" },
+              ]}
+              onChange={(v) => updateDoor(wall.id, door.id, { hinge: v })}
+            />
+            <ToggleField
+              label="Opens toward"
+              value={door.swing}
+              options={[
+                { value: "A", label: "Side A" },
+                { value: "B", label: "Side B" },
+              ]}
+              onChange={(v) => updateDoor(wall.id, door.id, { swing: v })}
+            />
+          </>
+        )}
         <h3 className="properties-subhead">Material</h3>
         <div className="chip-row">
           <MaterialChip

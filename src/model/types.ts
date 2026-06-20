@@ -41,6 +41,12 @@ export interface DoorOpening {
   t: number; // center along wall, 0..1
   width: number; // meters
   height: number; // meters
+  // Phase 6: leaf + plan-symbol style. "single" = one swinging leaf (today's
+  // behavior); "double"/French = two leaves meeting at the center; "sliding" =
+  // one leaf that slides along the wall (no swing). hinge/swing are only
+  // meaningful for single & double; they are ignored for sliding. Default
+  // "single" (pre-v13 doors migrate to it).
+  style: "single" | "double" | "sliding";
   hinge: "start" | "end"; // hinge side relative to wall start->end direction
   swing: "A" | "B"; // which wall side the door opens toward
   material: MaterialRef;
@@ -162,7 +168,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 12;
+  schemaVersion: 13;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

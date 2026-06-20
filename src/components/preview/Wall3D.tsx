@@ -5,6 +5,8 @@ import {
   windowGlassBox,
   doorFrameBoxes,
   doorLeafBox,
+  doubleDoorLeafBoxes,
+  slidingDoorBoxes,
   type Box3Spec,
 } from "../../geometry/boxes";
 import { faceTextureTransform } from "../../materials/faceUV";
@@ -224,15 +226,41 @@ export function Wall3D({
           );
         })}
 
-      {/* Door frame (jambs + head) and closed leaf (not in stub mode). */}
+      {/* Door frame/track and closed leaf/leaves, by style (not in stub mode). */}
       {!stub &&
         wall.doors.map((door) => {
-          const leaf = doorLeafBox(wall, door, elevation);
-          const lt = faceTextureTransform(
-            leaf.face,
-            PATTERN_TILE_METERS,
-            false,
-          );
+          // Sliding: a panel parked on the wall face + a track rail, no frame.
+          if (door.style === "sliding") {
+            const { panel, track } = slidingDoorBoxes(wall, door, elevation);
+            const pt = faceTextureTransform(
+              panel.face,
+              PATTERN_TILE_METERS,
+              false,
+            );
+            return (
+              <group key={door.id}>
+                <SolidBoxMesh
+                  box={track}
+                  material={DOOR_TRIM}
+                  selected={selected}
+                  ghost={ghost}
+                />
+                <SolidBoxMesh
+                  box={panel}
+                  material={door.material}
+                  repeat={pt.repeat}
+                  offset={pt.offset}
+                  selected={selected}
+                  ghost={ghost}
+                />
+              </group>
+            );
+          }
+          // Single / double: opening frame (jambs + head) + closed leaf(es).
+          const leaves =
+            door.style === "double"
+              ? doubleDoorLeafBoxes(wall, door, elevation)
+              : [doorLeafBox(wall, door, elevation)];
           return (
             <group key={door.id}>
               {doorFrameBoxes(wall, door, elevation).map((b, i) => (
@@ -244,14 +272,24 @@ export function Wall3D({
                   ghost={ghost}
                 />
               ))}
-              <SolidBoxMesh
-                box={leaf}
-                material={door.material}
-                repeat={lt.repeat}
-                offset={lt.offset}
-                selected={selected}
-                ghost={ghost}
-              />
+              {leaves.map((leaf, i) => {
+                const lt = faceTextureTransform(
+                  leaf.face,
+                  PATTERN_TILE_METERS,
+                  false,
+                );
+                return (
+                  <SolidBoxMesh
+                    key={i}
+                    box={leaf}
+                    material={door.material}
+                    repeat={lt.repeat}
+                    offset={lt.offset}
+                    selected={selected}
+                    ghost={ghost}
+                  />
+                );
+              })}
             </group>
           );
         })}

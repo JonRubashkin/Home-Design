@@ -109,6 +109,7 @@ export function createDoor(
     t: opts?.t ?? 0.5,
     width: opts?.width ?? DEFAULT_DOOR_WIDTH,
     height: opts?.height ?? DEFAULT_DOOR_HEIGHT,
+    style: opts?.style ?? "single",
     hinge: opts?.hinge ?? "start",
     swing: opts?.swing ?? "A",
     material: opts?.material
@@ -245,7 +246,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 12,
+    schemaVersion: 13,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

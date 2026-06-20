@@ -50,14 +50,16 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 12;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 13;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
                             // (Phase 5e); v10 = ceiling lights (Phase 5f);
                             // v11 = per-level multi-section auto roofs (Phase
                             // 5.1, removed); v12 = manual roof tool (Phase 5.2 —
-                            // the v11 auto roofs are cleared on upgrade).
+                            // the v11 auto roofs are cleared on upgrade); v13 =
+                            // door styles (Phase 6 — every door gains
+                            // style:"single").
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -167,6 +169,13 @@ interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.
   t: number;                // center along wall, 0..1
   width: number;            // meters (default 0.9)
   height: number;           // meters (default 2.0)
+  style: "single" | "double" | "sliding"; // Phase 6. leaf + plan symbol. default
+                            // "single". single = one swinging leaf; double/French
+                            // = two leaves meeting at center, hinged at opposite
+                            // jambs, same swing side; sliding = one leaf sliding
+                            // along the wall (no swing). hinge/swing apply only to
+                            // single & double; ignored for sliding. The opening
+                            // hole is unchanged for all styles (still wallToBoxes).
   hinge: "start" | "end";   // hinge side relative to wall start→end direction
   swing: "A" | "B";         // which wall side the door opens toward
   material: MaterialRef;    // leaf material (default solid #9a6b4f)

@@ -167,6 +167,22 @@ const migrations: Migration[] = [
     design.schemaVersion = 12;
     return design;
   },
+  // v12 -> v13: door styles (Phase 6 Part A). Every existing door gains
+  // `style: "single"` — exactly today's single swinging leaf.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const walls = (level.walls as RawDesign[] | undefined) ?? [];
+      for (const wall of walls) {
+        const doors = (wall.doors as RawDesign[] | undefined) ?? [];
+        for (const door of doors) {
+          if (door.style === undefined) door.style = "single";
+        }
+      }
+    }
+    design.schemaVersion = 13;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

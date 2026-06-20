@@ -8,6 +8,7 @@ const door = (over: Partial<DoorOpening>): DoorOpening => ({
   t: 0.5,
   width: 0.9,
   height: 2.0,
+  style: "single",
   hinge: "start",
   swing: "A",
   material: { kind: "solid", color: "#9a6b4f" },

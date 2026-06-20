@@ -184,6 +184,33 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.roofs).toEqual([]);
   });
 
+  it("gives every door style 'single' (v12 -> v13)", () => {
+    // A v12 design whose wall already carries a door without a `style` field.
+    const v12 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v12.schemaVersion = 12;
+    const lvl = (v12.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    lvl.roofs = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [
+      {
+        id: "d",
+        t: 0.5,
+        width: 0.9,
+        height: 2.0,
+        hinge: "start",
+        swing: "A",
+        material: { kind: "solid", color: "#9a6b4f" },
+      },
+    ];
+    const out = migrateToLatest(v12);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.walls[0]!.doors[0]!.style).toBe("single");
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

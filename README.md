@@ -273,6 +273,15 @@ npm run format   # Prettier
   as clean gaps in Stubs mode.
 - **Schema v2** — designs now store `doors`; older (v1) designs migrate
   automatically on load/import (every wall gains an empty `doors` array).
+- **Door styles (phase 6)** — each door has a **style**: **single** (one swinging
+  leaf, today's behavior), **double**/French (two half-width leaves meeting at the
+  center, hinged at opposite jambs and swinging to the same side — two mirrored
+  arcs in plan), or **sliding** (one leaf that slides along the wall on its face,
+  shown as a track line with the panel parked to one side — no swing arc). The
+  opening hole is identical for all three. `hinge`/`swing` apply only to
+  single/double; the panel hides those controls for sliding. Set the style in the
+  door properties panel (undoable). **Schema v13** adds `style`; older designs
+  migrate (every door becomes `single`).
 
 ### Furniture (phase 2b)
 

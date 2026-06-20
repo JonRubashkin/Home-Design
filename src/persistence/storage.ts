@@ -75,6 +75,9 @@ function structuralError(obj: Record<string, unknown>): string | null {
           !isNum(door.t) ||
           !isNum(door.width) ||
           !isNum(door.height) ||
+          (door.style !== "single" &&
+            door.style !== "double" &&
+            door.style !== "sliding") ||
           (door.hinge !== "start" && door.hinge !== "end") ||
           (door.swing !== "A" && door.swing !== "B") ||
           !isMaterial(door.material)

@@ -801,6 +801,28 @@ button:focus-visible,
   stroke-dasharray: 4 3;
   fill: none;
 }
+/* sliding-door plan marks: a thin track line and the parked panel rectangle */
+.door-symbol .door-track {
+  stroke-dasharray: 3 2;
+}
+.door-symbol polygon.door-panel {
+  fill: rgba(55, 65, 81, 0.18);
+  stroke: #374151;
+  stroke-width: 1.2;
+}
+.door-symbol.selected polygon.door-panel {
+  fill: rgba(37, 99, 235, 0.2);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.door-symbol.ghost-valid polygon.door-panel {
+  fill: rgba(22, 163, 74, 0.15);
+  stroke: #16a34a;
+}
+.door-symbol.ghost-invalid polygon.door-panel {
+  fill: rgba(220, 38, 38, 0.12);
+  stroke: #dc2626;
+}
 
 /* --- toggle buttons (door hinge / swing) --- */
 .toggle-row {

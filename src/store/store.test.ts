@@ -300,6 +300,7 @@ describe("doors", () => {
     t: 0.5,
     width: 0.9,
     height: 2.0,
+    style: "single" as const,
     hinge: "start" as const,
     swing: "A" as const,
     material: { kind: "solid" as const, color: "#9a6b4f" },

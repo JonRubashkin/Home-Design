@@ -211,8 +211,9 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.walls[0]!.doors[0]!.style).toBe("single");
   });
 
-  it("gives every window style 'plain' (v13 -> v14)", () => {
-    // A v13 design whose wall carries a window without a `style` field.
+  it("migrates a styleless window through to 'picture' + a muntin color", () => {
+    // A v13 design whose wall carries a window without a `style` field: it picks
+    // up style "plain" at v14, then becomes "picture" with a muntin color at v15.
     const v13 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
     v13.schemaVersion = 13;
     const lvl = (v13.levels as Record<string, unknown>[])[0]!;
@@ -223,10 +224,49 @@ describe("migrateToLatest", () => {
     const wall = (lvl.walls as Record<string, unknown>[])[0]!;
     wall.mounts = [];
     wall.doors = [];
-    // its window (from V1_FIXTURE) still has no `style`.
     const out = migrateToLatest(v13);
     expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
-    expect(out.levels[0]!.walls[0]!.windows[0]!.style).toBe("plain");
+    const win = out.levels[0]!.walls[0]!.windows[0]!;
+    expect(win.style).toBe("picture");
+    expect(win.muntinMaterial).toEqual({ kind: "solid", color: "#eef0f2" });
+  });
+
+  it("converts a v14 'plain' window to 'picture' and adds a muntin color (v14 -> v15)", () => {
+    const v14 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v14.schemaVersion = 14;
+    const lvl = (v14.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    lvl.roofs = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [];
+    // a v14 window already carries style "plain" but no muntin color
+    (wall.windows as Record<string, unknown>[])[0]!.style = "plain";
+    const out = migrateToLatest(v14);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    const win = out.levels[0]!.walls[0]!.windows[0]!;
+    expect(win.style).toBe("picture");
+    expect(win.muntinMaterial).toEqual({ kind: "solid", color: "#eef0f2" });
+  });
+
+  it("keeps a v14 'grid' window's style and just adds a muntin color", () => {
+    const v14 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v14.schemaVersion = 14;
+    const lvl = (v14.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    lvl.roofs = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [];
+    (wall.windows as Record<string, unknown>[])[0]!.style = "grid";
+    const out = migrateToLatest(v14);
+    const win = out.levels[0]!.walls[0]!.windows[0]!;
+    expect(win.style).toBe("grid");
+    expect(win.muntinMaterial).toEqual({ kind: "solid", color: "#eef0f2" });
   });
 
   it("leaves an already-current design unchanged", () => {

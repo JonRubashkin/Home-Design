@@ -17,6 +17,7 @@ import {
   DEFAULT_WINDOW_HEIGHT,
   DEFAULT_WINDOW_SILL_HEIGHT,
   DEFAULT_WINDOW_WIDTH,
+  DEFAULT_MUNTIN_MATERIAL,
   DEFAULT_STAIR_WIDTH,
   DEFAULT_MOUNT_HEIGHT,
   FLOOR_SLAB_THICKNESS,
@@ -940,7 +941,11 @@ export function PlanEditor() {
           sillHeight: DEFAULT_WINDOW_SILL_HEIGHT,
         };
         if (validateWindow(wall, candidate).ok)
-          store.addWindow(wall.id, { ...candidate, style: "plain" });
+          store.addWindow(wall.id, {
+            ...candidate,
+            style: "picture",
+            muntinMaterial: { ...DEFAULT_MUNTIN_MATERIAL },
+          });
       }
       return;
     }
@@ -1722,6 +1727,7 @@ export function PlanEditor() {
                     t={win.t}
                     width={win.width}
                     style={win.style}
+                    muntinColor={representativeColor(win.muntinMaterial)}
                     selected={
                       selection?.kind === "window" && selection.id === win.id
                     }
@@ -2114,14 +2120,16 @@ function WindowSymbol({
   wall,
   t,
   width,
-  style = "plain",
+  style = "picture",
+  muntinColor,
   selected,
   ghost,
 }: {
   wall: Wall;
   t: number;
   width: number;
-  style?: "plain" | "grid" | "divided" | "picture";
+  style?: "grid" | "divided" | "picture";
+  muntinColor?: string;
   selected?: boolean;
   ghost?: "valid" | "invalid";
 }) {
@@ -2165,6 +2173,7 @@ function WindowSymbol({
           y1={add(mid, o).y}
           x2={sub(mid, o).x}
           y2={sub(mid, o).y}
+          stroke={muntinColor}
           vectorEffect="non-scaling-stroke"
         />
       )}

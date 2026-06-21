@@ -177,6 +177,7 @@ function FillRoomPanel() {
 type EditTarget =
   | { kind: "wallSide"; wallId: string; side: WallSide }
   | { kind: "doorMat"; wallId: string; id: string }
+  | { kind: "winMuntinMat"; wallId: string; id: string }
   | { kind: "mountMat"; wallId: string; id: string; slot: string }
   | { kind: "lightMat"; id: string; slot: string }
   | { kind: "furnSlot"; id: string; slot: string }
@@ -478,6 +479,7 @@ export function PropertiesPanel() {
   const deleteWall = useStore((s) => s.deleteWall);
   const copyWallsToAbove = useStore((s) => s.copyWallsToAbove);
   const updateWindow = useStore((s) => s.updateWindow);
+  const setWindowMuntinMaterial = useStore((s) => s.setWindowMuntinMaterial);
   const deleteWindow = useStore((s) => s.deleteWindow);
   const updateDoor = useStore((s) => s.updateDoor);
   const deleteDoor = useStore((s) => s.deleteDoor);
@@ -1092,6 +1094,21 @@ export function PropertiesPanel() {
       }
     };
 
+    if (edit?.kind === "winMuntinMat") {
+      return (
+        <aside className="properties" aria-label="Muntin color">
+          <PickerHeader title="Muntin color" onDone={() => setEdit(null)} />
+          <MaterialPicker
+            value={win.muntinMaterial}
+            onChange={(m) => setWindowMuntinMaterial(wall.id, win.id, m)}
+          />
+        </aside>
+      );
+    }
+
+    // Glazing bars exist only for divided/grid — picture is a single pane.
+    const hasMuntins = win.style === "divided" || win.style === "grid";
+
     return (
       <aside className="properties" aria-label="Window">
         <h2 className="properties-title">Window</h2>
@@ -1132,13 +1149,26 @@ export function PropertiesPanel() {
           label="Style"
           value={win.style}
           options={[
-            { value: "plain", label: "Plain" },
+            { value: "picture", label: "Picture" },
             { value: "divided", label: "Divided" },
             { value: "grid", label: "Grid" },
-            { value: "picture", label: "Picture" },
           ]}
           onChange={(v) => updateWindow(wall.id, win.id, { style: v })}
         />
+        {hasMuntins && (
+          <>
+            <h3 className="properties-subhead">Muntin color</h3>
+            <div className="chip-row">
+              <MaterialChip
+                material={win.muntinMaterial}
+                label="Bars"
+                onClick={() =>
+                  setEdit({ kind: "winMuntinMat", wallId: wall.id, id: win.id })
+                }
+              />
+            </div>
+          </>
+        )}
         <button
           type="button"
           className="danger-button"

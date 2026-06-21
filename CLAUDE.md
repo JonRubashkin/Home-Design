@@ -50,7 +50,7 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 14;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 15;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
@@ -60,7 +60,9 @@ interface Design {
                             // the v11 auto roofs are cleared on upgrade); v13 =
                             // door styles (Phase 6 — every door gains
                             // style:"single"); v14 = window styles (Phase 6 —
-                            // every window gains style:"plain").
+                            // every window gains style:"plain"); v15 = drop the
+                            // "plain" window style (→"picture") + per-window
+                            // muntinMaterial (Phase 6 — bar color).
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -163,12 +165,18 @@ interface WindowOpening {
   width: number;            // meters
   height: number;           // meters
   sillHeight: number;       // meters from floor to bottom of window
-  style: "plain" | "grid" | "divided" | "picture"; // Phase 6. muntin/frame inside
-                            // the SAME opening (cosmetic — hole size unchanged).
-                            // default "plain". plain = single pane; divided = one
-                            // centered VERTICAL bar; grid/colonial = a 2x3 grid of
-                            // bars; picture = large single pane, no divisions.
-                            // Muntin boxes: windowMuntinBoxes (geometry/boxes.ts).
+  style: "grid" | "divided" | "picture"; // Phase 6. muntin pattern inside the
+                            // SAME opening (cosmetic — hole size unchanged).
+                            // default "picture" (single pane, no divisions — the
+                            // old "plain" was dropped at v15 and maps here).
+                            // divided = one centered VERTICAL bar; grid/colonial
+                            // = a 2x3 grid of bars. Muntin boxes: windowMuntinBoxes
+                            // (geometry/boxes.ts).
+  muntinMaterial: MaterialRef; // color of the glazing bars (divided/grid). Default
+                            // near-white #eef0f2. Edited via a "Muntin color" chip
+                            // (coalesced setWindowMuntinMaterial); the panel hides
+                            // it for picture (no bars). Bars render through the
+                            // shared material helper, so patterns work too.
 }
 
 interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.

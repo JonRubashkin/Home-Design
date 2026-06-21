@@ -18,7 +18,6 @@ import { WallMount3D } from "./WallMount3D";
 const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
 const NEUTRAL_END: MaterialRef = { kind: "solid", color: "#c4bfb5" };
 const DOOR_TRIM: MaterialRef = { kind: "solid", color: "#d9d2c6" };
-const WINDOW_FRAME: MaterialRef = { kind: "solid", color: "#eef0f2" };
 const GLASS_COLOR = "#bcd4e6";
 
 // A box with a single material on every face (door frame trim and leaf).
@@ -225,12 +224,13 @@ export function Wall3D({
                   metalness={0}
                 />
               </mesh>
-              {/* Opaque glazing bars for grid/divided (none for plain/picture). */}
+              {/* Opaque glazing bars for grid/divided (none for picture),
+                  colored by the window's muntin material. */}
               {windowMuntinBoxes(wall, win, elevation).map((b, i) => (
                 <SolidBoxMesh
                   key={i}
                   box={b}
-                  material={WINDOW_FRAME}
+                  material={win.muntinMaterial}
                   selected={selected}
                   ghost={ghost}
                 />

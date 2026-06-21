@@ -46,6 +46,12 @@ export const DEFAULT_DOOR_MATERIAL: MaterialRef = {
   color: "#9a6b4f",
 };
 
+// Default window muntin (glazing-bar) material — a near-white frame tone.
+export const DEFAULT_MUNTIN_MATERIAL: MaterialRef = {
+  kind: "solid",
+  color: "#eef0f2",
+};
+
 export const GRID_SNAP = 0.1; // meters
 export const ENDPOINT_SNAP_RADIUS = 0.15; // meters; endpoint snap takes priority
 
@@ -127,7 +133,10 @@ export function createWindow(
     width: opts?.width ?? DEFAULT_WINDOW_WIDTH,
     height: opts?.height ?? DEFAULT_WINDOW_HEIGHT,
     sillHeight: opts?.sillHeight ?? DEFAULT_WINDOW_SILL_HEIGHT,
-    style: opts?.style ?? "plain",
+    style: opts?.style ?? "picture",
+    muntinMaterial: opts?.muntinMaterial
+      ? { ...opts.muntinMaterial }
+      : { ...DEFAULT_MUNTIN_MATERIAL },
   };
 }
 
@@ -247,7 +256,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 14,
+    schemaVersion: 15,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

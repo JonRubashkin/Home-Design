@@ -34,6 +34,47 @@ describe("addWall", () => {
   });
 });
 
+describe("auto-merge overlapping walls (Phase 6.3 Part A)", () => {
+  it("merges a new wall overlapping a collinear existing wall into one", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    state().addWall({ x: 2, y: 0 }, { x: 6, y: 0 }); // collinear, inside
+    expect(walls()).toHaveLength(1);
+    expect(state().mergeNotice).toBe("Merged overlapping walls");
+  });
+
+  it("does NOT merge a touching corner (chain)", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 4 });
+    expect(walls()).toHaveLength(2);
+  });
+
+  it("a merge is a single undo step with the triggering draw", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    state().addWall({ x: 2, y: 0 }, { x: 6, y: 0 });
+    expect(walls()).toHaveLength(1);
+    state().undo(); // reverses both the draw and the merge at once
+    expect(walls()).toHaveLength(1);
+    expect(walls()[0]!.start.x).toBe(0);
+    expect(walls()[0]!.end.x).toBe(10);
+  });
+
+  it("carries an opening from the absorbed wall onto the survivor", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    const first = walls()[0]!;
+    state().addWindow(first.id, {
+      t: 0.5,
+      width: 1,
+      height: 1.2,
+      sillHeight: 0.9,
+      style: "picture",
+      muntinMaterial: { kind: "solid", color: "#eef0f2" },
+    });
+    state().addWall({ x: 4, y: 0 }, { x: 12, y: 0 }); // overlaps, extends
+    expect(walls()).toHaveLength(1);
+    expect(walls()[0]!.windows).toHaveLength(1);
+  });
+});
+
 describe("undo / redo", () => {
   it("undoes and redoes a single addWall", () => {
     state().addWall({ x: 0, y: 0 }, { x: 3, y: 0 });

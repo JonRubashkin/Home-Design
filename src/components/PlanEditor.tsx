@@ -253,8 +253,19 @@ export function PlanEditor() {
   const currentMaterial = useStore((s) => s.currentMaterial);
   const fillTarget = useStore((s) => s.fillTarget);
   const roofMode = useStore((s) => s.roofMode);
+  const mergeNotice = useStore((s) => s.mergeNotice);
+  const mergeNoticeNonce = useStore((s) => s.mergeNoticeNonce);
+  const dismissMergeNotice = useStore((s) => s.dismissMergeNotice);
   const [floorsOpen, setFloorsOpen] = useState(false);
   const [fillMessage, setFillMessage] = useState<string | null>(null);
+
+  // Auto-dismiss the transient "merged overlapping walls" notice. Keyed off the
+  // nonce so a repeat merge restarts the timer even when the text is unchanged.
+  useEffect(() => {
+    if (!mergeNotice) return;
+    const id = window.setTimeout(() => dismissMergeNotice(), 2200);
+    return () => window.clearTimeout(id);
+  }, [mergeNotice, mergeNoticeNonce, dismissMergeNotice]);
 
   // The level directly below the active one — drawn as a faint, non-interactive
   // underlay so the user can align to it (only when not on the ground floor).
@@ -2203,6 +2214,7 @@ export function PlanEditor() {
       </div>
 
       {fillMessage && <div className="fill-message">{fillMessage}</div>}
+      {mergeNotice && <div className="fill-message">{mergeNotice}</div>}
     </div>
   );
 }

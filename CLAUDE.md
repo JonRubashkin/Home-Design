@@ -836,6 +836,24 @@ in code under `src/catalog/`:
   **endpoint** (exact coincidence), else onto a wall **segment** (T-junction),
   else falls back to grid. A green snap ring shows while a snap is active. (No
   auto-trim/auto-split this phase.)
+- **Auto-merge overlapping walls (Phase 6.3 Part A)** — pure tested
+  `resolveWallOverlaps(walls)` (`src/geometry/wallMerge.ts`). Two walls merge only
+  when they are **collinear within tolerance** (`WALL_SNAP_TOLERANCE` perpendicular
+  distance) **AND** their spans **overlap** (beyond merely touching — a shared
+  endpoint corner/chain does NOT merge, nor do parallel-offset walls). An
+  overlapping pair (duplicate / containment / partial) becomes ONE wall spanning
+  the union: it takes the **thicker** thickness, **taller** height, and prefers a
+  **painted (non-default)** color per side; ALL openings (windows, doors, mounts)
+  from BOTH walls are carried onto the survivor with each child's `t`
+  re-parameterized to the merged endpoints (door swing/hinge + mount face flip when
+  a source wall ran opposite the merged direction), dropping only an opening that
+  would duplicate another at the same spot. The resolver runs automatically and
+  **idempotently** after every wall-mutating action (draw, room, endpoint
+  drag/translate via `endDrag`, length edit, copy-up, paste, import), folded into
+  the **SAME undo step** so one undo reverses both the edit and the merge. A merge
+  shows a brief non-blocking notice ("Merged overlapping walls", transient store
+  `mergeNotice`/`mergeNoticeNonce`, rendered in the plan). This Part A runs BEFORE
+  Phase 6.3 Part B (per-segment paint) so face painting operates on clean topology.
 - **Copy walls to floor above** (`copyWallsToAbove`): from the level list (all
   active-level walls) or the wall properties panel (just the selected wall).
   Duplicates geometry + openings under fresh ids onto the level above (created if

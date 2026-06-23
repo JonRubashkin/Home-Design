@@ -7,8 +7,9 @@ import { isWallFrontFacing, wallsCentroid } from "../../geometry/cutaway";
 import { planToWorld } from "../../geometry/mapping";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 
-// Neutral post tone, matching the wall end caps so corners read as part of the
-// wall rather than a separate object.
+// Neutral fallback tone (matches the wall end caps) used only when none of the
+// connected walls are painted. A post normally wears its connected wall's paint
+// (post.material) so it reads as part of the painted wall, not a separate block.
 const POST_MATERIAL: MaterialRef = { kind: "solid", color: "#cdc8be" };
 
 function CornerPostBox({
@@ -24,7 +25,7 @@ function CornerPostBox({
   ghost: boolean;
   skirt: number;
 }) {
-  const material = useThreeMaterial(POST_MATERIAL, {}, { ghost });
+  const material = useThreeMaterial(post.material ?? POST_MATERIAL, {}, { ghost });
   const [wx, , wz] = planToWorld(post.center, 0);
   const h = (stub ? post.height * 0.1 : post.height) + (stub ? 0 : skirt);
   // Stub posts sit on the floor; full posts may extend down by the skirt so an

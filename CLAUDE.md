@@ -540,11 +540,21 @@ in code under `src/catalog/`:
   Pure tested `cornerPosts(walls)` (`src/geometry/cornerPosts.ts`) groups walls by
   coincident endpoint (and detects T-junctions where an endpoint snapped onto a
   wall's segment); at each junction of 2+ walls it emits a full-height box sized to
-  the thickest wall there, centered on the shared point, with the meeting wall ids.
-  `CornerPosts3D` renders them (neutral tone via the shared material helper) and
-  honors the level's view mode: Stubs at 10%, and Cutaway suppresses a post only
-  when ALL its walls are front-facing (so corners with a visible rear wall stay
-  solid). Render-side only; no schema change. Still no true mitering/joinery.
+  the thickest wall there, with the meeting wall ids. **At an L/corner** (all walls
+  end at the point) the box is **centered** on the shared point (covers the outer
+  notch / inner overlap). **At a T-junction** the through wall is continuous, so the
+  only gap is on the side the stub(s) meet: the box is **offset fully onto the stub
+  side** (its back face flush with the through-wall centerline) so it never pokes a
+  stray face out the **far** side of the through wall. The post also carries a
+  **`material`** chosen to match the **connected wall's paint adjacent to that
+  corner** — for a T, the through wall's stub-side face; otherwise the thickest
+  meeting wall's adjacent face; first **non-default** painted face wins, else
+  `material` is undefined and the renderer uses its neutral fallback tone.
+  `CornerPosts3D` renders them (via the shared material helper, `post.material`
+  falling back to neutral) and honors the level's view mode: Stubs at 10%, and
+  Cutaway suppresses a post only when ALL its walls are front-facing (so corners
+  with a visible rear wall stay solid). Render-side only; no schema change. Still
+  no true mitering/joinery.
 - Walls are line segments with thickness; render each sub-box as a `BoxGeometry`
   oriented along the wall direction.
 - Side A/B paint maps to the box faces facing left/right of the wall direction.

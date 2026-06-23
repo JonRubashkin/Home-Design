@@ -545,14 +545,22 @@ in code under `src/catalog/`:
   notch / inner overlap). **At a T-junction** the through wall is continuous, so the
   only gap is on the side the stub(s) meet: the box is **offset fully onto the stub
   side** (its back face flush with the through-wall centerline) so it never pokes a
-  stray face out the **far** side of the through wall. The post also carries a
-  **`material`** chosen to match the **connected wall's paint adjacent to that
-  corner** — for a T, the through wall's stub-side face; otherwise the thickest
-  meeting wall's adjacent face; first **non-default** painted face wins, else
-  `material` is undefined and the renderer uses its neutral fallback tone.
-  `CornerPosts3D` renders them (via the shared material helper, `post.material`
-  falling back to neutral) and honors the level's view mode: Stubs at 10%, and
-  Cutaway suppresses a post only when ALL its walls are front-facing (so corners
+  stray face out the **far** side of the through wall. The post is colored
+  **per-face, same-side only**: each of its four vertical faces (`post.materials`,
+  keyed by world-axis normal: `px`/`nx`/`pz`/`nz`) takes the paint of the meeting
+  wall **side that faces the SAME way** as that face — never the wall's opposite
+  side — using that side's per-segment paint **adjacent to the corner**
+  (`faceMaterial`/`cornerPostFaces`). So an interior paint color can't bleed onto
+  the post's exterior-facing side (or vice versa); interior and exterior post faces
+  are independent, like the wall's own A/B sides. **Tiebreak** when two meeting
+  walls both present a face on the same side: the **thicker** wall's adjacent
+  segment wins, else the **first** meeting wall (iteration order) — still same-side
+  only. If the relevant same-side face is **default/unpainted**, that face is left
+  undefined and the renderer uses its **neutral** fallback tone (it never borrows
+  the opposite side just to avoid neutral).
+  `CornerPosts3D` renders them (via the shared material helper, each face's
+  material falling back to neutral) and honors the level's view mode: Stubs at 10%,
+  and Cutaway suppresses a post only when ALL its walls are front-facing (so corners
   with a visible rear wall stay solid). Render-side only; no schema change. Still
   no true mitering/joinery.
 - Walls are line segments with thickness; render each sub-box as a `BoxGeometry`

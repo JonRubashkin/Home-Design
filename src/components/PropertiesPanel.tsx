@@ -6,6 +6,7 @@ import { snapToGrid } from "../geometry/snap";
 import { add, scale } from "../geometry/vec";
 import { validateWindow, clampWindowT } from "../geometry/windows";
 import { validateDoor } from "../geometry/doors";
+import { representativeFacePaint } from "../geometry/wallPaint";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -1075,7 +1076,9 @@ export function PropertiesPanel() {
     };
 
     if (edit?.kind === "wallSide") {
-      const material = edit.side === "A" ? wall.paintA : wall.paintB;
+      const material = representativeFacePaint(
+        edit.side === "A" ? wall.paintA : wall.paintB,
+      );
       return (
         <aside className="properties" aria-label="Paint side">
           <PickerHeader
@@ -1119,7 +1122,7 @@ export function PropertiesPanel() {
         <h3 className="properties-subhead">Paint</h3>
         <div className="chip-row">
           <MaterialChip
-            material={wall.paintA}
+            material={representativeFacePaint(wall.paintA)}
             label="Side A"
             onClick={() =>
               setEdit({ kind: "wallSide", wallId: wall.id, side: "A" })
@@ -1129,7 +1132,7 @@ export function PropertiesPanel() {
             }
           />
           <MaterialChip
-            material={wall.paintB}
+            material={representativeFacePaint(wall.paintB)}
             label="Side B"
             onClick={() =>
               setEdit({ kind: "wallSide", wallId: wall.id, side: "B" })

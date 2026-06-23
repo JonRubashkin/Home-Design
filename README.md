@@ -42,6 +42,17 @@ npm run format   # Prettier
   as your edit (one undo reverses both) and shows a brief "Merged overlapping
   walls" note.
 
+### Per-segment wall paint (phase 6.3)
+
+- A wall face is now paintable **per sub-segment**, split where other walls meet
+  it, so a wall bordering two rooms can show a different color in each room. The
+  **Paint** tool colors only the portion of the face between the bracketing
+  junctions under your cursor; **Fill Room** paints only the clicked room's portion
+  of each shared wall (no more bleed onto the neighbor). The properties-panel Side
+  A/B chips still recolor the **whole** side. Painting an entire side one color
+  collapses it back to a single material, and existing single-color walls are
+  unchanged. 2D and 3D render from one source of truth, so they always agree.
+
 ### Sticky styles, opening warnings & wall-snap toggle (phase 6.1)
 
 - **Sticky opening styles** — a newly placed window or door inherits the **last

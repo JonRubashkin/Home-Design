@@ -1,8 +1,9 @@
-import type { MaterialRef, Wall } from "../model/types";
+import type { MaterialRef, PaintSpan, Wall, WallPaint } from "../model/types";
 import { DEFAULT_PAINT } from "../model/defaults";
 import { distance, dot, sub } from "./vec";
 import { wallDirection, wallLength } from "./wall";
 import { WALL_SNAP_TOLERANCE } from "./wallSnap";
+import { facePaintSpans } from "./wallPaint";
 
 // Auto-merge of collinear, OVERLAPPING walls (Phase 6.3 Part A). When the user
 // draws a rectangle inside another so edges coincide, two collinear walls end up
@@ -49,11 +50,18 @@ function isDefaultPaint(m: MaterialRef): boolean {
   return sameMaterial(m, DEFAULT_PAINT);
 }
 
-// Keep a painted (non-default) color over a default one; otherwise keep the first.
-function preferPainted(a: MaterialRef, b: MaterialRef): MaterialRef {
-  if (!isDefaultPaint(a)) return a;
-  if (!isDefaultPaint(b)) return b;
-  return a;
+// Collapse a span list: merge adjacent equal-material spans, and return a single
+// MaterialRef when the whole side ends up one color (back-compat).
+function collapseSpans(spans: PaintSpan[]): WallPaint {
+  const merged: PaintSpan[] = [];
+  for (const s of spans) {
+    const last = merged[merged.length - 1];
+    if (last && Math.abs(last.to - s.from) < 1e-6 && sameMaterial(last.material, s.material))
+      last.to = s.to;
+    else merged.push({ ...s });
+  }
+  if (merged.length === 1) return merged[0]!.material;
+  return merged;
 }
 
 // Are two walls collinear (within tolerance) AND do their spans overlap (beyond
@@ -95,6 +103,72 @@ function reparamT(
   return Math.max(0, Math.min(1, along));
 }
 
+// Build the merged wall's paint for one side by re-parameterizing each source
+// wall's mapped-side spans onto the merged span and resolving overlaps (painted
+// beats default; ties to w1).
+function mergeSidePaint(
+  w1: Wall,
+  w2: Wall,
+  start: { x: number; y: number },
+  u: { x: number; y: number },
+  Lm: number,
+  mergedSide: "A" | "B",
+): WallPaint {
+  type Cand = {
+    from: number;
+    to: number;
+    material: MaterialRef;
+    painted: boolean;
+    order: number;
+  };
+  const cands: Cand[] = [];
+  [w1, w2].forEach((w, order) => {
+    const reversed = dot(wallDirection(w), u) < 0;
+    // A reversed wall's side A occupies the merged side B (and vice versa).
+    const srcSide =
+      reversed ? (mergedSide === "A" ? "B" : "A") : mergedSide;
+    const paint = srcSide === "A" ? w.paintA : w.paintB;
+    for (const s of facePaintSpans(paint)) {
+      const t1 = reparamT(w, s.from, start, u, Lm);
+      const t2 = reparamT(w, s.to, start, u, Lm);
+      const lo = Math.min(t1, t2);
+      const hi = Math.max(t1, t2);
+      if (hi - lo > 1e-6)
+        cands.push({
+          from: lo,
+          to: hi,
+          material: s.material,
+          painted: !isDefaultPaint(s.material),
+          order,
+        });
+    }
+  });
+  if (cands.length === 0) return DEFAULT_PAINT;
+  const bounds = new Set<number>([0, 1]);
+  for (const c of cands) {
+    bounds.add(c.from);
+    bounds.add(c.to);
+  }
+  const ordered = [...bounds].sort((a, b) => a - b);
+  const spans: PaintSpan[] = [];
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const lo = ordered[i]!;
+    const hi = ordered[i + 1]!;
+    if (hi - lo < 1e-6) continue;
+    const mid = (lo + hi) / 2;
+    const covering = cands.filter((c) => mid >= c.from - 1e-9 && mid <= c.to + 1e-9);
+    if (covering.length === 0) {
+      spans.push({ from: lo, to: hi, material: DEFAULT_PAINT });
+      continue;
+    }
+    covering.sort(
+      (a, b) => Number(b.painted) - Number(a.painted) || a.order - b.order,
+    );
+    spans.push({ from: lo, to: hi, material: covering[0]!.material });
+  }
+  return collapseSpans(spans);
+}
+
 // Merge two known-mergeable walls into one wall covering the union of their spans.
 // Properties: thicker thickness, taller height, painted-over-default paint per
 // side. ALL openings from both walls are carried onto the survivor with their `t`
@@ -121,18 +195,11 @@ export function mergeWallPair(w1: Wall, w2: Wall): Wall {
   const u = wallDirection({ start, end });
 
   const aligned = (w: Wall) => dot(wallDirection(w), u) >= 0;
-  // Map each wall's A/B paint onto the merged orientation (a reversed wall's
-  // side A becomes the merged side B).
-  const a1 = aligned(w1);
-  const a2 = aligned(w2);
-  const paintA = preferPainted(
-    a1 ? w1.paintA : w1.paintB,
-    a2 ? w2.paintA : w2.paintB,
-  );
-  const paintB = preferPainted(
-    a1 ? w1.paintB : w1.paintA,
-    a2 ? w2.paintB : w2.paintA,
-  );
+  // Per-side paint mapped onto the merged orientation and re-parameterized to the
+  // merged endpoints; in the overlap region a painted (non-default) span wins, and
+  // ties go to w1.
+  const paintA = mergeSidePaint(w1, w2, start, u, Lm, "A");
+  const paintB = mergeSidePaint(w1, w2, start, u, Lm, "B");
 
   const flipFace = (f: "A" | "B"): "A" | "B" => (f === "A" ? "B" : "A");
   const flipHinge = (h: "start" | "end"): "start" | "end" =>

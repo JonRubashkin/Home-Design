@@ -59,6 +59,7 @@ import { snapToGrid } from "../geometry/snap";
 import { rectangleSegments } from "../geometry/wall";
 import { snapEndpoint } from "../geometry/wallSnap";
 import { resolveWallOverlaps } from "../geometry/wallMerge";
+import { applyPaintSpan, bracketSpan } from "../geometry/wallPaint";
 import {
   loadViewPrefs,
   saveViewPrefs,
@@ -513,6 +514,15 @@ interface AppState {
   updateWall: (id: string, patch: Partial<Omit<Wall, "id">>) => void;
   deleteWall: (id: string) => void;
   paintWallSide: (id: string, side: WallSide, material: MaterialRef) => void;
+  // Paint only the sub-segment of a wall face bracketed by the junctions where
+  // other walls meet it, around position `t` (0..1). Per-segment paint (Phase
+  // 6.3 Part B). Coalesced; undoable.
+  paintWallSegment: (
+    id: string,
+    side: WallSide,
+    t: number,
+    material: MaterialRef,
+  ) => void;
   addWindow: (wallId: string, window: Omit<WindowOpening, "id">) => void;
   updateWindow: (
     wallId: string,
@@ -793,11 +803,16 @@ export const useStore = create<AppState>((set, get) => {
           lvl.floors.push(createFloor(room.polygon, currentMaterial));
         }
         if (target === "walls" || target === "both") {
-          for (const { wallId, side } of room.wallSides) {
+          for (const { wallId, side, spans } of room.wallSides) {
             const wall = lvl.walls.find((w) => w.id === wallId);
             if (!wall) continue;
-            if (side === "A") wall.paintA = clone(currentMaterial);
-            else wall.paintB = clone(currentMaterial);
+            // Paint only the in-room sub-segments, leaving any portion that
+            // belongs to an adjacent room untouched (no bleed).
+            let paint = side === "A" ? wall.paintA : wall.paintB;
+            for (const s of spans)
+              paint = applyPaintSpan(paint, s.from, s.to, clone(currentMaterial));
+            if (side === "A") wall.paintA = paint;
+            else wall.paintB = paint;
           }
         }
         return { design: next };
@@ -1033,12 +1048,30 @@ export const useStore = create<AppState>((set, get) => {
 
     paintWallSide: (id, side, material) => {
       if (!findWall(get().design, get().currentLevelId, id)) return;
+      // Whole-side paint (the properties-panel chips): replaces any per-segment
+      // spans with a single material for the side.
       commitCoalesced(`paint:${id}:${side}`, (design) => {
         const wall = findWall(design, get().currentLevelId, id);
         if (wall) {
           if (side === "A") wall.paintA = clone(material);
           else wall.paintB = clone(material);
         }
+      });
+    },
+
+    paintWallSegment: (id, side, t, material) => {
+      const level = levelOf(get().design, get().currentLevelId);
+      const wall = level.walls.find((w) => w.id === id);
+      if (!wall) return;
+      const others = level.walls.filter((w) => w.id !== id);
+      const { from, to } = bracketSpan(wall, others, t);
+      commitCoalesced(`paint-seg:${id}:${side}:${from.toFixed(4)}`, (design) => {
+        const w = findWall(design, get().currentLevelId, id);
+        if (!w) return;
+        const current = side === "A" ? w.paintA : w.paintB;
+        const next = applyPaintSpan(current, from, to, clone(material));
+        if (side === "A") w.paintA = next;
+        else w.paintB = next;
       });
     },
 

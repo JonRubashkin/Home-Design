@@ -28,6 +28,20 @@ export type MaterialRef =
       colorB: string;
     };
 
+// Per-segment wall-face paint (Phase 6.3 Part B). A wall side can be painted in
+// ranges along its length (split at the junctions where other walls meet it), so
+// a wall bordering two rooms shows each room's color on its own portion.
+export interface PaintSpan {
+  from: number; // start position along the wall, t in 0..1
+  to: number; // end position
+  material: MaterialRef;
+}
+
+// A wall side's paint: a single material for the whole side (back-compat) OR a
+// list of contiguous spans covering [0,1] in t. Helpers in geometry/wallPaint.ts
+// normalize/read it; both the 2D plan and 3D preview render through them.
+export type WallPaint = MaterialRef | PaintSpan[];
+
 export interface WindowOpening {
   id: string;
   t: number; // center along wall, 0..1 (exclusive of ends)
@@ -79,8 +93,8 @@ export interface Wall {
   end: Vec2;
   height: number; // meters
   thickness: number; // meters
-  paintA: MaterialRef; // side A = left of start->end direction
-  paintB: MaterialRef; // side B = right of start->end direction
+  paintA: WallPaint; // side A = left of start->end direction (per-segment capable)
+  paintB: WallPaint; // side B = right of start->end direction
   windows: WindowOpening[];
   doors: DoorOpening[];
   mounts: WallMount[]; // Phase 4d wall-mounted items
@@ -186,7 +200,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 16;
+  schemaVersion: 17;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

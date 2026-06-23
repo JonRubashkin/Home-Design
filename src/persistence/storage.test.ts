@@ -102,6 +102,29 @@ describe("validateDesign — windows, floors, materials", () => {
     }
   });
 
+  it("accepts and round-trips per-segment wall-face paint", () => {
+    const d = base();
+    d.levels[0]!.walls.push({
+      id: "wseg",
+      start: { x: 0, y: 0 },
+      end: { x: 6, y: 0 },
+      height: 2.4,
+      thickness: 0.15,
+      // Side A is painted per-segment; side B stays a single material.
+      paintA: [
+        { from: 0, to: 0.5, material: { kind: "solid", color: "#ff0000" } },
+        { from: 0.5, to: 1, material: { kind: "solid", color: "#e8e4dc" } },
+      ],
+      paintB: { kind: "solid", color: "#e8e4dc" },
+      windows: [],
+      doors: [],
+      mounts: [],
+    });
+    const r = validateDesign(JSON.parse(JSON.stringify(d)));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.design.levels[0]!.walls[0]!.paintA).toEqual(d.levels[0]!.walls[0]!.paintA);
+  });
+
   it("accepts and round-trips per-level manual roofs", () => {
     const d = base();
     d.levels[0]!.roofs.push({

@@ -91,8 +91,10 @@ describe("mergeWallPair", () => {
   });
 
   it("prefers a painted (non-default) color over the default", () => {
-    const a = wall({ x: 0, y: 0 }, { x: 4, y: 0 });
-    const b = wall({ x: 2, y: 0 }, { x: 6, y: 0 });
+    // b fully contains a and is painted red on side A, so the merged side A is
+    // entirely red (collapsing back to a single material).
+    const a = wall({ x: 2, y: 0 }, { x: 4, y: 0 });
+    const b = wall({ x: 0, y: 0 }, { x: 6, y: 0 });
     b.paintA = { kind: "solid", color: "#ff0000" };
     const m = mergeWallPair(a, b);
     expect(m.paintA).toEqual({ kind: "solid", color: "#ff0000" });

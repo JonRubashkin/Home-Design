@@ -34,6 +34,16 @@ function isMaterial(v: unknown): boolean {
   return false;
 }
 
+// A wall side's paint (Phase 6.3 Part B): a single material (whole side) OR a
+// list of {from, to, material} spans along the wall in t.
+function isWallPaint(v: unknown): boolean {
+  if (Array.isArray(v))
+    return v.every(
+      (s) => isObj(s) && isNum(s.from) && isNum(s.to) && isMaterial(s.material),
+    );
+  return isMaterial(v);
+}
+
 // Returns an error string, or null if the structure is a valid schema-v1 design.
 function structuralError(obj: Record<string, unknown>): string | null {
   if (!Array.isArray(obj.levels) || obj.levels.length === 0)
@@ -55,7 +65,7 @@ function structuralError(obj: Record<string, unknown>): string | null {
         return "A wall has invalid endpoints.";
       if (!isNum(wall.height) || !isNum(wall.thickness))
         return "A wall has invalid dimensions.";
-      if (!isMaterial(wall.paintA) || !isMaterial(wall.paintB))
+      if (!isWallPaint(wall.paintA) || !isWallPaint(wall.paintB))
         return "A wall has an invalid paint material.";
       if (!Array.isArray(wall.windows)) return "A wall is missing its windows.";
       for (const win of wall.windows) {

@@ -235,6 +235,15 @@ const migrations: Migration[] = [
     design.schemaVersion = 16;
     return design;
   },
+  // v16 -> v17: per-segment wall-face paint (Phase 6.3 Part B). `paintA`/`paintB`
+  // are generalized from a single MaterialRef to `WallPaint` (a material OR a list
+  // of spans). Existing single-material sides are already valid as the union's
+  // material branch, so this is a no-op transform — every wall keeps its exact
+  // single-material paint; only the version bumps.
+  (design) => {
+    design.schemaVersion = 17;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

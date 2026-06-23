@@ -56,7 +56,11 @@ import {
   type OrientedFootprint,
 } from "../geometry/furniture";
 import { wallMountPlanFootprint } from "../geometry/wallMount";
-import { roofFootprint } from "../geometry/roofPlacement";
+import {
+  roofContainsPoint,
+  roofFramePoints,
+} from "../geometry/roofPlacement";
+import { decomposeRectilinear, isRectilinear } from "../geometry/roof";
 import {
   boundsOfPoints,
   unionBounds,
@@ -247,6 +251,7 @@ export function PlanEditor() {
   const sideHighlight = useStore((s) => s.sideHighlight);
   const currentMaterial = useStore((s) => s.currentMaterial);
   const fillTarget = useStore((s) => s.fillTarget);
+  const roofMode = useStore((s) => s.roofMode);
   const [floorsOpen, setFloorsOpen] = useState(false);
   const [fillMessage, setFillMessage] = useState<string | null>(null);
 
@@ -353,12 +358,12 @@ export function PlanEditor() {
   const roofs = level.roofs;
   const storeyHeight = level.wallHeight + FLOOR_SLAB_THICKNESS;
 
-  // A roof whose (rotated) footprint rectangle is under the cursor, for select.
+  // A roof under the cursor, for select: a rect roof uses its rotated rectangle,
+  // a polygon (auto) roof uses its footprint outline.
   const roofUnderCursor = (world: Vec2): Roof | undefined => {
     for (let i = roofs.length - 1; i >= 0; i--) {
       const r = roofs[i]!;
-      if (pointInFootprint(world, r.position, r.rotation, roofFootprint(r)))
-        return r;
+      if (roofContainsPoint(r, world)) return r;
     }
     return undefined;
   };
@@ -538,8 +543,7 @@ export function PlanEditor() {
         ),
       );
     }
-    for (const r of roofs)
-      pts.push(...footprintCorners(r.position, r.rotation, roofFootprint(r)));
+    for (const r of roofs) pts.push(...roofFramePoints(r));
     return boundsOfPoints(pts);
   };
 
@@ -934,7 +938,12 @@ export function PlanEditor() {
         } else if (sel?.kind === "staircase") {
           useStore.getState().rotateStaircase(sel.id, delta);
         } else if (sel?.kind === "roof") {
-          useStore.getState().rotateRoof(sel.id, delta);
+          // Polygon (auto) roofs have no rotation; only rect roofs rotate.
+          const r = selectCurrentLevel(useStore.getState()).roofs.find(
+            (x) => x.id === sel.id,
+          );
+          if (r && r.shape !== "polygon")
+            useStore.getState().rotateRoof(sel.id, delta);
         }
       }
     };
@@ -1088,7 +1097,22 @@ export function PlanEditor() {
     }
 
     if (activeTool === "roof") {
-      // Drag a rectangle (grid-snapped corners) to define the roof footprint.
+      if (roofMode === "auto") {
+        // Click inside an enclosed room → generate ONE polygon roof fitted to
+        // its true footprint (incl. L/T/U). Non-rectilinear (angled) rooms still
+        // generate via a bounding-rect fallback for gabled/hipped, with a clear
+        // best-fit message steering the user to Flat/Pitched.
+        const res = store.addRoofAuto(world);
+        const msg = !res.generated
+          ? "Area isn't fully enclosed — roof not generated"
+          : !res.rectilinear
+            ? "Angled walls can't get a gabled/hipped roof yet — using a best-fit; try Flat or Pitched for exact coverage."
+            : null;
+        setFillMessage(msg);
+        if (msg) window.setTimeout(() => setFillMessage(null), 3500);
+        return;
+      }
+      // Draw mode: drag a rectangle (grid-snapped corners) to define the roof.
       const pt = snapToGrid(world);
       dragRef.current = {
         kind: "roofDraw",
@@ -2702,9 +2726,35 @@ function StairSymbol({
 // faint ridge line indicating orientation (along the longer axis, like the 3D
 // ridge; omitted for flat roofs which have no ridge). Selectable.
 function RoofSymbol({ roof, selected }: { roof: Roof; selected: boolean }) {
+  const ns = { vectorEffect: "non-scaling-stroke" as const };
+  // Polygon (auto) roof: draw the static footprint outline + a faint ridge hint
+  // per decomposed rectangle (gabled/hipped only). Footprint is in plan coords.
+  if (roof.shape === "polygon" && roof.footprint && roof.footprint.length >= 3) {
+    const fp = roof.footprint;
+    const pts = fp.map((p) => `${p.x},${p.y}`).join(" ");
+    const sloped = roof.type === "gabled" || roof.type === "hipped";
+    const ridges =
+      sloped && isRectilinear(fp)
+        ? decomposeRectilinear(fp).map((b) => {
+            const w = b.maxX - b.minX;
+            const d = b.maxY - b.minY;
+            return w >= d
+              ? { x1: b.minX, y1: (b.minY + b.maxY) / 2, x2: b.maxX, y2: (b.minY + b.maxY) / 2 }
+              : { x1: (b.minX + b.maxX) / 2, y1: b.minY, x2: (b.minX + b.maxX) / 2, y2: b.maxY };
+          })
+        : [];
+    return (
+      <g className={`roof-symbol${selected ? " selected" : ""}`}>
+        <polygon className="roof-outline" points={pts} fill="none" {...ns} />
+        {ridges.map((r, i) => (
+          <line key={i} className="roof-ridge" {...r} {...ns} />
+        ))}
+      </g>
+    );
+  }
+
   const hw = roof.width / 2;
   const hd = roof.depth / 2;
-  const ns = { vectorEffect: "non-scaling-stroke" as const };
   // Ridge runs along the longer axis (matches computeRoof). Local +x is width.
   const alongX = roof.width >= roof.depth;
   const ridge =

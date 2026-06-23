@@ -121,6 +121,40 @@ describe("validateDesign — windows, floors, materials", () => {
     if (r.ok) expect(r.design.levels[0]!.roofs).toEqual(d.levels[0]!.roofs);
   });
 
+  it("accepts and round-trips a polygon (auto) roof", () => {
+    const d = base();
+    d.levels[0]!.roofs.push({
+      id: "roofP",
+      shape: "polygon",
+      position: { x: 2, y: 2 },
+      width: 0,
+      depth: 0,
+      rotation: 0,
+      footprint: [
+        { x: 0, y: 0 },
+        { x: 4, y: 0 },
+        { x: 4, y: 4 },
+        { x: 0, y: 4 },
+      ],
+      type: "gabled",
+      pitch: 30,
+      overhang: 0.4,
+      visible: true,
+      material: { kind: "solid", color: "#8a5a44" },
+    });
+    const r = validateDesign(JSON.parse(JSON.stringify(d)));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.design.levels[0]!.roofs).toEqual(d.levels[0]!.roofs);
+  });
+
+  it("rejects a polygon roof missing its footprint", () => {
+    const d = base() as unknown as Record<string, unknown>;
+    (d.levels as Record<string, unknown>[])[0]!.roofs = [
+      { id: "x", shape: "polygon", position: { x: 0, y: 0 }, width: 0, depth: 0, rotation: 0, type: "gabled", pitch: 30, overhang: 0.4, visible: true, material: { kind: "solid", color: "#8a5a44" } },
+    ];
+    expect(validateDesign(d).ok).toBe(false);
+  });
+
   it("rejects a malformed roof", () => {
     const d = base() as unknown as Record<string, unknown>;
     (d.levels as Record<string, unknown>[])[0]!.roofs = [

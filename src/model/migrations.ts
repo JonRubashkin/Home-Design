@@ -220,6 +220,21 @@ const migrations: Migration[] = [
     design.schemaVersion = 15;
     return design;
   },
+  // v15 -> v16: polygon-footprint roofs (Phase 6.2). The existing manual roofs
+  // are all rectangles, so every roof gains `shape: "rect"` (auto-generated
+  // roofs carry `shape: "polygon"` + a `footprint`). Back-compat: a missing
+  // `shape` is also treated as rect by the geometry/render code.
+  (design) => {
+    const levels = (design.levels as RawDesign[] | undefined) ?? [];
+    for (const level of levels) {
+      const roofs = (level.roofs as RawDesign[] | undefined) ?? [];
+      for (const roof of roofs) {
+        if (roof.shape === undefined) roof.shape = "rect";
+      }
+    }
+    design.schemaVersion = 16;
+    return design;
+  },
 ];
 
 // Centroid of a level's wall endpoints (the old single roof spanned the wall

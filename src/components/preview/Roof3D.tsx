@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import type { Level, MaterialRef, Roof } from "../../model/types";
 import { useStore } from "../../store/store";
-import { computeRoof, type RoofPart } from "../../geometry/roof";
+import {
+  computeRoof,
+  computePolygonRoof,
+  type RoofPart,
+} from "../../geometry/roof";
 import { roofLocalBounds } from "../../geometry/roofPlacement";
 import { planToWorld } from "../../geometry/mapping";
 import { useThreeMaterial } from "../../materials/threeMaterial";
@@ -70,6 +74,19 @@ function RoofMesh({
 }) {
   const parts = useMemo(() => {
     if (!roof.visible) return [];
+    // A polygon (auto) roof covers its static footprint (absolute plan coords),
+    // so its parts are already in world X/Z — no group transform needed.
+    if (roof.shape === "polygon" && roof.footprint && roof.footprint.length >= 3)
+      return computePolygonRoof(
+        roof.footprint,
+        roof.type,
+        roof.pitch,
+        roof.overhang,
+        baseY,
+        FLOOR_SLAB_THICKNESS,
+      ).parts;
+    // A rect roof is built over its LOCAL centered rectangle; the parent group
+    // applies its plan position + rotation.
     return computeRoof(
       roofLocalBounds(roof),
       roof.type,
@@ -81,6 +98,15 @@ function RoofMesh({
   }, [roof, baseY]);
 
   if (parts.length === 0) return null;
+  if (roof.shape === "polygon") {
+    return (
+      <group>
+        {parts.map((part, i) => (
+          <RoofFace key={i} part={part} material={roof.material} ghost={ghost} />
+        ))}
+      </group>
+    );
+  }
   const [wx, , wz] = planToWorld(roof.position, 0);
   return (
     <group position={[wx, 0, wz]} rotation={[0, -roof.rotation * DEG, 0]}>

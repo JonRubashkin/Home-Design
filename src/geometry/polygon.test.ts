@@ -7,6 +7,7 @@ import {
   pointInPolygon,
   polygonsOverlap,
   polygonContains,
+  simplifyPolygon,
 } from "./polygon";
 import type { Vec2 } from "../model/types";
 
@@ -167,5 +168,46 @@ describe("polygonContains", () => {
   it("is false when inner is bigger / disjoint", () => {
     expect(polygonContains(sq(1, 1, 2), sq(0, 0, 6))).toBe(false);
     expect(polygonContains(sq(0, 0, 2), sq(5, 5, 2))).toBe(false);
+  });
+});
+
+describe("simplifyPolygon", () => {
+  it("leaves a clean rectangle's corners intact", () => {
+    const rect: Vec2[] = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 0, y: 2 },
+    ];
+    const out = simplifyPolygon(rect, 0.15);
+    expect(out).toHaveLength(4);
+  });
+
+  it("keeps an L-shape's six corners", () => {
+    const L: Vec2[] = [
+      { x: 0, y: 0 },
+      { x: 6, y: 0 },
+      { x: 6, y: 3 },
+      { x: 3, y: 3 },
+      { x: 3, y: 6 },
+      { x: 0, y: 6 },
+    ];
+    const out = simplifyPolygon(L, 0.15);
+    expect(out).toHaveLength(6);
+  });
+
+  it("collapses a grid-traced diagonal staircase into a diagonal edge", () => {
+    // A 45° edge approximated by 0.1 m stair steps from (0,0) to (2,2), closed
+    // back along the axes. The staircase should simplify so the hypotenuse is a
+    // single (diagonal) edge — making the polygon read as non-rectilinear.
+    const pts: Vec2[] = [{ x: 0, y: 0 }];
+    for (let i = 1; i <= 20; i++) {
+      pts.push({ x: i * 0.1, y: (i - 1) * 0.1 });
+      pts.push({ x: i * 0.1, y: i * 0.1 });
+    }
+    pts.push({ x: 2, y: 0 });
+    const out = simplifyPolygon(pts, 0.15);
+    // Far fewer points than the staircase had.
+    expect(out.length).toBeLessThan(pts.length / 2);
   });
 });

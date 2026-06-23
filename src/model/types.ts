@@ -135,20 +135,31 @@ export interface CeilingLight {
   materials: Record<string, MaterialRef>; // overrides keyed by part slot
 }
 
-// A roof the user places by dragging a rectangle (Phase 5.2). A manual, fully
-// editable object stored per level — roofs never auto-generate or re-top. An
-// L-shape is made by placing two rectangles, each independent. The rectangle is
-// centered on `position`, sized width × depth, oriented by `rotation` (which
-// orients the ridge), and seated at its level's wall-top height when rendered.
+// A roof, stored per level — a manual, fully editable object. Roofs never
+// auto-update or re-top on wall edits, and never multiply across floors.
+//
+// Two shapes share this one interface so old saved rectangles are untouched:
+//   - "rect" (Phase 5.2, the default; `shape` omitted = rect): the user drags a
+//     rectangle, centered on `position`, sized width × depth, oriented by
+//     `rotation` (which orients the ridge). An L-shape is two rectangles.
+//   - "polygon" (Phase 6.2): an auto-generated roof fitted to a room's TRUE
+//     footprint (incl. L/T/U). The footprint polygon is captured at generation
+//     (grid-snapped, static) in `footprint`; `width`/`depth`/`rotation` are
+//     unused (kept 0) and `position` holds the polygon centroid (the move
+//     anchor). Generated once by clicking a room with the Roof tool's Auto mode;
+//     editing walls afterward never changes it.
+// Both seat at their level's wall-top height when rendered.
 export interface Roof {
   id: string;
-  position: Vec2; // center of the roof rectangle, plan coords (grid-snapped)
-  width: number; // meters (local X)
-  depth: number; // meters (local Z)
-  rotation: number; // degrees, 15° steps (orients the ridge)
+  shape?: "rect" | "polygon"; // default/omitted = "rect" (back-compat)
+  position: Vec2; // rect: rectangle center; polygon: centroid (move anchor)
+  width: number; // rect: meters (local X). polygon: unused (0)
+  depth: number; // rect: meters (local Z). polygon: unused (0)
+  rotation: number; // rect: degrees, 15° steps (orients the ridge). polygon: 0
+  footprint?: Vec2[]; // shape === "polygon": the plan-space outline (static)
   type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = single-slope/shed
   pitch: number; // slope in degrees (ignored for flat)
-  overhang: number; // meters beyond the rectangle (eaves)
+  overhang: number; // meters beyond the footprint (eaves)
   visible: boolean; // per-roof hide toggle (default true)
   material: MaterialRef; // default a roof-tile solid
 }
@@ -175,7 +186,7 @@ export interface Site {
 }
 
 export interface Design {
-  schemaVersion: 15;
+  schemaVersion: 16;
   name: string;
   site: Site;
   // Phase 1 uses exactly one level; structure is multi-level NOW so storeys can

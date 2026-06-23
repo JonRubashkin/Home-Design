@@ -1488,6 +1488,16 @@ button:focus-visible,
   font-size: 12px;
 }
 
+/* "Snap to wall" toggle in the furniture/staircase tool panels */
+.snap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
 /* --- 2D underlay (level below the active one) --- */
 .underlay {
   pointer-events: none;

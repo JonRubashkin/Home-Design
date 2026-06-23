@@ -113,6 +113,14 @@ describe("wallHuggerSnap", () => {
     expect(close(frontX, nx, 1e-6)).toBe(true);
     expect(close(frontY, ny, 1e-6)).toBe(true);
   });
+
+  it("snaps POSITION only and keeps rotation when align = false", () => {
+    // Same case as the first test, but the user has manually rotated to 90°.
+    const r = wallHuggerSnap({ x: 3, y: 0.62 }, 90, sofa, [hWall], undefined, false);
+    expect(r.snapped).toBe(true);
+    expect(close(r.position.y, 0.525, 1e-6)).toBe(true); // still flush
+    expect(r.rotation).toBe(90); // manual rotation wins
+  });
 });
 
 describe("computeStackBaseLifts", () => {
@@ -302,6 +310,19 @@ describe("wallFootprint + collidingMovableIds (furniture vs walls)", () => {
     // sofa resting just below the wall face (flush, depth 1 -> center at 0.5+~) — clear
     const flush = collidingMovableIds([movable("sofa", 5, 0.6)], [wall]);
     expect(flush.has("sofa")).toBe(false);
+  });
+
+  it("treats a flush-against-wall item as clear but a penetrating one as colliding", () => {
+    // Wall along +x at y=0, faces at y = ±0.075. A depth-1 item snapped flush on
+    // side B has its back edge exactly at the face (center y = 0.575) → ≈0
+    // overlap, within tolerance → NOT flagged.
+    const wall = wallFootprint(createWall({ x: 0, y: 0 }, { x: 10, y: 0 }));
+    const flush = collidingMovableIds([movable("a", 5, 0.575)], [wall]);
+    expect(flush.has("a")).toBe(false);
+    // Pushed 0.2 m further into the wall (center y = 0.375) → real penetration →
+    // flagged. This is the "rotated/moved to poke through the wall" case.
+    const poking = collidingMovableIds([movable("a", 5, 0.375)], [wall]);
+    expect(poking.has("a")).toBe(true);
   });
 
   it("still flags movable-vs-movable overlaps and ignores non-collidable", () => {

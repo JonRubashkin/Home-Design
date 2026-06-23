@@ -30,6 +30,27 @@ npm run format   # Prettier
 
 ## Features
 
+### Sticky styles, opening warnings & wall-snap toggle (phase 6.1)
+
+- **Sticky opening styles** — a newly placed window or door inherits the **last
+  style you chose** (set via the properties-panel Style dropdown). Defaults are
+  window *Picture* and door *Single*; the choice persists across reloads
+  (`lastWindowStyle` / `lastDoorStyle`, UI prefs — existing openings are never
+  retro-changed).
+- **Opening-overlap warning** — when two openings on the same wall overlap
+  (including a **sliding** door whose panel slides over a neighbouring window),
+  both are tinted with the **red collision warning** in the 2D plan, live as you
+  edit. Warning-only: it never blocks or moves anything, and it always warns
+  regardless of the furniture collision mode.
+- **Snap to wall toggle** — a **"Snap to wall"** checkbox in the right panel during
+  Furniture and Staircase placement. When **on** (default), *any* item snaps its
+  back edge flush to a nearby wall (not just beds/sofas), overriding the per-item
+  wall-hugger behavior; when **off**, nothing auto-snaps. A snapped item aligns to
+  the wall by default, but **manual rotation wins** (R/Shift+R or the panel keeps
+  your rotation, just the flush position). Sitting flush shows no warning; rotating
+  or moving an item so it pokes **through** the wall fires the red warning (and
+  Hard mode reverts).
+
 ### Ceiling lights (phase 5f)
 
 - Three **ceiling-attached fixtures** (pendant light, flush ceiling light,

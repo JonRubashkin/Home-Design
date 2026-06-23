@@ -52,16 +52,20 @@ export interface SnapResult {
   snapped: boolean;
 }
 
-// Wall-hugger soft snap: if the item's back edge is within the threshold of a
-// wall face (and the item sits beside that wall's span), push the back edge
-// flush to the face and rotate so the item's FRONT (+y local) faces into the
-// room. Pure; works for non-axis-aligned walls.
+// Wall snap: if the item's back edge is within the threshold of a wall face (and
+// the item sits beside that wall's span), push the back edge flush to the face.
+// By default it also rotates so the item's FRONT (+y local) faces into the room;
+// pass `align = false` to snap POSITION only and keep the given rotation (the
+// "manual rotation wins" rule of the Snap-to-wall toggle). Pure; works for
+// non-axis-aligned walls. Used for ANY item when the snapToWall toggle is on —
+// the per-item `wallHugger` flag only informs the default/recommended behavior.
 export function wallHuggerSnap(
   position: Vec2,
   rotation: number,
   fp: Footprint,
   walls: Wall[],
   threshold = WALL_HUGGER_THRESHOLD,
+  align = true,
 ): SnapResult {
   let best: { centerToFace: number; nFace: Vec2; s: number; n: Vec2 } | null =
     null;
@@ -92,6 +96,9 @@ export function wallHuggerSnap(
   const sign = best.s >= 0 ? 1 : -1;
   const deltaS = sign * (fp.depth / 2 - best.centerToFace);
   const snappedPos = add(position, scale(best.n, deltaS));
+
+  // Manual rotation wins: when not aligning, snap position only.
+  if (!align) return { position: snappedPos, rotation, snapped: true };
 
   // Front (+y local) should point along the room-ward face normal.
   const rot = Math.atan2(-best.nFace.x, best.nFace.y) / DEG;

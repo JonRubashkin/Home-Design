@@ -32,6 +32,10 @@ export interface ViewPrefs {
   // style the user last chose (defaults: window "picture", door "single").
   lastWindowStyle: WindowStyle;
   lastDoorStyle: DoorStyle;
+  // Manual "Snap to wall" toggle (furniture & staircase placement/drag). When on,
+  // ANY item can snap flush to a wall, overriding the per-item `wallHugger` flag;
+  // when off, nothing auto-snaps (even wall-huggers). Authoritative over the flag.
+  snapToWall: boolean;
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -48,6 +52,7 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   openPaletteCategory: null,
   lastWindowStyle: "picture",
   lastDoorStyle: "single",
+  snapToWall: true,
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -131,6 +136,10 @@ export function loadViewPrefs(): ViewPrefs {
       lastDoorStyle: DOOR_STYLES.includes(parsed.lastDoorStyle as DoorStyle)
         ? (parsed.lastDoorStyle as DoorStyle)
         : DEFAULT_VIEW_PREFS.lastDoorStyle,
+      snapToWall:
+        typeof parsed.snapToWall === "boolean"
+          ? parsed.snapToWall
+          : DEFAULT_VIEW_PREFS.snapToWall,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

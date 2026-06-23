@@ -237,6 +237,33 @@ function SnapToWallToggle() {
   );
 }
 
+// Right panel for the Roof tool (Phase 6.2): choose Draw (drag a rectangle) or
+// Auto (click inside a room to fit a roof to its true footprint), like the Wall
+// tool's Draw/Room sub-modes.
+function RoofToolPanel() {
+  const roofMode = useStore((s) => s.roofMode);
+  const setRoofMode = useStore((s) => s.setRoofMode);
+  return (
+    <aside className="properties" aria-label="Roof tool">
+      <h2 className="properties-title">Roof</h2>
+      <ToggleField
+        label="Mode"
+        value={roofMode}
+        options={[
+          { value: "draw", label: "Draw" },
+          { value: "auto", label: "Auto" },
+        ]}
+        onChange={setRoofMode}
+      />
+      <p className="properties-hint">
+        {roofMode === "auto"
+          ? "Click inside an enclosed room to generate a roof fitted to its shape (L/T/U included). Flat & Pitched cover any shape exactly; Gabled & Hipped need right-angle walls."
+          : "Drag a rectangle to place a roof. Select it to set type, pitch, overhang, and material."}
+      </p>
+    </aside>
+  );
+}
+
 // Right panel for the Staircase tool: the shared Snap-to-wall toggle + a hint.
 function StairToolPanel() {
   return (
@@ -570,6 +597,10 @@ export function PropertiesPanel() {
     return <StairToolPanel />;
   }
 
+  if (activeTool === "roof") {
+    return <RoofToolPanel />;
+  }
+
   // --- furniture selected ---
   if (selection?.kind === "furniture") {
     const item = level.furniture.find((f) => f.id === selection.id);
@@ -889,44 +920,55 @@ export function PropertiesPanel() {
       );
     }
 
+    // A polygon (auto) roof has no width/depth/rotation — its geometry comes
+    // from its captured footprint; only type/pitch/overhang/material apply.
+    const isPolygon = roof.shape === "polygon";
+
     return (
       <aside className="properties" aria-label="Roof">
         <h2 className="properties-title">Roof</h2>
-        <div className="properties-fields">
-          <NumberField
-            label="Width"
-            value={roof.width}
-            min={0.1}
-            step={0.1}
-            onCommit={(v) => updateRoof(roof.id, { width: v })}
-          />
-          <NumberField
-            label="Depth"
-            value={roof.depth}
-            min={0.1}
-            step={0.1}
-            onCommit={(v) => updateRoof(roof.id, { depth: v })}
-          />
-          <label className="field">
-            <span className="field-label">Rotation</span>
-            <span className="field-input">
-              <input
-                type="number"
-                step={15}
-                value={Math.round(roof.rotation)}
-                onChange={(e) => {
-                  const deg = Number(e.target.value);
-                  if (Number.isFinite(deg)) {
-                    const snapped =
-                      (((Math.round(deg / 15) * 15) % 360) + 360) % 360;
-                    updateRoof(roof.id, { rotation: snapped });
-                  }
-                }}
-              />
-              <span className="field-unit">°</span>
-            </span>
-          </label>
-        </div>
+        {isPolygon ? (
+          <p className="properties-hint">
+            Auto-fitted to the room's footprint. Move it by dragging; edit walls
+            and re-run Auto for a new fit.
+          </p>
+        ) : (
+          <div className="properties-fields">
+            <NumberField
+              label="Width"
+              value={roof.width}
+              min={0.1}
+              step={0.1}
+              onCommit={(v) => updateRoof(roof.id, { width: v })}
+            />
+            <NumberField
+              label="Depth"
+              value={roof.depth}
+              min={0.1}
+              step={0.1}
+              onCommit={(v) => updateRoof(roof.id, { depth: v })}
+            />
+            <label className="field">
+              <span className="field-label">Rotation</span>
+              <span className="field-input">
+                <input
+                  type="number"
+                  step={15}
+                  value={Math.round(roof.rotation)}
+                  onChange={(e) => {
+                    const deg = Number(e.target.value);
+                    if (Number.isFinite(deg)) {
+                      const snapped =
+                        (((Math.round(deg / 15) * 15) % 360) + 360) % 360;
+                      updateRoof(roof.id, { rotation: snapped });
+                    }
+                  }}
+                />
+                <span className="field-unit">°</span>
+              </span>
+            </label>
+          </div>
+        )}
 
         <h3 className="properties-subhead">Type</h3>
         <div className="seg roof-types" role="group" aria-label="Roof type">

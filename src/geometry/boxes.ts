@@ -29,7 +29,16 @@ const clamp = (n: number, lo: number, hi: number) =>
 // full box. Each window splits the wall into a box under the sill, a box above
 // the head, and full-height piers between/around openings — no CSG (per
 // CLAUDE.md). `elevation` is the level's floor height in world Y.
-export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
+//
+// `extraSplits` (meters along the wall) further subdivide every emitted box at
+// those along-wall positions — used by the 3D renderer to break a face where its
+// per-segment paint changes (Phase 6.3 Part B), so each box carries one paint
+// material per side. No effect on geometry, only on box boundaries.
+export function wallToBoxes(
+  wall: Wall,
+  elevation = 0,
+  extraSplits: number[] = [],
+): Box3Spec[] {
   const L = wallLength(wall);
   if (L === 0) return [];
 
@@ -81,16 +90,30 @@ export function wallToBoxes(wall: Wall, elevation = 0): Box3Spec[] {
     .filter((o) => o.b - o.a > 1e-6)
     .sort((p, q) => p.a - q.a);
 
+  // Emit makeBox(a,b,y0,y1), further split along-wall at any extraSplits inside.
+  const splits = extraSplits
+    .filter((s) => s > 1e-9 && s < L - 1e-9)
+    .sort((p, q) => p - q);
+  const emit = (a: number, b: number, y0: number, y1: number) => {
+    const cuts = splits.filter((s) => s > a + 1e-9 && s < b - 1e-9);
+    let prev = a;
+    for (const c of cuts) {
+      boxes.push(makeBox(prev, c, y0, y1));
+      prev = c;
+    }
+    boxes.push(makeBox(prev, b, y0, y1));
+  };
+
   const boxes: Box3Spec[] = [];
   let cursor = 0;
 
   for (const o of openings) {
-    if (o.a > cursor + 1e-9) boxes.push(makeBox(cursor, o.a, 0, H)); // pier
-    if (o.sill > 1e-9) boxes.push(makeBox(o.a, o.b, 0, o.sill)); // under sill
-    if (o.head < H - 1e-9) boxes.push(makeBox(o.a, o.b, o.head, H)); // over head
+    if (o.a > cursor + 1e-9) emit(cursor, o.a, 0, H); // pier
+    if (o.sill > 1e-9) emit(o.a, o.b, 0, o.sill); // under sill
+    if (o.head < H - 1e-9) emit(o.a, o.b, o.head, H); // over head
     cursor = Math.max(cursor, o.b);
   }
-  if (cursor < L - 1e-9) boxes.push(makeBox(cursor, L, 0, H)); // final pier
+  if (cursor < L - 1e-9) emit(cursor, L, 0, H); // final pier
 
   return boxes;
 }

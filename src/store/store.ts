@@ -58,6 +58,8 @@ import { defaultLevelName, restackElevations } from "../model/levels";
 import { snapToGrid } from "../geometry/snap";
 import { rectangleSegments } from "../geometry/wall";
 import { snapEndpoint } from "../geometry/wallSnap";
+import { resolveWallOverlaps } from "../geometry/wallMerge";
+import { applyPaintSpan, bracketSpan } from "../geometry/wallPaint";
 import {
   loadViewPrefs,
   saveViewPrefs,
@@ -248,6 +250,19 @@ function cloneWallWithNewIds(wall: Wall): Wall {
   return copy;
 }
 
+// Brief notice shown when the auto wall-merge actually fuses overlapping walls.
+const MERGE_NOTICE = "Merged overlapping walls";
+
+// Auto-merge collinear/overlapping walls on a level in place (Phase 6.3 Part A).
+// Folded into whatever store action triggered the wall change, so one undo
+// reverses both the user's edit and the merge. Returns whether a merge happened.
+function resolveLevelWallOverlaps(design: Design, levelId: string): boolean {
+  const level = levelOf(design, levelId);
+  const { walls, merged } = resolveWallOverlaps(level.walls);
+  if (merged) level.walls = walls;
+  return merged;
+}
+
 function levelOf(design: Design, levelId: string): Level {
   const level = design.levels.find((l) => l.id === levelId);
   if (!level) {
@@ -431,6 +446,14 @@ interface AppState {
   // `wallHugger` flag; when off, nothing auto-snaps. Authoritative over the flag.
   snapToWall: boolean;
 
+  // Transient non-blocking notice (Phase 6.3): set when the auto wall-merge
+  // fuses overlapping walls. Not persisted, not in history. `mergeNoticeNonce`
+  // bumps on every set so the UI can restart its dismiss timer even when the
+  // text is unchanged.
+  mergeNotice: string | null;
+  mergeNoticeNonce: number;
+  dismissMergeNotice: () => void;
+
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
 
@@ -491,6 +514,15 @@ interface AppState {
   updateWall: (id: string, patch: Partial<Omit<Wall, "id">>) => void;
   deleteWall: (id: string) => void;
   paintWallSide: (id: string, side: WallSide, material: MaterialRef) => void;
+  // Paint only the sub-segment of a wall face bracketed by the junctions where
+  // other walls meet it, around position `t` (0..1). Per-segment paint (Phase
+  // 6.3 Part B). Coalesced; undoable.
+  paintWallSegment: (
+    id: string,
+    side: WallSide,
+    t: number,
+    material: MaterialRef,
+  ) => void;
   addWindow: (wallId: string, window: Omit<WindowOpening, "id">) => void;
   updateWindow: (
     wallId: string,
@@ -649,6 +681,13 @@ export const useStore = create<AppState>((set, get) => {
     set({ design, coalesceKey: key, coalesceAt: now });
   };
 
+  // Partial state carrying the "merged overlapping walls" notice when a merge
+  // happened (bumping the nonce so the UI restarts its dismiss timer).
+  const mergeNoticeFields = (merged: boolean) =>
+    merged
+      ? { mergeNotice: MERGE_NOTICE, mergeNoticeNonce: get().mergeNoticeNonce + 1 }
+      : {};
+
   // Drop a selection that no longer points at an existing entity.
   const sanitizeSelection = (
     design: Design,
@@ -722,6 +761,8 @@ export const useStore = create<AppState>((set, get) => {
     lastDoorStyle: prefs.lastDoorStyle,
     snapToWall: prefs.snapToWall,
     clipboard: null,
+    mergeNotice: null,
+    mergeNoticeNonce: 0,
     past: [],
     future: [],
     dragBaseline: null,
@@ -735,6 +776,7 @@ export const useStore = create<AppState>((set, get) => {
       set({ placingCatalogId, placingVariant }),
     setFillTarget: (fillTarget) => set({ fillTarget }),
     setRoofMode: (roofMode) => set({ roofMode }),
+    dismissMergeNotice: () => set({ mergeNotice: null }),
 
     fillRoom: (point, target) => {
       const { design, currentLevelId, currentMaterial } = get();
@@ -761,11 +803,16 @@ export const useStore = create<AppState>((set, get) => {
           lvl.floors.push(createFloor(room.polygon, currentMaterial));
         }
         if (target === "walls" || target === "both") {
-          for (const { wallId, side } of room.wallSides) {
+          for (const { wallId, side, spans } of room.wallSides) {
             const wall = lvl.walls.find((w) => w.id === wallId);
             if (!wall) continue;
-            if (side === "A") wall.paintA = clone(currentMaterial);
-            else wall.paintB = clone(currentMaterial);
+            // Paint only the in-room sub-segments, leaving any portion that
+            // belongs to an adjacent room untouched (no bleed).
+            let paint = side === "A" ? wall.paintA : wall.paintB;
+            for (const s of spans)
+              paint = applyPaintSpan(paint, s.from, s.to, clone(currentMaterial));
+            if (side === "A") wall.paintA = paint;
+            else wall.paintB = paint;
           }
         }
         return { design: next };
@@ -878,9 +925,13 @@ export const useStore = create<AppState>((set, get) => {
       set((s) => {
         const design = clone(s.design);
         levelOf(design, s.currentLevelId).walls.push(wall);
+        const merged = resolveLevelWallOverlaps(design, s.currentLevelId);
+        // If the new wall was absorbed into an existing one, select the survivor.
+        const survives = !!findWall(design, s.currentLevelId, wall.id);
         return {
           design,
-          selection: { kind: "wall", id: wall.id },
+          selection: survives ? { kind: "wall", id: wall.id } : null,
+          ...mergeNoticeFields(merged),
         };
       });
     },
@@ -901,7 +952,8 @@ export const useStore = create<AppState>((set, get) => {
           createWall({ ...c }, { ...corners[(i + 1) % 4]! }),
         );
         level.walls.push(...built);
-        return { design };
+        const merged = resolveLevelWallOverlaps(design, s.currentLevelId);
+        return { design, ...mergeNoticeFields(merged) };
       });
     },
 
@@ -939,11 +991,13 @@ export const useStore = create<AppState>((set, get) => {
           copy.end = snapEndpoint(copy.end, preExisting).point;
           target.walls.push(copy);
         }
+        const merged = resolveLevelWallOverlaps(next, target.id);
         // Roofs are manual now — copying walls up never adds or moves any roof.
         return {
           design: next,
           currentLevelId: target.id,
           selection: null,
+          ...mergeNoticeFields(merged),
         };
       });
       persistViewPrefs();
@@ -957,7 +1011,18 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const wall = findWall(design, s.currentLevelId, id);
         if (wall) Object.assign(wall, patch);
-        return { design };
+        // Moving an endpoint (length/position edit) can create a collinear
+        // overlap with a neighbour — resolve in the same undo step.
+        const merged =
+          patch.start !== undefined || patch.end !== undefined
+            ? resolveLevelWallOverlaps(design, s.currentLevelId)
+            : false;
+        const survives = !!findWall(design, s.currentLevelId, id);
+        return {
+          design,
+          ...(survives ? {} : { selection: null }),
+          ...mergeNoticeFields(merged),
+        };
       });
     },
 
@@ -983,12 +1048,30 @@ export const useStore = create<AppState>((set, get) => {
 
     paintWallSide: (id, side, material) => {
       if (!findWall(get().design, get().currentLevelId, id)) return;
+      // Whole-side paint (the properties-panel chips): replaces any per-segment
+      // spans with a single material for the side.
       commitCoalesced(`paint:${id}:${side}`, (design) => {
         const wall = findWall(design, get().currentLevelId, id);
         if (wall) {
           if (side === "A") wall.paintA = clone(material);
           else wall.paintB = clone(material);
         }
+      });
+    },
+
+    paintWallSegment: (id, side, t, material) => {
+      const level = levelOf(get().design, get().currentLevelId);
+      const wall = level.walls.find((w) => w.id === id);
+      if (!wall) return;
+      const others = level.walls.filter((w) => w.id !== id);
+      const { from, to } = bracketSpan(wall, others, t);
+      commitCoalesced(`paint-seg:${id}:${side}:${from.toFixed(4)}`, (design) => {
+        const w = findWall(design, get().currentLevelId, id);
+        if (!w) return;
+        const current = side === "A" ? w.paintA : w.paintB;
+        const next = applyPaintSpan(current, from, to, clone(material));
+        if (side === "A") w.paintA = next;
+        else w.paintB = next;
       });
     },
 
@@ -1687,13 +1770,32 @@ export const useStore = create<AppState>((set, get) => {
           level.ceilingLights.push(l);
           selection = { kind: "ceilingLight", id: l.id };
         }
-        return { design, selection };
+        let merged = false;
+        if (clip.kind === "wall") {
+          merged = resolveLevelWallOverlaps(design, s.currentLevelId);
+          // The pasted wall may have been absorbed into the one it overlaps.
+          if (
+            selection?.kind === "wall" &&
+            !findWall(design, s.currentLevelId, selection.id)
+          )
+            selection = null;
+        }
+        return { design, selection, ...mergeNoticeFields(merged) };
       });
       return true;
     },
 
     setDesign: (design) => {
       const next = clone(design);
+      // Clean any pre-existing collinear/overlapping walls on import.
+      let merged = false;
+      for (const level of next.levels) {
+        const r = resolveWallOverlaps(level.walls);
+        if (r.merged) {
+          level.walls = r.walls;
+          merged = true;
+        }
+      }
       set({
         design: next,
         currentLevelId: next.levels[0]!.id,
@@ -1701,6 +1803,9 @@ export const useStore = create<AppState>((set, get) => {
         past: [],
         future: [],
         openDesignId: makeId("design"),
+        ...(merged
+          ? { mergeNotice: MERGE_NOTICE, mergeNoticeNonce: get().mergeNoticeNonce + 1 }
+          : {}),
       });
     },
 
@@ -1857,15 +1962,22 @@ export const useStore = create<AppState>((set, get) => {
       set((s) => {
         const baseline = s.dragBaseline;
         if (!baseline) return { dragBaseline: null };
+        // Fold any auto-merge of walls a drag created (endpoint/translate) into
+        // this same undo step, so one undo reverses the drag AND the merge.
+        const design = clone(s.design);
+        const merged = resolveLevelWallOverlaps(design, s.currentLevelId);
         // Commit one history entry only if the drag actually changed something.
-        const changed = JSON.stringify(baseline) !== JSON.stringify(s.design);
+        const changed = JSON.stringify(baseline) !== JSON.stringify(design);
         if (!changed) return { dragBaseline: null };
         const next = [...s.past, baseline];
         while (next.length > HISTORY_CAP) next.shift();
         return {
+          design,
+          selection: sanitizeSelection(design, s.currentLevelId, s.selection),
           past: next,
           future: [],
           dragBaseline: null,
+          ...mergeNoticeFields(merged),
         };
       }),
 

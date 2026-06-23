@@ -307,6 +307,35 @@ describe("migrateToLatest", () => {
     expect(out.levels[0]!.roofs[0]!.width).toBe(4);
   });
 
+  it("keeps a single-material wall side single after the paint bump (v16 -> v17)", () => {
+    // A v16 design whose wall sides are plain materials. The v16->v17 bump
+    // generalizes paint to WallPaint but must leave single-material sides as-is.
+    const v16 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v16.schemaVersion = 16;
+    const lvl = (v16.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    lvl.roofs = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [];
+    wall.paintA = { kind: "solid", color: "#123456" };
+    wall.paintB = { kind: "solid", color: "#e8e4dc" };
+    (wall.windows as Record<string, unknown>[])[0]!.style = "picture";
+    (wall.windows as Record<string, unknown>[])[0]!.muntinMaterial = {
+      kind: "solid",
+      color: "#eef0f2",
+    };
+    const out = migrateToLatest(v16);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.walls[0]!.paintA).toEqual({
+      kind: "solid",
+      color: "#123456",
+    });
+    expect(Array.isArray(out.levels[0]!.walls[0]!.paintA)).toBe(false);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

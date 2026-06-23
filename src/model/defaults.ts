@@ -287,7 +287,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 16,
+    schemaVersion: 17,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

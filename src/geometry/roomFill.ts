@@ -1,5 +1,11 @@
 import type { Vec2, Wall } from "../model/types";
-import { distancePointToSegment, wallNormal } from "./wall";
+import {
+  distancePointToSegment,
+  wallDirection,
+  wallLength,
+  wallNormal,
+} from "./wall";
+import { wallSplitTs } from "./wallPaint";
 import { GRID_SNAP } from "../model/defaults";
 import type { Bounds } from "./planview";
 
@@ -14,7 +20,14 @@ export const ROOM_FILL_MARGIN = 1.0; // meters of exterior buffer for leak detec
 export interface RoomDetection {
   enclosed: boolean;
   polygon: Vec2[];
-  wallSides: { wallId: string; side: "A" | "B" }[];
+  // Each bordering wall: which side faces the room, and the in-room sub-segments
+  // (t spans between junctions) to paint — so a wall shared with another room only
+  // gets its in-room portion colored (Phase 6.3 Part B).
+  wallSides: {
+    wallId: string;
+    side: "A" | "B";
+    spans: { from: number; to: number }[];
+  }[];
 }
 
 // Exported so other features can reuse the same grid rasterization and boundary
@@ -171,29 +184,51 @@ const interiorAt = (interior: Uint8Array, g: Grid, p: Vec2): boolean => {
   return cl ? interior[cl.r * g.cols + cl.c] === 1 : false;
 };
 
-// For each wall, decide which side (if any) faces the flooded interior, by
-// sampling just outside each face at several points along the wall.
+// For each wall, decide which side (if any) faces the flooded interior, and which
+// sub-segments of that side lie within the room. Split points come from the
+// junctions where OTHER walls meet this wall (so a wall shared between two rooms
+// is painted only on the in-room sub-segments).
 function interiorWallSides(
   walls: Wall[],
   interior: Uint8Array,
   g: Grid,
-): { wallId: string; side: "A" | "B" }[] {
-  const out: { wallId: string; side: "A" | "B" }[] = [];
-  for (const w of walls) {
+): RoomDetection["wallSides"] {
+  const out: RoomDetection["wallSides"] = [];
+  // True if the interior is reached just off `side` at along-wall position `t`.
+  const sideInteriorAt = (w: Wall, side: "A" | "B", t: number): boolean => {
     const n = wallNormal(w); // unit normal toward side A
     const off = w.thickness / 2 + g.cell;
+    const sgn = side === "A" ? 1 : -1;
+    const dir = wallDirection(w);
+    const L = wallLength(w);
+    const px = w.start.x + dir.x * t * L;
+    const py = w.start.y + dir.y * t * L;
+    return interiorAt(interior, g, {
+      x: px + n.x * off * sgn,
+      y: py + n.y * off * sgn,
+    });
+  };
+  for (const w of walls) {
     let aHits = 0;
     let bHits = 0;
     for (const t of [0.15, 0.35, 0.5, 0.65, 0.85]) {
-      const px = w.start.x + (w.end.x - w.start.x) * t;
-      const py = w.start.y + (w.end.y - w.start.y) * t;
-      if (interiorAt(interior, g, { x: px + n.x * off, y: py + n.y * off }))
-        aHits++;
-      if (interiorAt(interior, g, { x: px - n.x * off, y: py - n.y * off }))
-        bHits++;
+      if (sideInteriorAt(w, "A", t)) aHits++;
+      if (sideInteriorAt(w, "B", t)) bHits++;
     }
-    if (aHits > 0 || bHits > 0)
-      out.push({ wallId: w.id, side: aHits >= bHits ? "A" : "B" });
+    if (aHits === 0 && bHits === 0) continue;
+    const side = aHits >= bHits ? "A" : "B";
+    // Sub-segments between the junctions where other walls meet this wall.
+    const others = walls.filter((o) => o.id !== w.id);
+    const splits = [0, ...wallSplitTs(w, others), 1];
+    const spans: { from: number; to: number }[] = [];
+    for (let i = 0; i < splits.length - 1; i++) {
+      const from = splits[i]!;
+      const to = splits[i + 1]!;
+      if (sideInteriorAt(w, side, (from + to) / 2))
+        spans.push({ from, to });
+    }
+    if (spans.length === 0) spans.push({ from: 0, to: 1 });
+    out.push({ wallId: w.id, side, spans });
   }
   return out;
 }

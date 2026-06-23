@@ -42,6 +42,7 @@ import {
 } from "../geometry/windows";
 import { validateDoor, doorSymbol } from "../geometry/doors";
 import { overlappingOpeningIds } from "../geometry/openings";
+import { facePaintSpans, wallSidePaintRegions } from "../geometry/wallPaint";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
 import { floorHoles } from "../geometry/floorOpenings";
 import {
@@ -253,8 +254,19 @@ export function PlanEditor() {
   const currentMaterial = useStore((s) => s.currentMaterial);
   const fillTarget = useStore((s) => s.fillTarget);
   const roofMode = useStore((s) => s.roofMode);
+  const mergeNotice = useStore((s) => s.mergeNotice);
+  const mergeNoticeNonce = useStore((s) => s.mergeNoticeNonce);
+  const dismissMergeNotice = useStore((s) => s.dismissMergeNotice);
   const [floorsOpen, setFloorsOpen] = useState(false);
   const [fillMessage, setFillMessage] = useState<string | null>(null);
+
+  // Auto-dismiss the transient "merged overlapping walls" notice. Keyed off the
+  // nonce so a repeat merge restarts the timer even when the text is unchanged.
+  useEffect(() => {
+    if (!mergeNotice) return;
+    const id = window.setTimeout(() => dismissMergeNotice(), 2200);
+    return () => window.clearTimeout(id);
+  }, [mergeNotice, mergeNoticeNonce, dismissMergeNotice]);
 
   // The level directly below the active one — drawn as a faint, non-interactive
   // underlay so the user can align to it (only when not on the ground floor).
@@ -712,8 +724,12 @@ export function PlanEditor() {
       patternDefs.set(materialKey(f.material), f.material);
   }
   for (const w of walls) {
-    if (w.paintA.kind === "pattern")
-      patternDefs.set(materialKey(w.paintA), w.paintA);
+    for (const side of ["A", "B"] as const) {
+      for (const s of facePaintSpans(side === "A" ? w.paintA : w.paintB)) {
+        if (s.material.kind === "pattern")
+          patternDefs.set(materialKey(s.material), s.material);
+      }
+    }
   }
   if (activeTool === "floor" && currentMaterial.kind === "pattern")
     patternDefs.set(materialKey(currentMaterial), currentMaterial);
@@ -1145,8 +1161,17 @@ export function PlanEditor() {
         return;
       }
       const wall = wallUnderCursor(world);
-      if (wall)
-        store.paintWallSide(wall.id, sideOf(wall, world), currentMaterial);
+      if (wall) {
+        // Paint only the sub-segment between the junctions bracketing the click,
+        // so a wall bordering two rooms keeps each room's color (Phase 6.3 B).
+        const t = projectPointToWallT(wall, world);
+        store.paintWallSegment(
+          wall.id,
+          sideOf(wall, world),
+          t,
+          currentMaterial,
+        );
+      }
       return;
     }
 
@@ -1821,17 +1846,23 @@ export function PlanEditor() {
               <g key={w.id}>
                 {wallPlanSegments(w).map((seg, i) => (
                   <g key={i}>
-                    {/* Each side filled with its own paint (A and B halves). */}
-                    <polygon
-                      className="wall-paint"
-                      points={toPoints(spanHalfCorners(w, seg.a, seg.b, "A"))}
-                      fill={fillFor(w.paintA)}
-                    />
-                    <polygon
-                      className="wall-paint"
-                      points={toPoints(spanHalfCorners(w, seg.a, seg.b, "B"))}
-                      fill={fillFor(w.paintB)}
-                    />
+                    {/* Each side filled with its own per-segment paint, clipped
+                        to this pier (A and B halves). */}
+                    {(["A", "B"] as const).map((side) =>
+                      wallSidePaintRegions(w, side).map((r, ri) => {
+                        const lo = Math.max(seg.a, r.a);
+                        const hi = Math.min(seg.b, r.b);
+                        if (hi - lo <= 1e-6) return null;
+                        return (
+                          <polygon
+                            key={`${side}-${ri}`}
+                            className="wall-paint"
+                            points={toPoints(spanHalfCorners(w, lo, hi, side))}
+                            fill={fillFor(r.material)}
+                          />
+                        );
+                      }),
+                    )}
                     <polygon
                       className={`wall-edge${isSel ? " selected" : ""}`}
                       points={toPoints(spanCorners(w, seg.a, seg.b))}
@@ -2203,6 +2234,7 @@ export function PlanEditor() {
       </div>
 
       {fillMessage && <div className="fill-message">{fillMessage}</div>}
+      {mergeNotice && <div className="fill-message">{mergeNotice}</div>}
     </div>
   );
 }

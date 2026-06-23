@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useStore, selectCurrentLevel } from "./store";
 import { createDesign } from "../model/defaults";
+import { paintMaterialAtT } from "../geometry/wallPaint";
 
 const walls = () => selectCurrentLevel(useStore.getState()).walls;
 const state = () => useStore.getState();
@@ -31,6 +32,81 @@ describe("addWall", () => {
     const w = walls()[0]!;
     expect(w.paintA).toEqual({ kind: "solid", color: "#e8e4dc" });
     expect(w.paintB).toEqual({ kind: "solid", color: "#e8e4dc" });
+  });
+});
+
+describe("auto-merge overlapping walls (Phase 6.3 Part A)", () => {
+  it("merges a new wall overlapping a collinear existing wall into one", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    state().addWall({ x: 2, y: 0 }, { x: 6, y: 0 }); // collinear, inside
+    expect(walls()).toHaveLength(1);
+    expect(state().mergeNotice).toBe("Merged overlapping walls");
+  });
+
+  it("does NOT merge a touching corner (chain)", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 4 });
+    expect(walls()).toHaveLength(2);
+  });
+
+  it("a merge is a single undo step with the triggering draw", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    state().addWall({ x: 2, y: 0 }, { x: 6, y: 0 });
+    expect(walls()).toHaveLength(1);
+    state().undo(); // reverses both the draw and the merge at once
+    expect(walls()).toHaveLength(1);
+    expect(walls()[0]!.start.x).toBe(0);
+    expect(walls()[0]!.end.x).toBe(10);
+  });
+
+  it("carries an opening from the absorbed wall onto the survivor", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 10, y: 0 });
+    const first = walls()[0]!;
+    state().addWindow(first.id, {
+      t: 0.5,
+      width: 1,
+      height: 1.2,
+      sillHeight: 0.9,
+      style: "picture",
+      muntinMaterial: { kind: "solid", color: "#eef0f2" },
+    });
+    state().addWall({ x: 4, y: 0 }, { x: 12, y: 0 }); // overlaps, extends
+    expect(walls()).toHaveLength(1);
+    expect(walls()[0]!.windows).toHaveLength(1);
+  });
+});
+
+describe("per-segment wall paint (Phase 6.3 Part B)", () => {
+  const RED = { kind: "solid", color: "#ff0000" } as const;
+  const DEF = { kind: "solid", color: "#e8e4dc" } as const;
+
+  it("paintWallSegment colors only the sub-segment under the cursor", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 6, y: 0 });
+    const main = walls()[0]!;
+    state().addWall({ x: 3, y: 0 }, { x: 3, y: 4 }); // dividing wall → split t=0.5
+    state().paintWallSegment(main.id, "A", 0.25, RED);
+    const w = walls().find((x) => x.id === main.id)!;
+    expect(paintMaterialAtT(w.paintA, 0.25)).toEqual(RED);
+    expect(paintMaterialAtT(w.paintA, 0.75)).toEqual(DEF);
+  });
+
+  it("Fill Room paints only the in-room portion of a shared wall (no bleed)", () => {
+    // Two rooms sharing a vertical middle wall; the top & bottom walls each
+    // border both rooms (split at t=0.5).
+    state().addWall({ x: 0, y: 0 }, { x: 6, y: 0 }); // top
+    state().addWall({ x: 6, y: 0 }, { x: 6, y: 4 }); // right
+    state().addWall({ x: 6, y: 4 }, { x: 0, y: 4 }); // bottom
+    state().addWall({ x: 0, y: 4 }, { x: 0, y: 0 }); // left
+    state().addWall({ x: 3, y: 0 }, { x: 3, y: 4 }); // middle divider
+    const top = walls()[0]!;
+    state().setCurrentMaterial(RED);
+    // Fill the LEFT room (x in [0,3]).
+    const ok = state().fillRoom({ x: 1.5, y: 2 }, "walls");
+    expect(ok).toBe(true);
+    const t = walls().find((x) => x.id === top.id)!;
+    // Side B faces the room (downward). Left half painted, right half untouched.
+    expect(paintMaterialAtT(t.paintB, 0.25)).toEqual(RED);
+    expect(paintMaterialAtT(t.paintB, 0.75)).toEqual(DEF);
   });
 });
 
@@ -711,10 +787,12 @@ describe("fillRoom", () => {
     const ok = state().fillRoom({ x: 2, y: 1.5 }, "walls");
     expect(ok).toBe(true);
     expect(floors()).toHaveLength(0);
+    const isPainted = (m: { kind: string; color?: string }) =>
+      m.kind === "solid" && m.color !== "#e8e4dc";
     const painted = walls().some(
       (w) =>
-        (w.paintA.kind === "solid" && w.paintA.color !== "#e8e4dc") ||
-        (w.paintB.kind === "solid" && w.paintB.color !== "#e8e4dc"),
+        isPainted(paintMaterialAtT(w.paintA, 0.5)) ||
+        isPainted(paintMaterialAtT(w.paintB, 0.5)),
     );
     expect(painted).toBe(true);
   });

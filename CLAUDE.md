@@ -50,7 +50,7 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 16;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 17;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
@@ -64,7 +64,11 @@ interface Design {
                             // "plain" window style (→"picture") + per-window
                             // muntinMaterial (Phase 6 — bar color); v16 =
                             // polygon-footprint roofs (Phase 6.2 — every existing
-                            // roof gains shape:"rect"; auto roofs are "polygon").
+                            // roof gains shape:"rect"; auto roofs are "polygon");
+                            // v17 = per-segment wall-face paint (Phase 6.3 —
+                            // paintA/paintB generalized to WallPaint; existing
+                            // single-material sides are unchanged, just the
+                            // version bumps).
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -147,8 +151,8 @@ interface Wall {
   end: Vec2;
   height: number;           // meters
   thickness: number;        // meters
-  paintA: MaterialRef;      // side A = left of start→end direction
-  paintB: MaterialRef;      // side B = right of start→end direction
+  paintA: WallPaint;        // side A = left of start→end direction (Phase 6.3)
+  paintB: WallPaint;        // side B = right of start→end direction
   windows: WindowOpening[];
   doors: DoorOpening[];     // Phase 2a
   mounts: WallMount[];      // Phase 4d wall-mounted items
@@ -235,6 +239,13 @@ interface Vec3 { x: number; y: number; z: number; }
 type MaterialRef =
   | { kind: "solid"; color: string }                              // hex
   | { kind: "pattern"; pattern: PatternId; colorA: string; colorB: string };
+
+// Per-segment wall-face paint (Phase 6.3 Part B). A wall side is either ONE
+// material (whole side, back-compat) or a list of contiguous spans along the wall
+// in t (0..1). Helpers in geometry/wallPaint.ts normalize/read it; both 2D and 3D
+// render through facePaintSpans so per-segment colors never drift.
+interface PaintSpan { from: number; to: number; material: MaterialRef; }
+type WallPaint = MaterialRef | PaintSpan[];
 
 type PatternId =
   | "checker" | "planks" | "tile" | "stripes"   // interior, two-tone
@@ -814,8 +825,28 @@ in code under `src/catalog/`:
   rectangle to create **four joined walls** with shared coincident corners (live
   W×D labels); Esc cancels; a zero-area rect is ignored; one undo step (`addRoom`).
 - **2D walls render each side's paint:** every wall span draws an A-side half and a
-  B-side half (each filled with `paintA` / `paintB`) plus a thin outline, so paint
-  applied to either side (Paint tool or Fill Room) shows in the plan, not just 3D.
+  B-side half plus a thin outline, so paint applied to either side (Paint tool or
+  Fill Room) shows in the plan, not just 3D. Each half is filled from the side's
+  **per-segment paint** (`wallSidePaintRegions`, intersected with the pier spans),
+  so a wall painted in pieces shows each piece's color.
+- **Per-segment wall-face paint (Phase 6.3 Part B):** a wall side (`paintA`/
+  `paintB`, now `WallPaint`) is paintable per sub-segment, split at the junctions
+  where other walls meet that wall, so paint stays within one room. Pure tested
+  helpers in `src/geometry/wallPaint.ts`: `facePaintSpans` (the **single source of
+  truth** both 2D and 3D read — normalizes a side to ordered spans), `applyPaintSpan`
+  (paint a `[from,to]` t-range, merging adjacent equal spans and **collapsing back
+  to a single material** when the whole side is one color), `paintMaterialAtT`,
+  `wallSidePaintRegions` (spans → meter ranges), `paintBoundariesMeters` (3D box
+  split positions), and `wallSplitTs`/`bracketSpan` (junction split points from
+  other walls' endpoints meeting this wall + the sub-segment bracketing a click).
+  **3D**: `Wall3D` passes `paintBoundariesMeters` to `wallToBoxes` (which gained an
+  `extraSplits` param) so each box carries one paint material per side
+  (`paintMaterialAtT` at the box's along-wall center); the below-floor skirt uses a
+  representative color. **Paint tool**: clicking a wall face paints only the
+  sub-segment between bracketing junctions on the nearer side
+  (`paintWallSegment`), undoable. The **properties-panel** Side A/B chips still set
+  the **whole** side (`paintWallSide`, collapsing spans), showing a representative
+  color (`representativeFacePaint`).
 - **2D floors cut stairwell holes:** floor regions render as SVG paths with the
   level-below's stairwell openings as even-odd holes (mirrors the 3D slab mask), so
   a filled floor over a stair shows the opening in the plan too.
@@ -827,15 +858,38 @@ in code under `src/catalog/`:
   reaches the site+margin border (→ "Room isn't fully enclosed", no change), else
   the flooded cells are traced into a rectilinear floor polygon and each bordering
   wall's **interior-facing side** (A/B, sampled just off each face) is painted —
-  the outward face is untouched. Floor fill replaces an existing floor covering
-  the clicked point (no stacking). Staircase holes are handled by the existing
-  floor-slab render mask. One undo step (`fillRoom`).
+  the outward face is untouched. **Phase 6.3 Part B:** only the **in-room
+  sub-segments** of each bordering wall's face are painted (the t-spans between
+  junctions where other room walls meet it, returned per wall as
+  `wallSides[].spans` and applied via `applyPaintSpan`), so a wall shared with an
+  adjacent room only gets its in-room portion colored — no bleed. Floor fill
+  replaces an existing floor covering the clicked point (no stacking). Staircase
+  holes are handled by the existing floor-slab render mask. One undo step
+  (`fillRoom`).
 - **Wall auto-snap/heal** (`WALL_SNAP_TOLERANCE = 0.2 m`, pure `snapEndpoint` in
   `src/geometry/wallSnap.ts`, tested): every wall create/edit path — freehand
   draw, room tool, endpoint drag, copy-up — snaps an endpoint first onto a nearby
   **endpoint** (exact coincidence), else onto a wall **segment** (T-junction),
   else falls back to grid. A green snap ring shows while a snap is active. (No
   auto-trim/auto-split this phase.)
+- **Auto-merge overlapping walls (Phase 6.3 Part A)** — pure tested
+  `resolveWallOverlaps(walls)` (`src/geometry/wallMerge.ts`). Two walls merge only
+  when they are **collinear within tolerance** (`WALL_SNAP_TOLERANCE` perpendicular
+  distance) **AND** their spans **overlap** (beyond merely touching — a shared
+  endpoint corner/chain does NOT merge, nor do parallel-offset walls). An
+  overlapping pair (duplicate / containment / partial) becomes ONE wall spanning
+  the union: it takes the **thicker** thickness, **taller** height, and prefers a
+  **painted (non-default)** color per side; ALL openings (windows, doors, mounts)
+  from BOTH walls are carried onto the survivor with each child's `t`
+  re-parameterized to the merged endpoints (door swing/hinge + mount face flip when
+  a source wall ran opposite the merged direction), dropping only an opening that
+  would duplicate another at the same spot. The resolver runs automatically and
+  **idempotently** after every wall-mutating action (draw, room, endpoint
+  drag/translate via `endDrag`, length edit, copy-up, paste, import), folded into
+  the **SAME undo step** so one undo reverses both the edit and the merge. A merge
+  shows a brief non-blocking notice ("Merged overlapping walls", transient store
+  `mergeNotice`/`mergeNoticeNonce`, rendered in the plan). This Part A runs BEFORE
+  Phase 6.3 Part B (per-segment paint) so face painting operates on clean topology.
 - **Copy walls to floor above** (`copyWallsToAbove`): from the level list (all
   active-level walls) or the wall properties panel (just the selected wall).
   Duplicates geometry + openings under fresh ids onto the level above (created if

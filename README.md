@@ -30,6 +30,29 @@ npm run format   # Prettier
 
 ## Features
 
+### Auto-merge overlapping walls (phase 6.3)
+
+- Drawing a wall (or a room rectangle) on top of, inside, or partially over an
+  existing **collinear** wall now **auto-merges** the two into a single wall along
+  the shared run, so an opening cut there reads cleanly with no leftover wall
+  behind it. The survivor keeps the thicker/taller dimensions and any painted
+  (non-default) colors, and carries **all** windows, doors, and wall-mounted items
+  from both walls. Walls that only **touch at a corner** (a chain), or run
+  **parallel and offset**, are left alone. The merge happens in the same undo step
+  as your edit (one undo reverses both) and shows a brief "Merged overlapping
+  walls" note.
+
+### Per-segment wall paint (phase 6.3)
+
+- A wall face is now paintable **per sub-segment**, split where other walls meet
+  it, so a wall bordering two rooms can show a different color in each room. The
+  **Paint** tool colors only the portion of the face between the bracketing
+  junctions under your cursor; **Fill Room** paints only the clicked room's portion
+  of each shared wall (no more bleed onto the neighbor). The properties-panel Side
+  A/B chips still recolor the **whole** side. Painting an entire side one color
+  collapses it back to a single material, and existing single-color walls are
+  unchanged. 2D and 3D render from one source of truth, so they always agree.
+
 ### Sticky styles, opening warnings & wall-snap toggle (phase 6.1)
 
 - **Sticky opening styles** — a newly placed window or door inherits the **last

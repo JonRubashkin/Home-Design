@@ -13,6 +13,12 @@ import {
 import { faceTextureTransform } from "../../materials/faceUV";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
 import { useThreeMaterial } from "../../materials/threeMaterial";
+import {
+  paintBoundariesMeters,
+  paintMaterialAtT,
+  representativeFacePaint,
+} from "../../geometry/wallPaint";
+import { wallLength } from "../../geometry/wall";
 import { WallMount3D } from "./WallMount3D";
 
 const NEUTRAL_TOP: MaterialRef = { kind: "solid", color: "#d8d4cc" };
@@ -169,16 +175,22 @@ export function Wall3D({
   selectedMountId = null,
   skirt = 0,
 }: Props) {
+  // Split boxes wherever the per-segment paint changes (either side), so each box
+  // carries one paint material per side (Phase 6.3 Part B).
+  const paintSplits = useMemo(() => paintBoundariesMeters(wall), [wall]);
+  const L = wallLength(wall);
+
   const boxes = useMemo(() => {
     if (stub) {
       // Stubs render every wall at 10% height; windows never show here.
       return wallToBoxes(
         { ...wall, height: wall.height * 0.1, windows: [] },
         elevation,
+        paintSplits,
       );
     }
-    return wallToBoxes(wall, elevation);
-  }, [wall, elevation, stub]);
+    return wallToBoxes(wall, elevation, paintSplits);
+  }, [wall, elevation, stub, paintSplits]);
 
   // A solid band below the floor (full wall footprint, no openings) that bridges
   // the slab gap to the lower level's wall tops. Skipped in stub mode.
@@ -190,14 +202,33 @@ export function Wall3D({
     );
   }, [wall, elevation, stub, skirt]);
 
+  // The structural skirt below the floor can't show per-segment variation; it
+  // uses each side's representative color.
+  const skirtPaintA = representativeFacePaint(wall.paintA);
+  const skirtPaintB = representativeFacePaint(wall.paintB);
+
   return (
     <group renderOrder={ghost ? 2 : 0}>
-      {[...boxes, ...skirtBoxes].map((b, i) => (
+      {boxes.map((b, i) => {
+        // The paint covering this box's along-wall center, per side.
+        const tCenter = L > 0 ? (b.face.u0 + b.face.w / 2) / L : 0.5;
+        return (
+          <WallBox
+            key={i}
+            box={b}
+            paintA={paintMaterialAtT(wall.paintA, tCenter)}
+            paintB={paintMaterialAtT(wall.paintB, tCenter)}
+            selected={selected}
+            ghost={ghost}
+          />
+        );
+      })}
+      {skirtBoxes.map((b, i) => (
         <WallBox
-          key={i}
+          key={`skirt-${i}`}
           box={b}
-          paintA={wall.paintA}
-          paintB={wall.paintB}
+          paintA={skirtPaintA}
+          paintB={skirtPaintB}
           selected={selected}
           ghost={ghost}
         />

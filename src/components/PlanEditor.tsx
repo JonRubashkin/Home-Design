@@ -43,7 +43,7 @@ import {
 import { validateDoor, doorSymbol } from "../geometry/doors";
 import { overlappingOpeningIds } from "../geometry/openings";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
-import { openingsForFloor } from "../geometry/floorOpenings";
+import { floorHoles } from "../geometry/floorOpenings";
 import {
   pointInFootprint,
   wallHuggerSnap,
@@ -1740,7 +1740,7 @@ export function PlanEditor() {
 
           {/* Floors beneath everything, with stairwell openings cut as holes. */}
           {floors.map((f) => {
-            const holes = openingsForFloor(belowOpenings, f.polygon);
+            const holes = floorHoles(belowOpenings, f.polygon);
             return (
               <path
                 key={f.id}

@@ -660,14 +660,23 @@ in code under `src/catalog/`:
   `THREE.Shape` + **hole paths** for the opening rectangles of the level BELOW
   (`Floors3D`, no CSG); the 2D plan path mirrors them as even-odd holes. The mask
   is authoritative — a floor region drawn over the opening still renders the hole,
-  so the floor tool needs no special blocking. **Which** openings cut a given
-  floor polygon is the single pure tested helper `openingsForFloor(openings,
-  polygon)` (`src/geometry/floorOpenings.ts`): it keeps any opening that shares
-  interior AREA with the floor — **fully inside OR flush against an edge**. (A
-  strict "every corner inside" test used to drop the hole when a stair sat flush
-  against a wall, since those corners land ON the floor boundary.) The 3D slab,
-  the 3D floor regions, and the 2D path all go through this one helper so they
-  can't drift.
+  so the floor tool needs no special blocking. The single pure tested helper
+  `floorHoles(openings, polygon)` (`src/geometry/floorOpenings.ts`) computes the
+  actual hole polygons and is the source of truth for BOTH the 3D slab and the 2D
+  path (so they can't drift). It (1) keeps any opening that shares interior AREA
+  with the floor via `openingsForFloor` — **fully inside OR flush against an edge**
+  (a strict "every corner inside" test used to drop a stair sitting flush against a
+  wall, since those corners land ON the boundary), then (2) **clips** each kept
+  opening to the floor outline (`clipPolygon`, Sutherland–Hodgman — the opening is
+  a convex rectangle so it is the clip; the floor, possibly L-shaped, is the
+  subject) and (3) **insets** it a hair off the boundary (`insetPolygonTowardCentroid`,
+  both in `polygon.ts`). Steps 2–3 matter only in 3D: a Fill-Room floor is traced
+  to the interior wall faces, so a stair flush against a wall yields an opening that
+  reaches/crosses the floor edge; THREE's Earcut silently DROPS any hole touching
+  the outer contour (a boundary notch isn't an interior hole), leaving a solid slab
+  — even though the 2D even-odd path drew it. Clipping + insetting makes every hole
+  strictly interior so Earcut always cuts it, regardless of which tool drew the
+  floor. No CSG.
 - **Collidable:** staircases participate in the collision system as bulky
   footprints (`levelCollidables` includes furniture + stairs); Soft warns / Hard
   reverts vs furniture and other stairs on the same level.

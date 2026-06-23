@@ -8,6 +8,8 @@ import {
   polygonsOverlap,
   polygonContains,
   simplifyPolygon,
+  clipPolygon,
+  insetPolygonTowardCentroid,
 } from "./polygon";
 import type { Vec2 } from "../model/types";
 
@@ -209,5 +211,67 @@ describe("simplifyPolygon", () => {
     const out = simplifyPolygon(pts, 0.15);
     // Far fewer points than the staircase had.
     expect(out.length).toBeLessThan(pts.length / 2);
+  });
+});
+
+const rect = (x0: number, y0: number, x1: number, y1: number): Vec2[] => [
+  { x: x0, y: y0 },
+  { x: x1, y: y0 },
+  { x: x1, y: y1 },
+  { x: x0, y: y1 },
+];
+
+describe("clipPolygon", () => {
+  it("returns the subject unchanged when fully inside the convex clip", () => {
+    const out = clipPolygon(rect(1, 1, 2, 2), square);
+    // Same region (a 1x1 box); area preserved.
+    expect(Math.abs(polygonArea(out))).toBeCloseTo(1, 6);
+  });
+
+  it("trims the subject to the part inside the clip", () => {
+    // Floor (subject) clipped to an opening (convex clip) that pokes past the
+    // floor's left edge: the result is the in-floor part only.
+    const floor = square; // 0..4
+    const opening = rect(-1, 1, 1, 2); // x in [-1,1]
+    const out = clipPolygon(floor, opening);
+    // Intersection is x in [0,1], y in [1,2] => area 1.
+    expect(Math.abs(polygonArea(out))).toBeCloseTo(1, 6);
+    expect(out.every((p) => p.x >= -1e-9 && p.x <= 1 + 1e-9)).toBe(true);
+  });
+
+  it("works with a non-convex (L-shaped) subject", () => {
+    const L: Vec2[] = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 2, y: 2 },
+      { x: 2, y: 4 },
+      { x: 0, y: 4 },
+    ];
+    const out = clipPolygon(L, rect(0, 1, 1, 3));
+    expect(out.length).toBeGreaterThanOrEqual(3);
+    // The clip box [0,1]x[1,3] lies inside the L's left arm => area 2.
+    expect(Math.abs(polygonArea(out))).toBeCloseTo(2, 6);
+  });
+
+  it("is winding-robust (CCW clip yields the same intersection)", () => {
+    const ccwClip = [...rect(1, 1, 2, 2)].reverse();
+    const out = clipPolygon(square, ccwClip);
+    expect(Math.abs(polygonArea(out))).toBeCloseTo(1, 6);
+  });
+});
+
+describe("insetPolygonTowardCentroid", () => {
+  it("pulls a boundary-touching box strictly inside", () => {
+    // A hole flush against the floor's left edge (x=0). After inset, no vertex is
+    // on the boundary, so it is strictly interior.
+    const hole = rect(0, 1, 1, 2);
+    const inset = insetPolygonTowardCentroid(hole, 0.01);
+    expect(inset.every((p) => pointInPolygon(p, square))).toBe(true);
+  });
+
+  it("shrinks the polygon (smaller area, same centroid)", () => {
+    const inset = insetPolygonTowardCentroid(rect(0, 0, 2, 2), 0.1);
+    expect(Math.abs(polygonArea(inset))).toBeLessThan(4);
   });
 });

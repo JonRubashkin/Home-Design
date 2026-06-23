@@ -3,7 +3,7 @@ import * as THREE from "three";
 import type { FloorRegion, Level, Vec2 } from "../../model/types";
 import { useStore } from "../../store/store";
 import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
-import { pointInPolygon } from "../../geometry/polygon";
+import { openingsForFloor } from "../../geometry/floorOpenings";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
 
@@ -17,12 +17,13 @@ function slabGeometry(polygon: Vec2[], holes: Vec2[][]) {
   const shape = new THREE.Shape(
     polygon.map((p) => new THREE.Vector2(p.x, p.y)),
   );
-  for (const hole of holes) {
-    if (hole.every((c) => pointInPolygon(c, polygon))) {
-      shape.holes.push(
-        new THREE.Path(hole.map((p) => new THREE.Vector2(p.x, p.y))),
-      );
-    }
+  // Cut every opening that shares area with this floor polygon (fully inside OR
+  // flush against an edge) — the shared helper is the single source of truth, so
+  // the 3D slab and the 2D plan path never disagree on which holes appear.
+  for (const hole of openingsForFloor(holes, polygon)) {
+    shape.holes.push(
+      new THREE.Path(hole.map((p) => new THREE.Vector2(p.x, p.y))),
+    );
   }
   // Extrude along +Z; rotating the mesh +90° about X lays it flat with the top
   // cap (z=0) facing up and the body hanging below (world Y [-t, 0]).

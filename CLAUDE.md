@@ -50,7 +50,7 @@ names exactly as written; later phases depend on them.
 
 ```ts
 interface Design {
-  schemaVersion: 15;        // v1 = Phase 1; v2 = doors; v3 = furniture;
+  schemaVersion: 16;        // v1 = Phase 1; v2 = doors; v3 = furniture;
                             // v4 = furniture scale; v5 = work-area (site);
                             // v6 = staircases; v7 = furniture shape variants;
                             // v8 = wall-mounted items (Phase 4d); v9 = roof
@@ -62,7 +62,9 @@ interface Design {
                             // style:"single"); v14 = window styles (Phase 6 —
                             // every window gains style:"plain"); v15 = drop the
                             // "plain" window style (→"picture") + per-window
-                            // muntinMaterial (Phase 6 — bar color).
+                            // muntinMaterial (Phase 6 — bar color); v16 =
+                            // polygon-footprint roofs (Phase 6.2 — every existing
+                            // roof gains shape:"rect"; auto roofs are "polygon").
                             // Migrations in src/model/migrations.ts upgrade
                             // older saved designs.
   name: string;
@@ -75,15 +77,20 @@ interface Design {
                             // Design.roof).
 }
 
-interface Roof {            // Phase 5.2. A manually placed roof rectangle.
-  id: string;
-  position: Vec2;           // center of the rectangle, plan coords (grid-snapped)
-  width: number;            // meters (local X)
-  depth: number;            // meters (local Z)
-  rotation: number;         // degrees, 15° steps (orients the ridge)
+interface Roof {            // Phase 5.2 (rect) + Phase 6.2 (polygon). One union so
+  id: string;               // old saved rectangles are untouched.
+  shape?: "rect" | "polygon"; // default/omitted = "rect" (back-compat)
+  position: Vec2;           // rect: rectangle center. polygon: centroid (the move
+                            // anchor). plan coords (grid-snapped)
+  width: number;            // rect: meters (local X). polygon: unused (0)
+  depth: number;            // rect: meters (local Z). polygon: unused (0)
+  rotation: number;         // rect: degrees, 15° steps (orients ridge). polygon: 0
+  footprint?: Vec2[];       // shape==="polygon": the plan-space outline, captured
+                            // AT GENERATION (grid-snapped, STATIC). No width/depth/
+                            // rotation — geometry comes from this.
   type: "flat" | "gabled" | "hipped" | "pitched"; // pitched = shed/single-slope
   pitch: number;            // slope in degrees (ignored for flat)
-  overhang: number;         // meters beyond the rectangle (eaves)
+  overhang: number;         // meters beyond the footprint (eaves)
   visible: boolean;         // per-roof hide toggle (default true)
   material: MaterialRef;    // default a roof-tile solid
 }
@@ -343,13 +350,15 @@ in code under `src/catalog/`:
   TV, floating shelf, wall sconce, wall mirror, range hood. **Phase 5f** adds three
   `mount:"ceiling"` lights (see "Ceiling lights"): pendant light, flush ceiling
   light, chandelier.
-  **Deferred** (do NOT add): curtains (a future fabric pass); **auto-fitting**
-  roofs to rooms (roofs are now manual rectangles — Phase 5.2); true valley
-  **mitering** between overlapping/adjacent roofs; roofs over **angled
-  (non-rectilinear) footprints** beyond the drawn rectangle (an L-shape is two
-  rectangles); auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is
-  plan-position based and can't know a shelf's wall height; the floating shelf is
-  decorative for now).
+  **Deferred** (do NOT add): curtains (a future fabric pass); true valley
+  **mitering** between overlapping/adjacent roof pieces (Phase 6.2 polygon roofs
+  show an **approximate** ridge/valley join); **exact** gabled/hipped roofs over
+  **angled (non-rectilinear) footprints** (Phase 6.2 falls back to the bounding
+  rectangle + an honest message — flat/pitched cover angled shapes exactly);
+  roofs **auto-updating** on wall edits or **per-mass** automatic roofing across a
+  level (the failed Phase 5.1 system — Phase 6.2 Auto is generate-once + static);
+  auto-stacking ONTO a wall shelf (`computeStackBaseLifts` is plan-position based
+  and can't know a shelf's wall height; the floating shelf is decorative for now).
 
 ## Wall-mounted items (Phase 4d Part B)
 
@@ -670,46 +679,82 @@ in code under `src/catalog/`:
   logic runs on wall edits. An **L-shape is made by placing two rectangles**,
   each independent. Roofs **stay put** — adding/copying a floor above never adds,
   moves, duplicates, or re-tops any roof.
-- **Roof tool** (left toolbar, directly under the Stair button; shortcut **O**):
-  drag a rectangle (grid-snapped corners, live W × D labels, mirroring the Room
-  sub-tool); release creates a `Roof` centered on the dragged rect with the
-  default type (**gabled**), default pitch/overhang/material, `visible: true`, on
-  the active level. Esc cancels; a zero-area drag is ignored; the tool stays
-  active for repeat placement. One undo step per roof (`addRoof`).
-- **Editing** (Select tool): a roof is selectable via its (rotated) footprint
-  rectangle hit-test (`pointInFootprint` over `roofFootprint`, pure tested in
-  `src/geometry/roofPlacement.ts`). Drag the body to move it; **R / Shift+R**
-  rotate in 15° steps; resize via **Width/Depth number fields** in the panel
-  (handles were skipped to keep it low-risk). `Selection` gains `{ kind: "roof" }`.
-  Delete/Backspace removes it. The properties panel edits width, depth, rotation,
-  type, pitch, overhang, material, and the visible toggle — all undoable named
-  store actions (`addRoof`, `updateRoof` coalesced for sliders, `rotateRoof`,
-  `moveRoof`, `deleteRoof`).
-- **Per-rectangle geometry:** reuse pure tested `computeRoof(bbox, type, pitch,
-  overhang, baseY, thickness?)` (`src/geometry/roof.ts`) over the roof's **local**
-  (centered, axis-aligned) rectangle (`roofLocalBounds`). **flat** = a real slab
-  over (rect + overhang); **pitched** = a shed slope; **gabled** = ridge along the
-  longer axis; **hipped** = inset ridge, four slopes. `ROOF_LIFT` (in
-  `preview/stacking.ts`) raises every roof a hair above the wall-top plane
-  (`elevation + wallHeight`) so flat slabs never z-fight it.
-- **Render** (`LevelRoofs3D` per level, in `Building3D`): each roof's parts are
-  built in local space, then a parent group rotates about world Y by `-rotation`
-  (plan rotation is SVG-clockwise, like furniture) and seats it at the roof's
-  plan position; the meshes fan-triangulate double-sided (shared material helper,
+- **Roof tool** (left toolbar, directly under the Stair button; shortcut **O**)
+  has **two modes**, chosen in its properties panel (`RoofToolPanel`) like the
+  Wall tool's Draw/Room sub-modes — a transient UI pref `roofMode` (`"draw"` |
+  `"auto"`, default `"draw"`, NOT in the Design, `setRoofMode`):
+  - **Draw** (Phase 5.2): drag a rectangle (grid-snapped corners, live W × D
+    labels, mirroring the Room sub-tool); release creates a rect `Roof` centered
+    on the dragged rect with the default type (**gabled**), default pitch/overhang/
+    material, `visible: true`, on the active level. Esc cancels; a zero-area drag
+    is ignored; the tool stays active. One undo step per roof (`addRoof`).
+  - **Auto** (Phase 6.2): click inside a fully enclosed room → generate **ONE**
+    polygon `Roof` fitted to the section's **true footprint** (incl. L/T/U),
+    **once**. Reuses the Fill Room flood-fill (`detectRoom`), then
+    `simplifyPolygon` (RDP, tol ≈ grid) collapses grid-traced staircases so a
+    real rectilinear room stays axis-aligned and an angled-walled one reads as
+    non-rectilinear. The traced polygon becomes the roof's **static** `footprint`
+    (captured at generation; `shape:"polygon"`). One undo step (`addRoofAuto`,
+    returns `{ generated, rectilinear }` for messaging). A non-enclosed click
+    generates nothing and shows "Area isn't fully enclosed — roof not generated".
+- **Generated roofs are ordinary roof objects** (selectable, movable, editable,
+  deletable, per-level). They **never auto-update/re-run** on wall edits (the
+  `footprint` is frozen) and **never multiply across floors** — to re-fit a
+  changed building, delete and re-run Auto. Do NOT reintroduce mass detection /
+  reconciliation / anchors (the failed Phase 5.1 system).
+- **Editing** (Select tool): a roof is selectable via `roofContainsPoint`
+  (`src/geometry/roofPlacement.ts`, tested) — a rect roof uses its rotated
+  rectangle (`pointInFootprint`/`roofFootprint`), a **polygon** roof its
+  `footprint` outline (`pointInPolygon`). Drag the body to move
+  (`moveRoof` translates the whole `footprint` for polygons); **R / Shift+R**
+  rotate rect roofs (no-op for polygons). `Selection` gains `{ kind: "roof" }`.
+  Delete/Backspace removes it. The panel edits type/pitch/overhang/material/
+  visible for both; **width/depth/rotation only for rect roofs** (hidden for
+  polygons) — all undoable named store actions (`addRoof`, `addRoofAuto`,
+  `updateRoof` coalesced for sliders, `rotateRoof`, `moveRoof`, `deleteRoof`).
+- **Rect geometry:** pure tested `computeRoof(bbox, type, pitch, overhang, baseY,
+  thickness?)` (`src/geometry/roof.ts`) over the roof's **local** (centered,
+  axis-aligned) rectangle (`roofLocalBounds`). **flat** = a real slab over (rect +
+  overhang); **pitched** = a shed slope; **gabled** = ridge along the longer axis;
+  **hipped** = inset ridge, four slopes.
+- **Polygon geometry:** pure tested `computePolygonRoof(footprint, type, pitch,
+  overhang, baseY, thickness?)` (`src/geometry/roof.ts`), built in **absolute**
+  plan/world coords (no group transform). **flat** & **pitched** tile cleanly over
+  the **whole polygon** (ear-clipped via `triangulate`, overhang via
+  `offsetPolygon`) — so they cover L/T/U **and angled** footprints exactly.
+  **gabled** & **hipped** **rectilinear-decompose** the polygon into rectangles
+  (`decomposeRectilinear`, horizontal slabs) and emit a `computeRoof` piece per
+  rectangle, all under the SINGLE roof object. Pieces meeting at inner corners
+  show an **approximate** ridge/valley join (true valley **mitering** stays
+  deferred). A pure tested `isRectilinear(footprint)` gates this: when the
+  footprint is **NOT** rectilinear AND the type is gabled/hipped, the
+  decomposition can't represent it, so it falls back to the **bounding rectangle**
+  and the plan editor surfaces an **honest, non-blocking** message ("Angled walls
+  can't get a gabled/hipped roof yet — using a best-fit; try Flat or Pitched for
+  exact coverage."). Flat/pitched on any polygon, and gabled/hipped on
+  rectilinear polygons, never show it. `ROOF_LIFT` (`preview/stacking.ts`) raises
+  every roof a hair above the wall-top plane so flat slabs never z-fight it.
+- **Render** (`LevelRoofs3D` per level, in `Building3D` → `RoofMesh`): a **rect**
+  roof's parts are built in local space, then a parent group rotates about world Y
+  by `-rotation` (SVG-clockwise, like furniture) and seats it at the roof's plan
+  position; a **polygon** roof's parts are already absolute, rendered in a group
+  at the origin. Meshes fan-triangulate double-sided (shared material helper,
   planar UVs) at `level.elevation + level.wallHeight (+ ROOF_LIFT)`. Roofs are
-  **independent of walls** — they cover the drawn rectangle. **View-mode:**
-  suppresses in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost)
-  so it never blocks the iso interior; solid in Full; kept solid in
-  active-level-only. PLUS each roof's `visible` flag and a **global hide-roofs**
-  UI pref (`hideRoofs`, persisted) remove it — toggled by a **Show roofs** button
-  in the 3D **`ViewModeBar`** (beside Full/Cutaway/Stubs), NOT in the 2D editor.
-- **2D plan:** each roof draws its (rotated) footprint rectangle with a faint
-  ridge line indicating orientation (along the longer axis; omitted for flat),
-  selectable. Per-roof editing is via selecting the roof object; the only global
-  roof control is the **Show roofs** toggle in the 3D view bar (above).
+  **independent of walls** — they cover their footprint. **View-mode:** suppresses
+  in Cutaway/Stubs exactly like an upper floor slab (Invisible/Ghost); solid in
+  Full; kept solid in active-level-only. PLUS each roof's `visible` flag and a
+  **global hide-roofs** UI pref (`hideRoofs`, persisted) remove it — toggled by a
+  **Show roofs** button in the 3D **`ViewModeBar`**, NOT in the 2D editor.
+- **2D plan** (`RoofSymbol`): a rect roof draws its (rotated) rectangle with a
+  faint ridge line (along the longer axis; omitted for flat); a polygon roof draws
+  its `footprint` outline with a faint ridge hint per decomposed piece (gabled/
+  hipped). Both selectable. The only global roof control is the **Show roofs**
+  toggle in the 3D view bar.
 - The v11→v12 migration **clears** every level's `roofs` to `[]` (the old auto
-  output was unsatisfactory; the user re-places roofs with the new tool).
-  Export/Import round-trips the new `Roof[]`.
+  output was unsatisfactory). The v15→v16 migration gives every existing roof
+  `shape: "rect"` (missing `shape` is also treated as rect everywhere).
+  Export/Import round-trips both shapes (storage validates a polygon roof's
+  `footprint`).
 
 ## Ceiling lights (Phase 5f — fixtures only, ceiling-attach)
 

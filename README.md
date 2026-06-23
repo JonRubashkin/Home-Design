@@ -62,28 +62,41 @@ npm run format   # Prettier
   **Stubs**, visible in **Cutaway** (the ceiling above is suppressed). Excluded
   from collision. Schema v10; round-trips through Export/Import.
 
-### Roofs (phase 5.2 — manual roof tool)
+### Roofs (phase 5.2 manual + phase 6.2 auto-fit)
 
-- Roofs are **objects you place**, not auto-generated. Pick the **Roof tool**
-  (left toolbar, under Stair; shortcut `O`) and **drag a rectangle** (grid-snapped,
-  with live W × D labels) to drop a roof on the active level — gabled by default.
-  Make an **L-shape** by placing **two rectangles**, each independent.
-- **Select** a roof (Select tool) to edit it in the properties panel: **width**,
-  **depth**, **rotation** (15° steps; also `R` / `Shift+R`), **type** (flat /
-  gabled / hipped / pitched-shed), **pitch**, **overhang**, **material**, and a
-  **Show this roof** toggle. Drag the body to move it; `Delete` removes it. All
-  edits are undoable. A global **Show roofs** toggle lives in the **3D view bar**
-  (beside Full / Cutaway / Stubs).
+- Roofs are **objects you place**, not silently auto-generated. The **Roof tool**
+  (left toolbar, under Stair; shortcut `O`) has **two modes**, chosen in its
+  properties panel:
+  - **Draw** — **drag a rectangle** (grid-snapped, with live W × D labels) to drop
+    a roof on the active level (gabled by default). Make an **L-shape** by placing
+    two rectangles, or use Auto:
+  - **Auto** — **click inside an enclosed room** to generate **one** roof fitted to
+    that room's **true footprint**, including **L / T / U** shapes. Flat & Pitched
+    cover **any** shape (even angled walls) exactly; Gabled & Hipped split a
+    right-angle footprint into pieces under one roof (angled-walled rooms get a
+    best-fit with a heads-up to use Flat/Pitched). Clicking an unenclosed area
+    generates nothing and tells you so.
+- A generated roof is a **normal editable object** captured **once**: editing the
+  walls afterward never changes it, and adding a floor never duplicates it — to
+  re-fit a changed building, delete the roof and re-run Auto.
+- **Select** a roof (Select tool) to edit it in the properties panel: **type**
+  (flat / gabled / hipped / pitched-shed), **pitch**, **overhang**, **material**,
+  and a **Show this roof** toggle; rectangle roofs also expose **width** /
+  **depth** / **rotation** (15° steps; also `R` / `Shift+R`). Drag the body to
+  move it; `Delete` removes it. All edits are undoable. A global **Show roofs**
+  toggle lives in the **3D view bar** (beside Full / Cutaway / Stubs).
 - Roofs **stay where you put them** — adding or copying a floor above never adds,
-  moves, duplicates, or re-tops any roof. No auto-detection runs anywhere.
+  moves, duplicates, or re-tops any roof. No automatic per-mass roofing or
+  re-topping runs anywhere.
 - In **Cutaway/Stubs** each roof suppresses like an upper floor slab so the
   interior stays visible; in **Full** it's solid. The flat roof is a real slab
   seated a hair above the wall tops (the `ROOF_LIFT` offset in
   `preview/stacking.ts`) so it never z-fights ("flickers") as the camera orbits.
-- Pure tested geometry: per-rectangle `computeRoof` (`roof.ts`) built over the
-  roof's local rectangle (`roofPlacement.ts`), then positioned/rotated in 3D.
-  Round-trips through Export/Import; old auto-roof designs migrate to **no roofs**
-  (you re-place them with the tool).
+- Pure tested geometry: `computeRoof` (rectangles) and `computePolygonRoof`
+  (footprints — ear-clipped flat/pitched, `decomposeRectilinear` for gabled/
+  hipped, `isRectilinear` gating) in `roof.ts`; selection via `roofContainsPoint`
+  (`roofPlacement.ts`). Round-trips through Export/Import (both rect and polygon
+  roofs); old designs migrate (existing roofs become `shape: "rect"`).
 
 ### Corner posts (phase 5d)
 

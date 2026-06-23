@@ -170,6 +170,69 @@ export function polygonsOverlap(a: Vec2[], b: Vec2[]): boolean {
   return false;
 }
 
+// Sutherland–Hodgman: clip `subject` (any simple polygon, convex or not) against
+// `convexClip` (which MUST be convex), returning subject ∩ convexClip. Used to
+// trim a stairwell opening to the floor it cuts: the opening (a rotated rectangle)
+// is always convex, so it is the clip and the floor (possibly L-shaped) is the
+// subject. Without trimming, an opening that pokes past the floor edge becomes a
+// boundary notch that THREE/Earcut can't cut as a hole (it silently drops it),
+// leaving a solid slab — the Fill-Room 3D bug. Winding-robust: the clip is forced
+// to a consistent orientation and "inside" is taken as the left of each edge.
+export function clipPolygon(subject: Vec2[], convexClip: Vec2[]): Vec2[] {
+  if (subject.length < 3 || convexClip.length < 3) return [];
+  const clip = polygonArea(convexClip) > 0 ? convexClip : [...convexClip].reverse();
+  let output = subject.slice();
+  for (let i = 0; i < clip.length && output.length > 0; i++) {
+    const a = clip[i]!;
+    const b = clip[(i + 1) % clip.length]!;
+    const inside = (p: Vec2) =>
+      (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) >= -1e-9;
+    const intersect = (p: Vec2, q: Vec2): Vec2 => {
+      const a1 = b.y - a.y;
+      const b1 = a.x - b.x;
+      const c1 = a1 * a.x + b1 * a.y;
+      const a2 = q.y - p.y;
+      const b2 = p.x - q.x;
+      const c2 = a2 * p.x + b2 * p.y;
+      const d = a1 * b2 - a2 * b1;
+      if (Math.abs(d) < 1e-12) return { x: q.x, y: q.y };
+      return { x: (b2 * c1 - b1 * c2) / d, y: (a1 * c2 - a2 * c1) / d };
+    };
+    const input = output;
+    output = [];
+    for (let j = 0; j < input.length; j++) {
+      const cur = input[j]!;
+      const prev = input[(j + input.length - 1) % input.length]!;
+      const curIn = inside(cur);
+      const prevIn = inside(prev);
+      if (curIn) {
+        if (!prevIn) output.push(intersect(prev, cur));
+        output.push(cur);
+      } else if (prevIn) {
+        output.push(intersect(prev, cur));
+      }
+    }
+  }
+  return output;
+}
+
+// Move every vertex `dist` meters toward the polygon's vertex centroid. A small
+// inset pulls a clipped hole a hair off the floor boundary so it is STRICTLY
+// interior — Earcut only cuts strictly-interior holes, not ones whose edge is
+// coincident with the outer contour. The amount is sub-millimeter-visible.
+export function insetPolygonTowardCentroid(poly: Vec2[], dist: number): Vec2[] {
+  if (poly.length < 3) return poly.map((p) => ({ ...p }));
+  const c = vertexCentroid(poly);
+  return poly.map((p) => {
+    const dx = c.x - p.x;
+    const dy = c.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1e-9) return { x: p.x, y: p.y };
+    const k = Math.min(dist, d) / d;
+    return { x: p.x + dx * k, y: p.y + dy * k };
+  });
+}
+
 // Is `inner` fully covered by `outer`? (Every inner vertex inside outer and no
 // inner edge leaves outer.) Used so a newly drawn floor removes only an old
 // floor it completely covers; partially-overlapped floors are kept (and layered).

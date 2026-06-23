@@ -3,7 +3,7 @@ import * as THREE from "three";
 import type { FloorRegion, Level, Vec2 } from "../../model/types";
 import { useStore } from "../../store/store";
 import { FLOOR_SLAB_THICKNESS } from "../../model/defaults";
-import { openingsForFloor } from "../../geometry/floorOpenings";
+import { floorHoles } from "../../geometry/floorOpenings";
 import { useThreeMaterial } from "../../materials/threeMaterial";
 import { PATTERN_TILE_METERS } from "../../materials/patterns";
 
@@ -17,10 +17,11 @@ function slabGeometry(polygon: Vec2[], holes: Vec2[][]) {
   const shape = new THREE.Shape(
     polygon.map((p) => new THREE.Vector2(p.x, p.y)),
   );
-  // Cut every opening that shares area with this floor polygon (fully inside OR
-  // flush against an edge) — the shared helper is the single source of truth, so
-  // the 3D slab and the 2D plan path never disagree on which holes appear.
-  for (const hole of openingsForFloor(holes, polygon)) {
+  // Cut every opening that shares area with this floor polygon — already clipped
+  // to the floor outline and inset a hair so Earcut always treats it as a strictly
+  // interior hole. The shared helper is the single source of truth, so the 3D slab
+  // and the 2D plan path never disagree on which holes appear.
+  for (const hole of floorHoles(holes, polygon)) {
     shape.holes.push(
       new THREE.Path(hole.map((p) => new THREE.Vector2(p.x, p.y))),
     );

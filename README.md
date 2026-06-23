@@ -128,8 +128,12 @@ npm run format   # Prettier
   `cornerPosts(walls)` finds L-corners, T-junctions, and multi-wall junctions; the
   posts honor the level's **Cutaway/Stubs** view mode like walls. At a **T-junction**
   the post sits on the **stub side only** (it no longer pokes through to the far
-  side of the continuous through wall), and a post takes the **paint of the wall it
-  connects to** (matching painted walls; neutral when the walls are unpainted).
+  side of the continuous through wall). A post is colored **per-face, same-side
+  only**: each vertical face matches the connecting wall's paint on the side that
+  faces the **same way** as that face, so interior and exterior post faces match
+  the interior/exterior wall paint independently — an interior color never bleeds
+  onto an exterior-facing side. When two walls meet a face on the same side the
+  thicker wall wins; an unpainted same-side face falls back to a neutral tone.
 
 ### Wall dimensions (phase 5c)
 

@@ -61,8 +61,10 @@ import {
   saveViewPrefs,
   type CollisionMode,
   type CutawayStyle,
+  type DoorStyle,
   type Layout,
   type ViewMode,
+  type WindowStyle,
 } from "../persistence/viewPrefs";
 import { polygonContains, pointInPolygon } from "../geometry/polygon";
 
@@ -407,6 +409,15 @@ interface AppState {
   // Furniture palette: the one accordion category group left open (null = all
   // collapsed). Persisted UI pref, never in the Design.
   openPaletteCategory: string | null;
+  // Sticky last-used opening styles (persisted UI prefs, never in the Design):
+  // newly placed windows/doors inherit these; updated whenever the user picks a
+  // style on a window/door. Defaults: window "picture", door "single".
+  lastWindowStyle: WindowStyle;
+  lastDoorStyle: DoorStyle;
+  // Manual "Snap to wall" toggle (persisted UI pref, never in the Design). When
+  // on, any furniture/staircase can snap flush to a wall, overriding the per-item
+  // `wallHugger` flag; when off, nothing auto-snaps. Authoritative over the flag.
+  snapToWall: boolean;
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -450,6 +461,9 @@ interface AppState {
   setCollisionMode: (mode: CollisionMode) => void;
   setHideRoofs: (hide: boolean) => void;
   setOpenPaletteCategory: (category: string | null) => void;
+  setLastWindowStyle: (style: WindowStyle) => void;
+  setLastDoorStyle: (style: DoorStyle) => void;
+  setSnapToWall: (snap: boolean) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
   setCurrentLevel: (id: string) => void;
@@ -639,6 +653,9 @@ export const useStore = create<AppState>((set, get) => {
       collisionMode,
       hideRoofs,
       openPaletteCategory,
+      lastWindowStyle,
+      lastDoorStyle,
+      snapToWall,
       currentLevelId,
     } = get();
     saveViewPrefs({
@@ -652,6 +669,9 @@ export const useStore = create<AppState>((set, get) => {
       collisionMode,
       hideRoofs,
       openPaletteCategory,
+      lastWindowStyle,
+      lastDoorStyle,
+      snapToWall,
       activeLevelId: currentLevelId,
     });
   };
@@ -678,6 +698,9 @@ export const useStore = create<AppState>((set, get) => {
     collisionMode: prefs.collisionMode,
     hideRoofs: prefs.hideRoofs,
     openPaletteCategory: prefs.openPaletteCategory,
+    lastWindowStyle: prefs.lastWindowStyle,
+    lastDoorStyle: prefs.lastDoorStyle,
+    snapToWall: prefs.snapToWall,
     clipboard: null,
     past: [],
     future: [],
@@ -766,6 +789,18 @@ export const useStore = create<AppState>((set, get) => {
     },
     setOpenPaletteCategory: (openPaletteCategory) => {
       set({ openPaletteCategory });
+      persistViewPrefs();
+    },
+    setLastWindowStyle: (lastWindowStyle) => {
+      set({ lastWindowStyle });
+      persistViewPrefs();
+    },
+    setLastDoorStyle: (lastDoorStyle) => {
+      set({ lastDoorStyle });
+      persistViewPrefs();
+    },
+    setSnapToWall: (snapToWall) => {
+      set({ snapToWall });
       persistViewPrefs();
     },
 
@@ -963,6 +998,8 @@ export const useStore = create<AppState>((set, get) => {
         if (win) Object.assign(win, patch);
         return { design };
       });
+      // Remember the chosen style as the sticky default for new windows.
+      if (patch.style !== undefined) get().setLastWindowStyle(patch.style);
     },
 
     setWindowMuntinMaterial: (wallId, id, material) => {
@@ -1011,6 +1048,8 @@ export const useStore = create<AppState>((set, get) => {
         if (door) Object.assign(door, patch);
         return { design };
       });
+      // Remember the chosen style as the sticky default for new doors.
+      if (patch.style !== undefined) get().setLastDoorStyle(patch.style);
     },
 
     setDoorMaterial: (wallId, id, material) => {
@@ -1284,7 +1323,9 @@ export const useStore = create<AppState>((set, get) => {
     // ascend to, so if none exists above, one is auto-created (3c naming). The
     // active level stays the lower one (you keep editing where you placed it).
     placeStaircase: (position, rotation) => {
-      const stair = createStaircase(snapToGrid(position), { rotation });
+      // Callers pass an already grid-snapped (or wall-snapped flush) position, so
+      // don't re-grid here — that would undo a flush wall snap (cf. placeFurniture).
+      const stair = createStaircase(position, { rotation });
       const level = levelOf(get().design, get().currentLevelId);
       // Hard mode: refuse to place onto another collidable thing (no-op).
       if (get().collisionMode === "hard") {

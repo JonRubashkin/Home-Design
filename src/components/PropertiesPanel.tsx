@@ -219,6 +219,38 @@ function paletteButtons(entry: CatalogEntry): PaletteButton[] {
 // group is a persisted UI pref restored when the tool reopens; default is all
 // collapsed. Empty categories are skipped so new items land in the right group
 // automatically (groups derive from the catalog `category` field).
+// The "Snap to wall" toggle shown in the right panel during furniture and
+// staircase placement. Persisted UI pref; authoritative over the per-item
+// `wallHugger` flag (on → ANY item snaps; off → nothing auto-snaps).
+function SnapToWallToggle() {
+  const snapToWall = useStore((s) => s.snapToWall);
+  const setSnapToWall = useStore((s) => s.setSnapToWall);
+  return (
+    <label className="snap-toggle">
+      <input
+        type="checkbox"
+        checked={snapToWall}
+        onChange={(e) => setSnapToWall(e.target.checked)}
+      />
+      Snap to wall
+    </label>
+  );
+}
+
+// Right panel for the Staircase tool: the shared Snap-to-wall toggle + a hint.
+function StairToolPanel() {
+  return (
+    <aside className="properties" aria-label="Staircase">
+      <h2 className="properties-title">Staircase</h2>
+      <p className="properties-hint">
+        Click in the plan to place. <kbd>R</kbd> rotates; with Snap to wall on it
+        snaps flush to a nearby wall.
+      </p>
+      <SnapToWallToggle />
+    </aside>
+  );
+}
+
 function FurniturePalette() {
   const placingCatalogId = useStore((s) => s.placingCatalogId);
   const placingVariant = useStore((s) => s.placingVariant);
@@ -236,8 +268,9 @@ function FurniturePalette() {
       <h2 className="properties-title">Furniture</h2>
       <p className="properties-hint">
         Open a category, pick an item, then click in the plan to place it.{" "}
-        <kbd>R</kbd> rotates; wall-huggers snap to nearby walls.
+        <kbd>R</kbd> rotates.
       </p>
+      <SnapToWallToggle />
       <div className="palette">
         {groups.map((cat) => {
           const open = openCategory === cat;
@@ -531,6 +564,10 @@ export function PropertiesPanel() {
 
   if (activeTool === "fill") {
     return <FillRoomPanel />;
+  }
+
+  if (activeTool === "stair") {
+    return <StairToolPanel />;
   }
 
   // --- furniture selected ---

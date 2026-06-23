@@ -21,6 +21,7 @@ import {
   DEFAULT_STAIR_WIDTH,
   DEFAULT_MOUNT_HEIGHT,
   FLOOR_SLAB_THICKNESS,
+  createStaircase,
 } from "../model/defaults";
 import { computeStair } from "../geometry/stair";
 import { add, sub, dot, scale as vscale, distance } from "../geometry/vec";
@@ -40,6 +41,7 @@ import {
   wallPlanSegments,
 } from "../geometry/windows";
 import { validateDoor, doorSymbol } from "../geometry/doors";
+import { overlappingOpeningIds } from "../geometry/openings";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
 import {
   pointInFootprint,
@@ -398,6 +400,13 @@ export function PlanEditor() {
   // --- furniture collision (Soft = warn, Hard = revert) ---
   const collisionMode = useStore((s) => s.collisionMode);
   const lastValidFurnRef = useRef<{ pos: Vec2; rotation: number } | null>(null);
+  // Manual "Snap to wall" toggle (Part C). When on, ANY furniture/staircase
+  // snaps flush to a nearby wall (overrides the per-item `wallHugger` flag);
+  // when off, nothing auto-snaps. Authoritative over the flag.
+  const snapToWall = useStore((s) => s.snapToWall);
+  // True once the user manually rotates the placement ghost (R/Shift+R): manual
+  // rotation then wins — snap keeps the flush position but honors that rotation.
+  const manualRotateRef = useRef(false);
 
   // Every collidable footprint on the active level (collidable furniture + all
   // staircases) — shared by the warning set and the overlap check.
@@ -444,6 +453,16 @@ export function PlanEditor() {
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [furniture, staircases, walls, belowLevel, collisionMode]);
+
+  // Ids of openings (windows/doors) whose visible spans overlap another opening
+  // on the SAME wall — always warned (a modelling error), independent of the
+  // furniture collisionMode. Accounts for a sliding door's offset panel.
+  const openingOverlapSet = useMemo(() => {
+    const hits = new Set<string>();
+    for (const w of walls)
+      for (const id of overlappingOpeningIds(w)) hits.add(id);
+    return hits;
+  }, [walls]);
 
   // Does a candidate collide with any OTHER collidable thing on the active level
   // (height-aware, with tuck-under), or a wall / stairwell opening (footprint
@@ -622,27 +641,58 @@ export function PlanEditor() {
     return undefined;
   };
 
-  // Resolve where the placing ghost / a dragged item should sit: grid-snapped,
-  // then wall-hugger soft-snap (flush + aligned) when applicable. The snap uses
-  // the item's scaled footprint so the back edge lands flush at any size.
+  // Snap a footprint flush to a nearby wall when the Snap-to-wall toggle is on.
+  // Generalized to ANY item (overrides the per-item `wallHugger` flag). `align`
+  // controls rotation: true aligns the item's front into the room (the default),
+  // false keeps the given rotation (manual rotation wins). The snap uses the
+  // item's scaled footprint so the back edge lands flush at any size.
+  const snapFootprintToWall = (
+    pos: Vec2,
+    rotation: number,
+    fp: Footprint,
+    align: boolean,
+  ): { pos: Vec2; rotation: number } => {
+    if (!snapToWall) return { pos, rotation };
+    const snap = wallHuggerSnap(pos, rotation, fp, walls, undefined, align);
+    return snap.snapped
+      ? { pos: snap.position, rotation: snap.rotation }
+      : { pos, rotation };
+  };
+
+  // Resolve where the placing ghost / a dragged furniture item should sit:
+  // grid-snapped, then wall-snap (flush) when the toggle is on. `align` defaults
+  // to true (face into the room); pass false to keep the caller's rotation.
   const resolveFurniturePlacement = (
     catalogId: string,
     raw: Vec2,
     rotation: number,
     scale: Vec3 = UNIT_SCALE,
+    align = true,
   ): { pos: Vec2; rotation: number } => {
     const entry = getCatalogEntry(catalogId);
     const pos = snapToGrid(raw);
-    if (entry?.wallHugger) {
-      const snap = wallHuggerSnap(
-        pos,
-        rotation,
-        scaledFootprint(entry, scale),
-        walls,
-      );
-      if (snap.snapped) return { pos: snap.position, rotation: snap.rotation };
-    }
-    return { pos, rotation };
+    if (!entry) return { pos, rotation };
+    return snapFootprintToWall(pos, rotation, scaledFootprint(entry, scale), align);
+  };
+
+  // Resolve a staircase placement/drag: grid-snapped, then wall-snap (flush) when
+  // the toggle is on, using the stair's footprint (width × run length). Stairs
+  // honor the Snap-to-wall toggle too. `width`/`depth` default to a new stair.
+  const resolveStairPlacement = (
+    raw: Vec2,
+    rotation: number,
+    align: boolean,
+    width = DEFAULT_STAIR_WIDTH,
+    depth?: number,
+  ): { pos: Vec2; rotation: number } => {
+    const pos = snapToGrid(raw);
+    const run =
+      depth ??
+      computeStair(
+        createStaircase(pos, { rotation, width }),
+        storeyHeight,
+      ).runLength;
+    return snapFootprintToWall(pos, rotation, { width, depth: run }, align);
   };
   const selectedWall =
     selection?.kind === "wall"
@@ -791,10 +841,18 @@ export function PlanEditor() {
     setCeilingGhost(null);
     setRoofRect(null);
     setGhostRotation(0);
+    manualRotateRef.current = false;
     useStore.getState().setSideHighlight(null);
     if (activeTool !== "furniture")
       useStore.getState().setPlacingCatalogId(null);
   }, [activeTool]);
+
+  // Picking a different catalog item resets the manual-rotation intent so the new
+  // item aligns to walls by default again.
+  useEffect(() => {
+    manualRotateRef.current = false;
+    setGhostRotation(0);
+  }, [placingCatalogId, placingVariant]);
 
   const closeFloor = () => {
     if (floorPts.length >= 3 && isValidFloorPolygon(floorPts)) {
@@ -848,20 +906,27 @@ export function PlanEditor() {
         const delta = e.shiftKey ? -15 : 15;
         const sel = useStore.getState().selection;
         if (activeTool === "furniture" && placingCatalogId) {
+          // Manual rotation wins from here on (snap keeps position, not rotation).
+          manualRotateRef.current = true;
           setGhostRotation((r) => {
             const next = (((r + delta) % 360) + 360) % 360;
             const placed = resolveFurniturePlacement(
               placingCatalogId,
               lastWorldRef.current,
               next,
+              UNIT_SCALE,
+              false,
             );
             setFurnGhost(placed);
             return next;
           });
         } else if (activeTool === "stair") {
+          manualRotateRef.current = true;
           setGhostRotation((r) => {
             const next = (((r + delta) % 360) + 360) % 360;
-            setStairGhost({ pos: snapToGrid(lastWorldRef.current), rotation: next });
+            setStairGhost(
+              resolveStairPlacement(lastWorldRef.current, next, false),
+            );
             return next;
           });
         } else if (sel?.kind === "furniture") {
@@ -943,7 +1008,7 @@ export function PlanEditor() {
         if (validateWindow(wall, candidate).ok)
           store.addWindow(wall.id, {
             ...candidate,
-            style: "picture",
+            style: store.lastWindowStyle,
             muntinMaterial: { ...DEFAULT_MUNTIN_MATERIAL },
           });
       }
@@ -962,7 +1027,7 @@ export function PlanEditor() {
         if (validateDoor(wall, candidate).ok)
           store.addDoor(wall.id, {
             ...candidate,
-            style: "single",
+            style: store.lastDoorStyle,
             // Hinge defaults to the nearer wall end; swing to side A.
             hinge: t < 0.5 ? "start" : "end",
             swing: "A",
@@ -997,6 +1062,8 @@ export function PlanEditor() {
           placingCatalogId,
           world,
           ghostRotation,
+          UNIT_SCALE,
+          !manualRotateRef.current,
         );
         store.placeFurniture(
           placingCatalogId,
@@ -1010,7 +1077,12 @@ export function PlanEditor() {
     }
 
     if (activeTool === "stair") {
-      store.placeStaircase(snapToGrid(world), ghostRotation);
+      const placed = resolveStairPlacement(
+        world,
+        ghostRotation,
+        !manualRotateRef.current,
+      );
+      store.placeStaircase(placed.pos, placed.rotation);
       // tool stays active for repeat placement
       return;
     }
@@ -1278,10 +1350,18 @@ export function PlanEditor() {
         setCeilingGhost(snapToGrid(world));
       } else if (activeTool === "furniture" && placingCatalogId) {
         setFurnGhost(
-          resolveFurniturePlacement(placingCatalogId, world, ghostRotation),
+          resolveFurniturePlacement(
+            placingCatalogId,
+            world,
+            ghostRotation,
+            UNIT_SCALE,
+            !manualRotateRef.current,
+          ),
         );
       } else if (activeTool === "stair") {
-        setStairGhost({ pos: snapToGrid(world), rotation: ghostRotation });
+        setStairGhost(
+          resolveStairPlacement(world, ghostRotation, !manualRotateRef.current),
+        );
       } else if (activeTool === "wall") {
         setPreview(resolveDrawPoint(world, chainStart));
       } else if (activeTool === "floor") {
@@ -1360,27 +1440,44 @@ export function PlanEditor() {
       } else if (d.kind === "staircase") {
         const stair = staircases.find((x) => x.id === d.itemId);
         if (stair) {
-          const pos = snapToGrid(add(d.basePos, sub(world, d.startWorld)));
-          store.moveStaircase(d.itemId, pos, stair.rotation);
+          // Dragging keeps the stair's rotation (manual rotation wins) and only
+          // snaps position flush to a wall when the toggle is on.
+          const raw = add(d.basePos, sub(world, d.startWorld));
+          const placed = resolveStairPlacement(
+            raw,
+            stair.rotation,
+            false,
+            stair.width,
+            stairFootprint(stair).depth,
+          );
+          store.moveStaircase(d.itemId, placed.pos, placed.rotation);
           if (
             collisionMode === "hard" &&
             !overlapsCollidable(
-              stairCandidate(d.itemId, pos, stair.rotation, stairFootprint(stair)),
+              stairCandidate(
+                d.itemId,
+                placed.pos,
+                placed.rotation,
+                stairFootprint(stair),
+              ),
               d.itemId,
             )
           ) {
-            lastValidFurnRef.current = { pos, rotation: stair.rotation };
+            lastValidFurnRef.current = { pos: placed.pos, rotation: placed.rotation };
           }
         }
       } else if (d.kind === "furniture") {
         const item = furniture.find((f) => f.id === d.itemId);
         if (item) {
+          // Dragging keeps the item's rotation (manual rotation wins) and only
+          // snaps position flush to a wall when the toggle is on.
           const raw = add(d.basePos, sub(world, d.startWorld));
           const placed = resolveFurniturePlacement(
             item.catalogId,
             raw,
             item.rotation,
             item.scale,
+            false,
           );
           store.moveFurniture(d.itemId, placed.pos, placed.rotation);
           // Remember the last non-overlapping spot for a Hard-mode revert.
@@ -1731,6 +1828,7 @@ export function PlanEditor() {
                     selected={
                       selection?.kind === "window" && selection.id === win.id
                     }
+                    warn={openingOverlapSet.has(win.id)}
                   />
                 ))}
                 {w.doors.map((door) => (
@@ -1741,6 +1839,7 @@ export function PlanEditor() {
                     selected={
                       selection?.kind === "door" && selection.id === door.id
                     }
+                    warn={openingOverlapSet.has(door.id)}
                   />
                 ))}
                 {w.mounts.map((m) => {
@@ -2124,6 +2223,7 @@ function WindowSymbol({
   muntinColor,
   selected,
   ghost,
+  warn,
 }: {
   wall: Wall;
   t: number;
@@ -2132,6 +2232,7 @@ function WindowSymbol({
   muntinColor?: string;
   selected?: boolean;
   ghost?: "valid" | "invalid";
+  warn?: boolean;
 }) {
   const L = wallLength(wall);
   if (L === 0) return null;
@@ -2143,7 +2244,7 @@ function WindowSymbol({
   const B = add(wall.start, vscale(dir, Math.min(L, b)));
   const cls = ghost
     ? `window-symbol ghost-${ghost}`
-    : `window-symbol${selected ? " selected" : ""}`;
+    : `window-symbol${selected ? " selected" : ""}${warn ? " warn" : ""}`;
   const seg = (p: Vec2, q: Vec2, key: string) => (
     <line
       key={key}
@@ -2303,6 +2404,7 @@ function DoorSymbolShape({
   door,
   selected,
   ghost,
+  warn,
 }: {
   wall: Wall;
   door: {
@@ -2314,6 +2416,7 @@ function DoorSymbolShape({
   };
   selected?: boolean;
   ghost?: "valid" | "invalid";
+  warn?: boolean;
 }) {
   const L = wallLength(wall);
   if (L === 0) return null;
@@ -2323,7 +2426,7 @@ function DoorSymbolShape({
   const { a, b } = windowSpan(L, door.t, door.width);
   const cls = ghost
     ? `door-symbol ghost-${ghost}`
-    : `door-symbol${selected ? " selected" : ""}`;
+    : `door-symbol${selected ? " selected" : ""}${warn ? " warn" : ""}`;
 
   // Jamb tick across the wall thickness at along-wall distance `s`.
   const jambTick = (s: number, key: string) => {

@@ -171,7 +171,11 @@ interface WindowOpening {
                             // old "plain" was dropped at v15 and maps here).
                             // divided = one centered VERTICAL bar; grid/colonial
                             // = a 2x3 grid of bars. Muntin boxes: windowMuntinBoxes
-                            // (geometry/boxes.ts).
+                            // (geometry/boxes.ts). Phase 6.1: a NEW window inherits
+                            // the last-chosen style (persisted UI pref
+                            // `lastWindowStyle`, NOT in the Design; default
+                            // "picture"), updated whenever the user sets a window's
+                            // style; existing windows aren't retro-changed.
   muntinMaterial: MaterialRef; // color of the glazing bars (divided/grid). Default
                             // near-white #eef0f2. Edited via a "Muntin color" chip
                             // (coalesced setWindowMuntinMaterial); the panel hides
@@ -191,6 +195,10 @@ interface DoorOpening {     // Phase 2a. Like a window but sits on the floor.
                             // along the wall (no swing). hinge/swing apply only to
                             // single & double; ignored for sliding. The opening
                             // hole is unchanged for all styles (still wallToBoxes).
+                            // Phase 6.1: a NEW door inherits the last-chosen style
+                            // (persisted UI pref `lastDoorStyle`, NOT in the Design;
+                            // default "single"), updated whenever the user sets a
+                            // door's style; existing doors aren't retro-changed.
   hinge: "start" | "end";   // hinge side relative to wall start→end direction
   swing: "A" | "B";         // which wall side the door opens toward
   material: MaterialRef;    // leaf material (default solid #9a6b4f)
@@ -402,7 +410,24 @@ in code under `src/catalog/`:
   **below**) collides — footprint-only, **no** vertical/tuck exemption (a chair
   vs a wall always collides). `collidingMovableIds` checks movables vs other
   movables + barriers; the store's `collidesOnLevel` (Hard guards) does the same.
-  Wall-huggers sit flush to the face (≈0 overlap) so they don't trip it.
+  An item sitting **flush** against a wall has ≈0 overlap (within the
+  `footprintsOverlap` tolerance) so it doesn't trip the barrier; only **actual
+  penetration** (rotated/moved past flush) does. This flush-vs-penetrate rule is
+  the wall-barrier behavior for ALL items (no per-item exemption — the snap just
+  keeps snapped items flush).
+- **Snap to wall (Phase 6.1 Part C)** is a persisted UI pref (`snapToWall`, NOT in
+  the Design; default on), toggled from a **"Snap to wall"** checkbox in the right
+  panel during **Furniture** placement (in `FurniturePalette`) and **Staircase**
+  placement (`StairToolPanel`). When **on**, ANY furniture/staircase snaps its back
+  edge flush to a nearby wall face while placing or dragging — this **overrides**
+  the per-item `wallHugger` catalog flag (which now only informs the
+  default/recommended behavior; the toggle is authoritative). When **off**, nothing
+  auto-snaps (even current wall-huggers). The snap **aligns** the item's front into
+  the room by **default**, but **manual rotation wins**: once the user rotates
+  (R/Shift+R or the panel) the snap keeps the flush **position** but honors the
+  rotation (`wallHuggerSnap(..., align)`; dragging an already-placed item always
+  keeps its rotation). A snapped item still participates in collision warnings via
+  the flush-vs-penetrate rule above.
 - **Collision mode** is a persisted UI pref (`collisionMode`, NOT in the Design),
   set from the **Settings** dialog (gear in the top bar, next to Undo/Redo):
   **Off** (no checks),
@@ -480,6 +505,16 @@ in code under `src/catalog/`:
   a box under the sill, a box above the window head, and full-height boxes between
   openings. One pure function computes the sub-box list for a wall:
   `wallToBoxes(wall): Box3Spec[]` — unit test it heavily.
+- **Opening-overlap warning (Phase 6.1 Part B):** the placement validators only
+  compare opening **holes**, but editing (especially switching a door to
+  **sliding**, whose panel parks to one side of the hole) can make an opening
+  visually cover another. Pure tested `openingsOverlap` / `overlappingOpeningIds`
+  (`src/geometry/openings.ts`) compare each opening's **occupied span** along the
+  wall — `openingOccupiedSpan` extends a sliding door one width toward the wall
+  start — and flag any two overlapping openings (windows + doors together). The 2D
+  plan tints overlapping openings with the **same red warning** used by furniture
+  collision, live as the user edits. **Warning-only**: never blocks/clamps, and
+  independent of `collisionMode` (opening overlaps always warn).
 - **Corners (Phase 5d — corner posts, NOT mitering):** thick walls overlap where
   they meet; a small **corner post** fills each junction so corners read clean.
   Pure tested `cornerPosts(walls)` (`src/geometry/cornerPosts.ts`) groups walls by

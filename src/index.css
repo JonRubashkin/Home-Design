@@ -840,6 +840,24 @@ button:focus-visible,
   stroke: #dc2626;
 }
 
+/* --- opening-overlap warning (Phase 6.1 Part B) --- */
+/* Two openings whose visible spans overlap on a wall get the same red warning
+   tint the furniture collision uses. Selection still wins (it comes after). */
+.window-symbol.warn line {
+  stroke: var(--danger);
+  stroke-width: 2;
+}
+.door-symbol.warn line,
+.door-symbol.warn path {
+  stroke: var(--danger);
+  stroke-width: 2;
+}
+.door-symbol.warn polygon.door-panel {
+  fill: rgba(220, 38, 38, 0.16);
+  stroke: var(--danger);
+  stroke-width: 2;
+}
+
 /* --- toggle buttons (door hinge / swing) --- */
 .toggle-row {
   display: flex;
@@ -1468,6 +1486,16 @@ button:focus-visible,
   align-items: center;
   gap: 6px;
   font-size: 12px;
+}
+
+/* "Snap to wall" toggle in the furniture/staircase tool panels */
+.snap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  cursor: pointer;
 }
 
 /* --- 2D underlay (level below the active one) --- */

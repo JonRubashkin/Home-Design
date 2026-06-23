@@ -32,6 +32,7 @@ import {
 } from "../geometry/furniture";
 import { computeStair } from "../geometry/stair";
 import { detectRoom, ROOM_FILL_MARGIN } from "../geometry/roomFill";
+import { isRectilinear } from "../geometry/roof";
 import {
   boundsOfPoints,
   siteBounds,
@@ -45,6 +46,7 @@ import {
   createFurniture,
   createLevel,
   createRoof,
+  createRoofPolygon,
   createStaircase,
   createWall,
   createWallMount,
@@ -66,9 +68,17 @@ import {
   type ViewMode,
   type WindowStyle,
 } from "../persistence/viewPrefs";
-import { polygonContains, pointInPolygon } from "../geometry/polygon";
+import {
+  polygonContains,
+  pointInPolygon,
+  simplifyPolygon,
+} from "../geometry/polygon";
 
 export type FillTarget = "floor" | "walls" | "both";
+// Roof tool sub-mode (Phase 6.2): drag a rectangle, or click a room to auto-fit
+// a roof to its true footprint. A transient UI pref (not persisted, not in the
+// Design), like `fillTarget`.
+export type RoofMode = "draw" | "auto";
 
 // Oriented (scaled, rotated) footprint of a placed item, for collision checks.
 function orientedFootprint(
@@ -391,6 +401,8 @@ interface AppState {
   placingVariant: string | null;
   // Fill Room tool: what to fill (floor / walls / both). Transient UI state.
   fillTarget: FillTarget;
+  // Roof tool sub-mode: drag a rectangle, or click a room to auto-fit. Transient.
+  roofMode: RoofMode;
 
   // 3D view preferences (persisted to localStorage, never in the Design).
   viewMode: ViewMode;
@@ -447,6 +459,7 @@ interface AppState {
     variant?: string | null,
   ) => void;
   setFillTarget: (target: FillTarget) => void;
+  setRoofMode: (mode: RoofMode) => void;
   // Fill the enclosed room around `point` on the active level (floor + interior
   // wall paint) with the current material. One undo step. Returns false (no
   // change) if the click isn't inside a fully enclosed room.
@@ -564,6 +577,12 @@ interface AppState {
   // (coalesced for slider drags); `rotateRoof` snaps to 15°; `deleteRoof` removes
   // one. All on the active level and undoable.
   addRoof: (position: Vec2, width: number, depth: number) => void;
+  // Auto mode (Phase 6.2): click inside an enclosed room to generate ONE polygon
+  // roof fitted to its true footprint (incl. L/T/U). Returns whether a roof was
+  // generated and whether the footprint was rectilinear (a non-rectilinear shape
+  // still generates via a bounding-rect fallback for gabled/hipped, but the UI
+  // surfaces an honest "best fit" message). One undo step.
+  addRoofAuto: (point: Vec2) => { generated: boolean; rectilinear: boolean };
   updateRoof: (id: string, patch: Partial<Omit<Roof, "id">>) => void;
   rotateRoof: (id: string, deltaDeg: number) => void;
   // Reassign a roof to a different level; switches the active level to the
@@ -688,6 +707,7 @@ export const useStore = create<AppState>((set, get) => {
     placingCatalogId: null,
     placingVariant: null,
     fillTarget: "both",
+    roofMode: "draw",
     viewMode: prefs.viewMode,
     cutawayStyle: prefs.cutawayStyle,
     layout: prefs.layout,
@@ -714,6 +734,7 @@ export const useStore = create<AppState>((set, get) => {
     setPlacingCatalogId: (placingCatalogId, placingVariant = null) =>
       set({ placingCatalogId, placingVariant }),
     setFillTarget: (fillTarget) => set({ fillTarget }),
+    setRoofMode: (roofMode) => set({ roofMode }),
 
     fillRoom: (point, target) => {
       const { design, currentLevelId, currentMaterial } = get();
@@ -1486,6 +1507,39 @@ export const useStore = create<AppState>((set, get) => {
       });
     },
 
+    // Generate ONE polygon roof fitted to the enclosed room around `point` on the
+    // active level (Phase 6.2). Reuses the Fill Room flood-fill, simplifies the
+    // traced footprint (so a true rectilinear room stays axis-aligned and an
+    // angled-walled one reads as non-rectilinear), and creates a static polygon
+    // roof. Returns {generated, rectilinear} so the UI can message accordingly.
+    addRoofAuto: (point) => {
+      const { design, currentLevelId } = get();
+      const level = levelOf(design, currentLevelId);
+      const wb = boundsOfPoints(level.walls.flatMap((w) => [w.start, w.end]));
+      const base = unionBounds(siteBounds(design.site), wb)!;
+      const bounds = {
+        minX: base.minX - ROOM_FILL_MARGIN,
+        minY: base.minY - ROOM_FILL_MARGIN,
+        maxX: base.maxX + ROOM_FILL_MARGIN,
+        maxY: base.maxY + ROOM_FILL_MARGIN,
+      };
+      const room = detectRoom(point, level.walls, bounds);
+      if (!room.enclosed || room.polygon.length < 3)
+        return { generated: false, rectilinear: true };
+      // Collapse grid-traced staircase runs (diagonal walls) into single edges;
+      // genuine corners survive. Tolerance just above the grid step.
+      const footprint = simplifyPolygon(room.polygon, 0.15);
+      const rectilinear = isRectilinear(footprint);
+      const roof = createRoofPolygon(footprint);
+      pushHistory();
+      set((s) => {
+        const next = clone(s.design);
+        levelOf(next, s.currentLevelId).roofs.push(roof);
+        return { design: next, selection: { kind: "roof", id: roof.id } };
+      });
+      return { generated: true, rectilinear };
+    },
+
     updateRoof: (id, patch) => {
       if (!findRoof(get().design, get().currentLevelId, id)) return;
       // Coalesce slider drags (pitch/overhang) into one undo step, like scaling.
@@ -1609,6 +1663,9 @@ export const useStore = create<AppState>((set, get) => {
           const r = clone(clip.data);
           r.id = makeId("roof");
           r.position = off(r.position);
+          // A polygon roof's outline is in absolute coords — offset it too.
+          if (r.shape === "polygon" && r.footprint)
+            r.footprint = r.footprint.map(off);
           level.roofs.push(r);
           selection = { kind: "roof", id: r.id };
         } else if (clip.kind === "staircase") {
@@ -1782,6 +1839,16 @@ export const useStore = create<AppState>((set, get) => {
         const design = clone(s.design);
         const roof = findRoof(design, s.currentLevelId, id);
         if (!roof) return {};
+        // A polygon roof carries its outline in absolute plan coords: translate
+        // every footprint point by the same delta the centroid moves.
+        if (roof.shape === "polygon" && roof.footprint) {
+          const dx = position.x - roof.position.x;
+          const dy = position.y - roof.position.y;
+          roof.footprint = roof.footprint.map((p) => ({
+            x: p.x + dx,
+            y: p.y + dy,
+          }));
+        }
         roof.position = position;
         return { design };
       }),

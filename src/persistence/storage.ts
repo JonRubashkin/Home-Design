@@ -140,6 +140,17 @@ function structuralError(obj: Record<string, unknown>): string | null {
         !isMaterial(roof.material)
       )
         return "A roof is malformed.";
+      // Phase 6.2: a polygon (auto) roof carries its footprint outline.
+      if (roof.shape !== undefined && roof.shape !== "rect" && roof.shape !== "polygon")
+        return "A roof has an unknown shape.";
+      if (roof.shape === "polygon") {
+        if (
+          !Array.isArray(roof.footprint) ||
+          roof.footprint.length < 3 ||
+          !roof.footprint.every(isVec2)
+        )
+          return "A polygon roof is missing its footprint.";
+      }
     }
 
     if (!Array.isArray(level.ceilingLights))

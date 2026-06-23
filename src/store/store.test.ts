@@ -937,6 +937,78 @@ describe("manual roofs (Phase 5.2)", () => {
   });
 });
 
+describe("auto roof (Phase 6.2)", () => {
+  const closeRoom = () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 3 });
+    state().addWall({ x: 4, y: 3 }, { x: 0, y: 3 });
+    state().addWall({ x: 0, y: 3 }, { x: 0, y: 0 });
+  };
+
+  it("generates ONE polygon roof fitted to an enclosed room, selected, one undo", () => {
+    closeRoom();
+    const pastBefore = state().past.length;
+    const res = state().addRoofAuto({ x: 2, y: 1.5 });
+    expect(res.generated).toBe(true);
+    expect(res.rectilinear).toBe(true);
+    expect(roofs()).toHaveLength(1);
+    const roof = roofs()[0]!;
+    expect(roof.shape).toBe("polygon");
+    expect(roof.footprint && roof.footprint.length).toBeGreaterThanOrEqual(4);
+    expect(roof.type).toBe("gabled"); // default
+    expect(state().selection).toEqual({ kind: "roof", id: roof.id });
+    expect(state().past.length).toBe(pastBefore + 1);
+    state().undo();
+    expect(roofs()).toHaveLength(0);
+  });
+
+  it("generates nothing for an unenclosed area", () => {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().addWall({ x: 4, y: 0 }, { x: 4, y: 3 });
+    state().addWall({ x: 4, y: 3 }, { x: 0, y: 3 }); // left wall missing
+    const res = state().addRoofAuto({ x: 2, y: 1.5 });
+    expect(res.generated).toBe(false);
+    expect(roofs()).toHaveLength(0);
+  });
+
+  it("covers an L-shaped room's true footprint (more than 4 corners)", () => {
+    // An L: outer 6x6 with a 3x3 notch removed from the bottom-right.
+    state().addWall({ x: 0, y: 0 }, { x: 6, y: 0 });
+    state().addWall({ x: 6, y: 0 }, { x: 6, y: 3 });
+    state().addWall({ x: 6, y: 3 }, { x: 3, y: 3 });
+    state().addWall({ x: 3, y: 3 }, { x: 3, y: 6 });
+    state().addWall({ x: 3, y: 6 }, { x: 0, y: 6 });
+    state().addWall({ x: 0, y: 6 }, { x: 0, y: 0 });
+    const res = state().addRoofAuto({ x: 1, y: 1 });
+    expect(res.generated).toBe(true);
+    expect(roofs()[0]!.footprint!.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("a generated roof survives wall edits (footprint is static)", () => {
+    closeRoom();
+    state().addRoofAuto({ x: 2, y: 1.5 });
+    const before = JSON.stringify(roofs()[0]!.footprint);
+    // Add another wall — the captured footprint must not change.
+    state().addWall({ x: 10, y: 10 }, { x: 12, y: 10 });
+    expect(JSON.stringify(roofs()[0]!.footprint)).toBe(before);
+  });
+
+  it("moves a polygon roof by translating its whole footprint", () => {
+    closeRoom();
+    state().addRoofAuto({ x: 2, y: 1.5 });
+    const roof = roofs()[0]!;
+    const before = roof.footprint!.map((p) => ({ ...p }));
+    state().beginDrag();
+    state().moveRoof(roof.id, { x: roof.position.x + 1, y: roof.position.y });
+    state().endDrag();
+    const after = roofs()[0]!.footprint!;
+    after.forEach((p, i) => {
+      expect(p.x).toBeCloseTo(before[i]!.x + 1, 6);
+      expect(p.y).toBeCloseTo(before[i]!.y, 6);
+    });
+  });
+});
+
 const furn = () => selectCurrentLevel(useStore.getState()).furniture;
 
 describe("copy / paste", () => {

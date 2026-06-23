@@ -672,6 +672,11 @@ in code under `src/catalog/`:
   render a `skirt` (a solid band of `FLOOR_SLAB_THICKNESS` below the floor, full
   footprint, no openings) so they meet the lower level's wall tops — no floor band
   shows between levels. Skipped on the ground level, in Stubs, and in active-only.
+  The skirt is split at the SAME per-segment paint boundaries as the wall face
+  (`paintBoundariesMeters` → `wallToBoxes` `extraSplits`) and each skirt box takes
+  its side's `paintMaterialAtT` at the box's along-wall center — exactly like the
+  face boxes — so each skirt stretch matches the segment directly above it (face +
+  skirt share one paint code path; no single-representative-color smear).
 
 ## Staircases (Phase 3d — straight stairs only)
 
@@ -859,8 +864,10 @@ in code under `src/catalog/`:
   other walls' endpoints meeting this wall + the sub-segment bracketing a click).
   **3D**: `Wall3D` passes `paintBoundariesMeters` to `wallToBoxes` (which gained an
   `extraSplits` param) so each box carries one paint material per side
-  (`paintMaterialAtT` at the box's along-wall center); the below-floor skirt uses a
-  representative color. **Paint tool**: clicking a wall face paints only the
+  (`paintMaterialAtT` at the box's along-wall center); the below-floor skirt is
+  segmented the SAME way (same `paintBoundariesMeters` splits + per-box
+  `paintMaterialAtT`), so each skirt stretch matches the face segment above it.
+  **Paint tool**: clicking a wall face paints only the
   sub-segment between bracketing junctions on the nearer side
   (`paintWallSegment`), undoable. The **properties-panel** Side A/B chips still set
   the **whole** side (`paintWallSide`, collapsing spans), showing a representative

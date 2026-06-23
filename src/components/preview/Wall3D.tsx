@@ -16,7 +16,6 @@ import { useThreeMaterial } from "../../materials/threeMaterial";
 import {
   paintBoundariesMeters,
   paintMaterialAtT,
-  representativeFacePaint,
 } from "../../geometry/wallPaint";
 import { wallLength } from "../../geometry/wall";
 import { WallMount3D } from "./WallMount3D";
@@ -193,46 +192,38 @@ export function Wall3D({
   }, [wall, elevation, stub, paintSplits]);
 
   // A solid band below the floor (full wall footprint, no openings) that bridges
-  // the slab gap to the lower level's wall tops. Skipped in stub mode.
+  // the slab gap to the lower level's wall tops. Skipped in stub mode. It is split
+  // at the SAME per-segment paint boundaries as the face (`paintSplits`) so each
+  // skirt box matches the segment directly above it.
   const skirtBoxes = useMemo(() => {
     if (stub || skirt <= 0) return [];
     return wallToBoxes(
       { ...wall, height: skirt, windows: [], doors: [] },
       elevation - skirt,
+      paintSplits,
     );
-  }, [wall, elevation, stub, skirt]);
+  }, [wall, elevation, stub, skirt, paintSplits]);
 
-  // The structural skirt below the floor can't show per-segment variation; it
-  // uses each side's representative color.
-  const skirtPaintA = representativeFacePaint(wall.paintA);
-  const skirtPaintB = representativeFacePaint(wall.paintB);
+  // Per-box paint (per side) from the box's along-wall center — the single source
+  // of truth shared by face and skirt so they can never drift.
+  const boxPaint = (b: Box3Spec, i: number, prefix: string) => {
+    const tCenter = L > 0 ? (b.face.u0 + b.face.w / 2) / L : 0.5;
+    return (
+      <WallBox
+        key={`${prefix}${i}`}
+        box={b}
+        paintA={paintMaterialAtT(wall.paintA, tCenter)}
+        paintB={paintMaterialAtT(wall.paintB, tCenter)}
+        selected={selected}
+        ghost={ghost}
+      />
+    );
+  };
 
   return (
     <group renderOrder={ghost ? 2 : 0}>
-      {boxes.map((b, i) => {
-        // The paint covering this box's along-wall center, per side.
-        const tCenter = L > 0 ? (b.face.u0 + b.face.w / 2) / L : 0.5;
-        return (
-          <WallBox
-            key={i}
-            box={b}
-            paintA={paintMaterialAtT(wall.paintA, tCenter)}
-            paintB={paintMaterialAtT(wall.paintB, tCenter)}
-            selected={selected}
-            ghost={ghost}
-          />
-        );
-      })}
-      {skirtBoxes.map((b, i) => (
-        <WallBox
-          key={`skirt-${i}`}
-          box={b}
-          paintA={skirtPaintA}
-          paintB={skirtPaintB}
-          selected={selected}
-          ghost={ghost}
-        />
-      ))}
+      {boxes.map((b, i) => boxPaint(b, i, ""))}
+      {skirtBoxes.map((b, i) => boxPaint(b, i, "skirt-"))}
 
       {/* Translucent glass panes + style muntins (not in stub mode). */}
       {!stub &&

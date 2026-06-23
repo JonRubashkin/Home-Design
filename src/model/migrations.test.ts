@@ -269,6 +269,44 @@ describe("migrateToLatest", () => {
     expect(win.muntinMaterial).toEqual({ kind: "solid", color: "#eef0f2" });
   });
 
+  it("gives every existing roof shape 'rect' (v15 -> v16)", () => {
+    // A v15 design whose level already carries a manual rectangle roof with no
+    // `shape` field (pre-Phase-6.2).
+    const v15 = structuredClone(V1_FIXTURE) as Record<string, unknown>;
+    v15.schemaVersion = 15;
+    const lvl = (v15.levels as Record<string, unknown>[])[0]!;
+    lvl.staircases = [];
+    lvl.furniture = [];
+    lvl.ceilingLights = [];
+    const wall = (lvl.walls as Record<string, unknown>[])[0]!;
+    wall.mounts = [];
+    wall.doors = [];
+    (wall.windows as Record<string, unknown>[])[0]!.style = "picture";
+    (wall.windows as Record<string, unknown>[])[0]!.muntinMaterial = {
+      kind: "solid",
+      color: "#eef0f2",
+    };
+    lvl.roofs = [
+      {
+        id: "r",
+        position: { x: 2, y: 1.5 },
+        width: 4,
+        depth: 3,
+        rotation: 0,
+        type: "gabled",
+        pitch: 30,
+        overhang: 0.4,
+        visible: true,
+        material: { kind: "solid", color: "#8a5a44" },
+      },
+    ];
+    const out = migrateToLatest(v15);
+    expect(out.schemaVersion).toBe(LATEST_SCHEMA_VERSION);
+    expect(out.levels[0]!.roofs[0]!.shape).toBe("rect");
+    // existing fields preserved
+    expect(out.levels[0]!.roofs[0]!.width).toBe(4);
+  });
+
   it("leaves an already-current design unchanged", () => {
     const v2 = migrateToLatest(structuredClone(V1_FIXTURE));
     const again = migrateToLatest(

@@ -239,10 +239,41 @@ export function createRoof(
 ): Roof {
   return {
     id: makeId("roof"),
+    shape: "rect",
     position: { ...position },
     width,
     depth,
     rotation: opts?.rotation ?? DEFAULT_ROOF.rotation,
+    type: opts?.type ?? DEFAULT_ROOF.type,
+    pitch: opts?.pitch ?? DEFAULT_ROOF.pitch,
+    overhang: opts?.overhang ?? DEFAULT_ROOF.overhang,
+    visible: opts?.visible ?? DEFAULT_ROOF.visible,
+    material: opts?.material ? { ...opts.material } : { ...DEFAULT_ROOF.material },
+  };
+}
+
+// An auto-generated polygon roof (Phase 6.2) fitted to a room's true footprint.
+// The footprint is captured at generation (grid-snapped, static); `position` is
+// its centroid (the move anchor). width/depth/rotation are unused for polygons.
+export function createRoofPolygon(
+  footprint: Vec2[],
+  opts?: Partial<Omit<Roof, "id" | "shape" | "footprint" | "position" | "width" | "depth" | "rotation">>,
+): Roof {
+  let cx = 0;
+  let cy = 0;
+  for (const p of footprint) {
+    cx += p.x;
+    cy += p.y;
+  }
+  const n = Math.max(1, footprint.length);
+  return {
+    id: makeId("roof"),
+    shape: "polygon",
+    position: { x: cx / n, y: cy / n },
+    width: 0,
+    depth: 0,
+    rotation: 0,
+    footprint: footprint.map((p) => ({ ...p })),
     type: opts?.type ?? DEFAULT_ROOF.type,
     pitch: opts?.pitch ?? DEFAULT_ROOF.pitch,
     overhang: opts?.overhang ?? DEFAULT_ROOF.overhang,
@@ -256,7 +287,7 @@ export function createDesign(
   site: Site = DEFAULT_SITE,
 ): Design {
   return {
-    schemaVersion: 15,
+    schemaVersion: 16,
     name,
     site: { width: site.width, depth: site.depth },
     levels: [createLevel()],

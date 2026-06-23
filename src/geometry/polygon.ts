@@ -60,6 +60,62 @@ export function isValidFloorPolygon(poly: Vec2[]): boolean {
   return !isPolygonSelfIntersecting(poly);
 }
 
+// Simplify a closed polygon with Ramer–Douglas–Peucker at tolerance `tol`
+// (meters). Collapses fine staircase runs (e.g. a grid-traced diagonal wall)
+// into single edges while preserving genuine corners (whose deviation exceeds
+// `tol`). Used so an auto-roof footprint reflects the room's real shape: a true
+// rectilinear room stays axis-aligned; an angled-walled room becomes diagonal
+// (so it reads as non-rectilinear). Anchors at the most distant vertex pair.
+export function simplifyPolygon(poly: Vec2[], tol: number): Vec2[] {
+  const n = poly.length;
+  if (n < 4) return poly.map((p) => ({ ...p }));
+  let far = 0;
+  let fd = -1;
+  for (let i = 1; i < n; i++) {
+    const dx = poly[i]!.x - poly[0]!.x;
+    const dy = poly[i]!.y - poly[0]!.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > fd) {
+      fd = d2;
+      far = i;
+    }
+  }
+  const first = poly.slice(0, far + 1);
+  const second = poly.slice(far).concat([poly[0]!]);
+  const a = rdp(first, tol);
+  const b = rdp(second, tol);
+  const out = a.slice(0, -1).concat(b.slice(0, -1));
+  return out.length >= 3 ? out : poly.map((p) => ({ ...p }));
+}
+
+// RDP on an open polyline (first/last kept).
+function rdp(pts: Vec2[], tol: number): Vec2[] {
+  if (pts.length < 3) return pts.map((p) => ({ ...p }));
+  let maxD = -1;
+  let idx = 0;
+  const a = pts[0]!;
+  const b = pts[pts.length - 1]!;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = perpDistance(pts[i]!, a, b);
+    if (d > maxD) {
+      maxD = d;
+      idx = i;
+    }
+  }
+  if (maxD <= tol) return [{ ...a }, { ...b }];
+  const left = rdp(pts.slice(0, idx + 1), tol);
+  const right = rdp(pts.slice(idx), tol);
+  return left.slice(0, -1).concat(right);
+}
+
+function perpDistance(p: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
+  return Math.abs((p.x - a.x) * dy - (p.y - a.y) * dx) / len;
+}
+
 // Even-odd ray cast: is the point inside the polygon?
 export function pointInPolygon(p: Vec2, poly: Vec2[]): boolean {
   let inside = false;

@@ -8,6 +8,10 @@ export type ViewMode = "full" | "cutaway" | "stubs";
 export type CutawayStyle = "invisible" | "ghost";
 export type Layout = "plan" | "3d" | "split";
 export type CollisionMode = "off" | "soft" | "hard";
+// Opening styles, mirrored from the WindowOpening/DoorOpening schema. Tracked as
+// "last used" UI prefs so newly placed openings inherit the user's last choice.
+export type WindowStyle = "grid" | "divided" | "picture";
+export type DoorStyle = "single" | "double" | "sliding";
 
 export interface ViewPrefs {
   viewMode: ViewMode;
@@ -24,6 +28,10 @@ export interface ViewPrefs {
   // Furniture palette: the one accordion category group left open (null = all
   // collapsed). Restored when the Furniture tool is reopened.
   openPaletteCategory: string | null;
+  // Sticky last-used opening styles: a newly placed window/door inherits the
+  // style the user last chose (defaults: window "picture", door "single").
+  lastWindowStyle: WindowStyle;
+  lastDoorStyle: DoorStyle;
 }
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
@@ -38,6 +46,8 @@ export const DEFAULT_VIEW_PREFS: ViewPrefs = {
   showDimensions: false,
   hideRoofs: false,
   openPaletteCategory: null,
+  lastWindowStyle: "picture",
+  lastDoorStyle: "single",
 };
 
 const STORAGE_KEY = "home-design:viewprefs:v1";
@@ -46,6 +56,8 @@ const VIEW_MODES: ViewMode[] = ["full", "cutaway", "stubs"];
 const CUTAWAY_STYLES: CutawayStyle[] = ["invisible", "ghost"];
 const LAYOUTS: Layout[] = ["plan", "3d", "split"];
 const COLLISION_MODES: CollisionMode[] = ["off", "soft", "hard"];
+const WINDOW_STYLES: WindowStyle[] = ["grid", "divided", "picture"];
+const DOOR_STYLES: DoorStyle[] = ["single", "double", "sliding"];
 const PATTERNS: PatternId[] = ["checker", "planks", "tile", "stripes"];
 
 // Accept only well-formed material refs (untrusted localStorage input).
@@ -113,6 +125,12 @@ export function loadViewPrefs(): ViewPrefs {
         typeof parsed.openPaletteCategory === "string"
           ? parsed.openPaletteCategory
           : null,
+      lastWindowStyle: WINDOW_STYLES.includes(parsed.lastWindowStyle as WindowStyle)
+        ? (parsed.lastWindowStyle as WindowStyle)
+        : DEFAULT_VIEW_PREFS.lastWindowStyle,
+      lastDoorStyle: DOOR_STYLES.includes(parsed.lastDoorStyle as DoorStyle)
+        ? (parsed.lastDoorStyle as DoorStyle)
+        : DEFAULT_VIEW_PREFS.lastDoorStyle,
     };
   } catch {
     return { ...DEFAULT_VIEW_PREFS };

@@ -943,7 +943,7 @@ export function PlanEditor() {
         if (validateWindow(wall, candidate).ok)
           store.addWindow(wall.id, {
             ...candidate,
-            style: "picture",
+            style: store.lastWindowStyle,
             muntinMaterial: { ...DEFAULT_MUNTIN_MATERIAL },
           });
       }
@@ -962,7 +962,7 @@ export function PlanEditor() {
         if (validateDoor(wall, candidate).ok)
           store.addDoor(wall.id, {
             ...candidate,
-            style: "single",
+            style: store.lastDoorStyle,
             // Hinge defaults to the nearer wall end; swing to side A.
             hinge: t < 0.5 ? "start" : "end",
             swing: "A",

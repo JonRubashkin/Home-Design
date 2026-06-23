@@ -61,8 +61,10 @@ import {
   saveViewPrefs,
   type CollisionMode,
   type CutawayStyle,
+  type DoorStyle,
   type Layout,
   type ViewMode,
+  type WindowStyle,
 } from "../persistence/viewPrefs";
 import { polygonContains, pointInPolygon } from "../geometry/polygon";
 
@@ -407,6 +409,11 @@ interface AppState {
   // Furniture palette: the one accordion category group left open (null = all
   // collapsed). Persisted UI pref, never in the Design.
   openPaletteCategory: string | null;
+  // Sticky last-used opening styles (persisted UI prefs, never in the Design):
+  // newly placed windows/doors inherit these; updated whenever the user picks a
+  // style on a window/door. Defaults: window "picture", door "single".
+  lastWindowStyle: WindowStyle;
+  lastDoorStyle: DoorStyle;
 
   // The material the paint and floor tools apply (a UI preference, persisted).
   currentMaterial: MaterialRef;
@@ -450,6 +457,8 @@ interface AppState {
   setCollisionMode: (mode: CollisionMode) => void;
   setHideRoofs: (hide: boolean) => void;
   setOpenPaletteCategory: (category: string | null) => void;
+  setLastWindowStyle: (style: WindowStyle) => void;
+  setLastDoorStyle: (style: DoorStyle) => void;
 
   // --- levels (active level is UI state; structural changes are undoable) ---
   setCurrentLevel: (id: string) => void;
@@ -639,6 +648,8 @@ export const useStore = create<AppState>((set, get) => {
       collisionMode,
       hideRoofs,
       openPaletteCategory,
+      lastWindowStyle,
+      lastDoorStyle,
       currentLevelId,
     } = get();
     saveViewPrefs({
@@ -652,6 +663,8 @@ export const useStore = create<AppState>((set, get) => {
       collisionMode,
       hideRoofs,
       openPaletteCategory,
+      lastWindowStyle,
+      lastDoorStyle,
       activeLevelId: currentLevelId,
     });
   };
@@ -678,6 +691,8 @@ export const useStore = create<AppState>((set, get) => {
     collisionMode: prefs.collisionMode,
     hideRoofs: prefs.hideRoofs,
     openPaletteCategory: prefs.openPaletteCategory,
+    lastWindowStyle: prefs.lastWindowStyle,
+    lastDoorStyle: prefs.lastDoorStyle,
     clipboard: null,
     past: [],
     future: [],
@@ -766,6 +781,14 @@ export const useStore = create<AppState>((set, get) => {
     },
     setOpenPaletteCategory: (openPaletteCategory) => {
       set({ openPaletteCategory });
+      persistViewPrefs();
+    },
+    setLastWindowStyle: (lastWindowStyle) => {
+      set({ lastWindowStyle });
+      persistViewPrefs();
+    },
+    setLastDoorStyle: (lastDoorStyle) => {
+      set({ lastDoorStyle });
       persistViewPrefs();
     },
 
@@ -963,6 +986,8 @@ export const useStore = create<AppState>((set, get) => {
         if (win) Object.assign(win, patch);
         return { design };
       });
+      // Remember the chosen style as the sticky default for new windows.
+      if (patch.style !== undefined) get().setLastWindowStyle(patch.style);
     },
 
     setWindowMuntinMaterial: (wallId, id, material) => {
@@ -1011,6 +1036,8 @@ export const useStore = create<AppState>((set, get) => {
         if (door) Object.assign(door, patch);
         return { design };
       });
+      // Remember the chosen style as the sticky default for new doors.
+      if (patch.style !== undefined) get().setLastDoorStyle(patch.style);
     },
 
     setDoorMaterial: (wallId, id, material) => {

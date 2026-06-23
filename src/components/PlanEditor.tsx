@@ -40,6 +40,7 @@ import {
   wallPlanSegments,
 } from "../geometry/windows";
 import { validateDoor, doorSymbol } from "../geometry/doors";
+import { overlappingOpeningIds } from "../geometry/openings";
 import { isValidFloorPolygon, pointInPolygon } from "../geometry/polygon";
 import {
   pointInFootprint,
@@ -444,6 +445,16 @@ export function PlanEditor() {
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [furniture, staircases, walls, belowLevel, collisionMode]);
+
+  // Ids of openings (windows/doors) whose visible spans overlap another opening
+  // on the SAME wall — always warned (a modelling error), independent of the
+  // furniture collisionMode. Accounts for a sliding door's offset panel.
+  const openingOverlapSet = useMemo(() => {
+    const hits = new Set<string>();
+    for (const w of walls)
+      for (const id of overlappingOpeningIds(w)) hits.add(id);
+    return hits;
+  }, [walls]);
 
   // Does a candidate collide with any OTHER collidable thing on the active level
   // (height-aware, with tuck-under), or a wall / stairwell opening (footprint
@@ -1731,6 +1742,7 @@ export function PlanEditor() {
                     selected={
                       selection?.kind === "window" && selection.id === win.id
                     }
+                    warn={openingOverlapSet.has(win.id)}
                   />
                 ))}
                 {w.doors.map((door) => (
@@ -1741,6 +1753,7 @@ export function PlanEditor() {
                     selected={
                       selection?.kind === "door" && selection.id === door.id
                     }
+                    warn={openingOverlapSet.has(door.id)}
                   />
                 ))}
                 {w.mounts.map((m) => {
@@ -2124,6 +2137,7 @@ function WindowSymbol({
   muntinColor,
   selected,
   ghost,
+  warn,
 }: {
   wall: Wall;
   t: number;
@@ -2132,6 +2146,7 @@ function WindowSymbol({
   muntinColor?: string;
   selected?: boolean;
   ghost?: "valid" | "invalid";
+  warn?: boolean;
 }) {
   const L = wallLength(wall);
   if (L === 0) return null;
@@ -2143,7 +2158,7 @@ function WindowSymbol({
   const B = add(wall.start, vscale(dir, Math.min(L, b)));
   const cls = ghost
     ? `window-symbol ghost-${ghost}`
-    : `window-symbol${selected ? " selected" : ""}`;
+    : `window-symbol${selected ? " selected" : ""}${warn ? " warn" : ""}`;
   const seg = (p: Vec2, q: Vec2, key: string) => (
     <line
       key={key}
@@ -2303,6 +2318,7 @@ function DoorSymbolShape({
   door,
   selected,
   ghost,
+  warn,
 }: {
   wall: Wall;
   door: {
@@ -2314,6 +2330,7 @@ function DoorSymbolShape({
   };
   selected?: boolean;
   ghost?: "valid" | "invalid";
+  warn?: boolean;
 }) {
   const L = wallLength(wall);
   if (L === 0) return null;
@@ -2323,7 +2340,7 @@ function DoorSymbolShape({
   const { a, b } = windowSpan(L, door.t, door.width);
   const cls = ghost
     ? `door-symbol ghost-${ghost}`
-    : `door-symbol${selected ? " selected" : ""}`;
+    : `door-symbol${selected ? " selected" : ""}${warn ? " warn" : ""}`;
 
   // Jamb tick across the wall thickness at along-wall distance `s`.
   const jambTick = (s: number, key: string) => {

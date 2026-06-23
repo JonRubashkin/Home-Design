@@ -217,8 +217,9 @@ npm run format   # Prettier
   upper floor slabs are suppressed (Invisible/Ghost, like walls) so you can see
   the walls, floors, and furniture of **every** storey while orbiting; the ground
   slab stays solid. Walls connect between storeys (each upper level's walls extend
-  down through the slab band) so no floor strip shows between levels. Fit view
-  frames the whole building.
+  down through the slab band) so no floor strip shows between levels; that band
+  (the skirt) is painted per-segment to match the wall face directly above it. Fit
+  view frames the whole building.
 
 ### Welcome screen & work area (phase 3b)
 

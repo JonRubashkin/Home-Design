@@ -50,6 +50,24 @@ describe("wallToBoxes — no windows", () => {
     const b = wallToBoxes(baseWall(), 3)[0]!;
     expect(b.center[1]).toBeCloseTo(3 + 1.2);
   });
+
+  // The inter-storey skirt is an opening-free wall split at the same paint
+  // boundaries (meters) as the face, so each skirt box matches the segment above.
+  it("splits an opening-free wall at extraSplits (skirt paint segmentation)", () => {
+    const boxes = wallToBoxes(baseWall(), 0, [1.5, 3]);
+    expect(boxes).toHaveLength(3);
+    // Spans [0,1.5], [1.5,3], [3,4]; each box's face.u0 + w/2 is the along-wall
+    // center used by Wall3D to look up paintMaterialAtT.
+    const centersT = boxes.map((b) => (b.face.u0 + b.face.w / 2) / 4);
+    expect(centersT[0]!).toBeCloseTo(0.75 / 4);
+    expect(centersT[1]!).toBeCloseTo(2.25 / 4);
+    expect(centersT[2]!).toBeCloseTo(3.5 / 4);
+    // Boxes are contiguous and cover the full length.
+    expect(boxes[0]!.face.u0).toBeCloseTo(0);
+    expect(boxes[0]!.face.w).toBeCloseTo(1.5);
+    expect(boxes[1]!.face.w).toBeCloseTo(1.5);
+    expect(boxes[2]!.face.w).toBeCloseTo(1);
+  });
 });
 
 describe("wallToBoxes — one centred window", () => {

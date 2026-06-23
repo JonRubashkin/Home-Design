@@ -656,10 +656,18 @@ in code under `src/catalog/`:
   STAIR_RISER_TARGET)` (0.18), actual riser = storey/steps, `runLength = steps *
   STAIR_TREAD_DEPTH` (0.25); footprint = width × runLength rotated about position;
   the **opening** rectangle (= footprint) is cut from the floor above.
-- **Floor opening:** a level's floor slabs are built with `THREE.Shape` + **hole
-  paths** for the opening rectangles of the level BELOW (`Floors3D`, no CSG). The
-  mask is authoritative — a floor region drawn over the opening still renders the
-  hole, so the floor tool needs no special blocking.
+- **Floor opening:** a level's floor regions (its slabs) are built with
+  `THREE.Shape` + **hole paths** for the opening rectangles of the level BELOW
+  (`Floors3D`, no CSG); the 2D plan path mirrors them as even-odd holes. The mask
+  is authoritative — a floor region drawn over the opening still renders the hole,
+  so the floor tool needs no special blocking. **Which** openings cut a given
+  floor polygon is the single pure tested helper `openingsForFloor(openings,
+  polygon)` (`src/geometry/floorOpenings.ts`): it keeps any opening that shares
+  interior AREA with the floor — **fully inside OR flush against an edge**. (A
+  strict "every corner inside" test used to drop the hole when a stair sat flush
+  against a wall, since those corners land ON the floor boundary.) The 3D slab,
+  the 3D floor regions, and the 2D path all go through this one helper so they
+  can't drift.
 - **Collidable:** staircases participate in the collision system as bulky
   footprints (`levelCollidables` includes furniture + stairs); Soft warns / Hard
   reverts vs furniture and other stairs on the same level.

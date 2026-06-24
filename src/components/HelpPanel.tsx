@@ -9,6 +9,15 @@
 // will silently drift out of sync. (CLAUDE.md / README note this as well.)
 
 import { STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
+import {
+  APP_NAME,
+  APP_VERSION,
+  AUTHOR_NAME,
+  AUTHOR_URL,
+  FEEDBACK_LINK,
+  feedbackHref,
+  isEmail,
+} from "../lib/credits";
 
 interface Shortcut {
   keys: string;
@@ -94,6 +103,33 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
             </section>
           ))}
         </div>
+        <section className="help-about">
+          <h3 className="help-group-title">About</h3>
+          <p className="help-about-line">{APP_NAME}</p>
+          <p className="help-about-line help-about-muted">
+            Made by{" "}
+            {AUTHOR_URL ? (
+              <a href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">
+                {AUTHOR_NAME}
+              </a>
+            ) : (
+              AUTHOR_NAME
+            )}
+          </p>
+          <p className="help-about-line help-about-muted">{APP_VERSION}</p>
+          {FEEDBACK_LINK && (
+            <p className="help-about-line">
+              <a
+                href={feedbackHref(FEEDBACK_LINK)}
+                {...(isEmail(FEEDBACK_LINK)
+                  ? {}
+                  : { target: "_blank", rel: "noopener noreferrer" })}
+              >
+                Send feedback
+              </a>
+            </p>
+          )}
+        </section>
         <p className="help-footer-note">{STORAGE_DISCLOSURE}</p>
         <div className="site-form-actions">
           <button type="button" className="primary-button" onClick={onClose}>

@@ -10,6 +10,7 @@ import {
 import { DesignLibrary } from "./DesignLibrary";
 import { SiteSizeForm } from "./SiteSizeForm";
 import { DESKTOP_RECOMMENDATION, STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
+import { AUTHOR_NAME, AUTHOR_URL } from "../lib/credits";
 
 // Shown before the editor on load. Loads the design library (migrating any legacy
 // localStorage autosave into it on first run). If saved designs exist, offer the
@@ -111,6 +112,19 @@ export function WelcomeScreen() {
           </div>
         )}
       </div>
+
+      {/* Quiet signature at the bottom of the entry screen — muted helper text,
+          consistent with the welcome notices. Linked only if an author URL is set. */}
+      <p className="welcome-credit">
+        Made by{" "}
+        {AUTHOR_URL ? (
+          <a href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">
+            {AUTHOR_NAME}
+          </a>
+        ) : (
+          AUTHOR_NAME
+        )}
+      </p>
     </div>
   );
 }

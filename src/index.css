@@ -208,6 +208,43 @@ body {
   padding: 0 2px;
 }
 
+/* --- crash screen (ErrorBoundary fallback) --- */
+.crash-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--app-bg, #0f1117);
+  padding: 24px;
+  z-index: 1000;
+}
+.crash-card {
+  max-width: 460px;
+  background: var(--chrome-bg, #1a1d27);
+  border: 1px solid var(--chrome-border, #2b3142);
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  color: var(--text, #e6e8ee);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+.crash-card h1 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.crash-card p {
+  margin: 0 0 12px;
+  color: var(--text-dim, #9aa0ad);
+  line-height: 1.5;
+}
+.crash-detail {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #ffb4b4;
+  word-break: break-word;
+}
+
 /* --- workspace --- */
 .workspace {
   flex: 1;

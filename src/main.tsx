@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 
 // The design library (IndexedDB) is loaded asynchronously by the welcome screen,
@@ -12,6 +13,8 @@ if (!rootEl) throw new Error("Root element #root not found");
 
 createRoot(rootEl).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

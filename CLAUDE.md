@@ -506,6 +506,21 @@ in code under `src/catalog/`:
   top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
   rather than corrupting data.
+- **"New white-screens" part two — React error #185 (update-depth loop).** A
+  *second*, distinct cause of the same symptom was the **`OverflowBar`** measuring
+  layout in a per-render `useLayoutEffect`: `getBoundingClientRect()` returns
+  **sub-pixel, frame-jittery** widths, so when the top bar sat near a fit boundary
+  (which "New with content" can reach via the doc-name width / the dialog backdrop
+  it counts as a sibling) an item flipped in/out of the "⋯" menu on **every**
+  render → a synchronous infinite update loop → "Maximum update depth exceeded".
+  Fixed by making `recompute` **idempotent**: measured widths are rounded to whole
+  pixels, the "⋯" width is cached in a ref (never alternating measured ↔ fallback),
+  and every fit comparison carries a 1 px `FIT_TOLERANCE` so sub-pixel noise can't
+  flip a borderline decision. Regression-tested in `OverflowBar.test.tsx` (the test
+  throws #185 without the fix). An app-wide **`ErrorBoundary`** (`main.tsx` wraps
+  `<App>`) is the safety net: any render crash now shows a readable "Something went
+  wrong" card with a Reload button instead of a blank page, and — by not
+  auto-retrying — it can't re-enter a render loop.
 
 ## Image export (Phase 5a)
 
@@ -1007,7 +1022,12 @@ in code under `src/catalog/`:
   Resize area (Resize area overflows first). Available width is derived from the
   bar's siblings (not the container's own width — that would feed back and
   over-collapse once items hide); recomputes via `ResizeObserver` on the parent,
-  so it adapts live. No new dependencies.
+  so it adapts live. No new dependencies. The recompute runs in a per-render
+  `useLayoutEffect`, so it MUST be **idempotent** — measured widths are rounded to
+  whole pixels, the "⋯" width is cached in a ref, and fits use a 1 px
+  `FIT_TOLERANCE`. (Without this, sub-pixel `getBoundingClientRect` jitter at a fit
+  boundary flipped an item every render → React #185 update-depth loop → white
+  screen; see the persistence section. Regression: `OverflowBar.test.tsx`.)
 
 ## Verification (do this every session)
 

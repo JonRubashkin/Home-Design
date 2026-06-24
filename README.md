@@ -532,7 +532,19 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
   resize. Priority, most-likely-to-stay-visible first:
   **Undo/Redo → New → My Designs → Design JSON → Export image → Settings → Help →
   Resize area** (so Resize area overflows first, Undo/Redo last). Implemented by
-  the reusable `OverflowBar` component.
+  the reusable `OverflowBar` component, whose overflow recompute is kept
+  idempotent (whole-pixel widths + a fit tolerance) so sub-pixel layout jitter
+  can't trigger an update loop.
+
+### Crash safety (error boundary)
+
+- The whole app is wrapped in an **error boundary**. If a render ever crashes, you
+  get a readable "Something went wrong" card with a **Reload** button instead of a
+  blank white screen. This was added after fixing an infinite-render loop (React
+  error #185) that could white-screen the editor when creating a **New** design
+  while walls/furniture/roofs were present — the loop's source (a layout-measuring
+  effect in the responsive top bar that wasn't idempotent under sub-pixel jitter)
+  is fixed, and the boundary guards against any future render crash.
 
 ## Controls & keyboard shortcuts
 

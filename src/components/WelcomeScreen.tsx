@@ -9,6 +9,7 @@ import {
 } from "../storage/library";
 import { DesignLibrary } from "./DesignLibrary";
 import { SiteSizeForm } from "./SiteSizeForm";
+import { STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
 
 // Shown before the editor on load. Loads the design library (migrating any legacy
 // localStorage autosave into it on first run). If saved designs exist, offer the
@@ -91,6 +92,7 @@ export function WelcomeScreen() {
                 Continue your most recent design
               </button>
             )}
+            <p className="welcome-storage-note">{STORAGE_DISCLOSURE}</p>
             <DesignLibrary
               records={records}
               reload={reload}

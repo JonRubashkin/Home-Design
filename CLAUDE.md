@@ -618,6 +618,13 @@ in code under `src/catalog/`:
   design**; otherwise go straight to the size chooser. The chooser (shared
   `SiteSizeForm`) shows the three presets + a custom width × depth and creates a
   fresh design with the chosen `site`. Returning users are never re-prompted.
+- **Browser-storage disclosure:** designs live ONLY in the current browser on the
+  current domain (the IndexedDB library is per-origin, not cloud-synced, lost if
+  browser data is cleared). A calm muted line — *"Designs are saved in this
+  browser. Use Export to back up or move them."* — appears in TWO places: the
+  Welcome screen **above the My Designs list** and the Help panel (footer note).
+  Single-sourced as `STORAGE_DISCLOSURE` (`src/lib/storageDisclosure.ts`) so the
+  two can't drift; informational text only — no new storage behavior.
 - **Site rendering:** the 2D plan shades the site rectangle with a border +
   dimension label and dims the grid outside it (soft — drawing outside still
   works). The 3D ground shows the site as a lighter "lot" over the dark
@@ -939,7 +946,8 @@ in code under `src/catalog/`:
   HAND-MAINTAINED** and is NOT derived from the keymap/toolbar: whenever a tool
   shortcut (`useGlobalShortcuts.ts` / `Toolbar.tsx`) or an edit/rotate/copy-paste
   binding changes, update that list too or the panel silently drifts. A prominent
-  comment at the list says so.
+  comment at the list says so. It also shows the shared browser-storage disclosure
+  (`STORAGE_DISCLOSURE`) as a muted footer note (see "Work area, welcome screen").
 - **Empty-state nudge:** when the **active level has no walls** (the primary
   "nothing to see" case), the plan shows a faint centered hint
   ("Draw a wall to begin", `.plan-empty-hint`). It is **non-interactive**

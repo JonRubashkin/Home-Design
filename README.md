@@ -156,6 +156,11 @@ npm run format   # Prettier
   refreshes a small 3D **thumbnail** on save (not on every keystroke).
 - An existing localStorage autosave is **migrated into the library** on first run
   (never lost). Per-design `schemaVersion` migrations still run on open.
+- **Designs live only in the current browser on the current domain** (IndexedDB) —
+  they don't sync across devices and are cleared if you clear browser data. The
+  welcome screen (above the My Designs list) and the Help panel both show a calm
+  note about this; use **Export JSON** to back up or move a design. Single-sourced
+  in `src/lib/storageDisclosure.ts`.
 
 ### Image export (phase 5a)
 

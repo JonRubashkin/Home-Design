@@ -8,6 +8,8 @@
 // editing/rotation/copy-paste binding, UPDATE THIS LIST too, or the Help panel
 // will silently drift out of sync. (CLAUDE.md / README note this as well.)
 
+import { STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
+
 interface Shortcut {
   keys: string;
   label: string;
@@ -92,6 +94,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
             </section>
           ))}
         </div>
+        <p className="help-footer-note">{STORAGE_DISCLOSURE}</p>
         <div className="site-form-actions">
           <button type="button" className="primary-button" onClick={onClose}>
             Done

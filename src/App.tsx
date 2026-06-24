@@ -1,3 +1,4 @@
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TopBar } from "./components/TopBar";
 import { Toolbar } from "./components/Toolbar";
 import { PlanEditor } from "./components/PlanEditor";
@@ -28,20 +29,28 @@ export default function App() {
 
   // Welcome screen (size chooser / Continue) before the editor canvas.
   if (!started) {
-    return <WelcomeScreen />;
+    return (
+      <>
+        <WelcomeScreen />
+        <SpeedInsights />
+      </>
+    );
   }
 
   return (
-    <div className="app">
-      <TopBar />
-      <div className="workspace">
-        {showEditingChrome && <Toolbar />}
-        <div className="panes">
-          {showPlan && <PlanEditor />}
-          {showPreview && <Preview3D />}
+    <>
+      <div className="app">
+        <TopBar />
+        <div className="workspace">
+          {showEditingChrome && <Toolbar />}
+          <div className="panes">
+            {showPlan && <PlanEditor />}
+            {showPreview && <Preview3D />}
+          </div>
+          {showEditingChrome && <PropertiesPanel />}
         </div>
-        {showEditingChrome && <PropertiesPanel />}
       </div>
-    </div>
+      <SpeedInsights />
+    </>
   );
 }

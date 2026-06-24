@@ -10,7 +10,7 @@ import {
 import { DesignLibrary } from "./DesignLibrary";
 import { SiteSizeForm } from "./SiteSizeForm";
 import { DESKTOP_RECOMMENDATION, STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
-import { AUTHOR_NAME, AUTHOR_URL } from "../lib/credits";
+import { APP_NAME, AUTHOR_NAME, AUTHOR_URL } from "../lib/credits";
 
 // Shown before the editor on load. Loads the design library (migrating any legacy
 // localStorage autosave into it on first run). If saved designs exist, offer the
@@ -62,7 +62,7 @@ export function WelcomeScreen() {
     <div className="welcome">
       <div className="welcome-card welcome-wide">
         <div className="welcome-head">
-          <h1>Home Design</h1>
+          <h1>{APP_NAME}</h1>
           <p className="welcome-sub">Draw walls, furnish rooms, see it in 3D.</p>
         </div>
 

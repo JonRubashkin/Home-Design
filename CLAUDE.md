@@ -1,4 +1,4 @@
-# CLAUDE.md — Home Design Visualizer
+# CLAUDE.md — EZ Design Homes
 
 Read this file fully before writing any code. It is the single source of truth for
 conventions, the data model, and scope. If a task seems to require violating
@@ -644,8 +644,13 @@ in code under `src/catalog/`:
   design), in a `.welcome-notices` block, with a second muted line directly below
   it — *"Best used on a desktop or laptop."* (`DESKTOP_RECOMMENDATION`, same file)
   — noting the app is desktop-oriented (mouse + keyboard) without hard-blocking.
-- **Favicon & tab title:** `index.html` sets `<title>` to *"Home Design
-  Visualizer"* and links an SVG favicon (`public/favicon.svg`, the primary icon —
+- **App name:** the user-visible product name is **"EZ Design Homes"**,
+  single-sourced as `APP_NAME` in `src/lib/credits.ts` and read by every UI spot
+  (welcome heading, in-app top-bar brand, Help-panel About). `index.html`'s
+  `<title>` and the README are static and kept in sync by hand. Internal
+  identifiers/filenames/repo are NOT renamed — only user-visible text.
+- **Favicon & tab title:** `index.html` sets `<title>` to *"EZ Design Homes"*
+  and links an SVG favicon (`public/favicon.svg`, the primary icon —
   an iso wall-corner mark in a warm palette) plus PNG fallbacks
   (`favicon-32.png`, `apple-touch-icon.png`) generated from the SAME artwork.
   Branding only — no functional change.

@@ -970,6 +970,21 @@ in code under `src/catalog/`:
   (`pointer-events: none`), is **contextual** (reappears if the user deletes
   every wall — keyed off `walls.length === 0`, not first-visit), and is plan-only
   (a simple centered text hint, never pointing at the toolbar).
+- **Responsive top bar (overflow menu):** the top-bar actions render through the
+  reusable **`OverflowBar`** (`OverflowBar.tsx`); when the bar is too narrow for
+  every control, the **lowest-priority** ones collapse into a trailing **"⋯"**
+  overflow menu (same popover pattern as Export image / Design JSON) so nothing is
+  ever clipped or unreachable. The "⋯" button appears **only** when something
+  overflows; at full width the bar is unchanged. Each `OverflowBarItem` has a
+  `priority` (lower = kept visible longer) and an optional `menuNode` (gives the
+  icon-only Settings/Help buttons a text label in the dropdown) + `submenu` flag
+  (Export image / Design JSON own their popovers, so clicking them must not close
+  the overflow menu). **Priority order (most-likely-to-stay-visible first):**
+  Undo/Redo → New → My Designs → Design JSON → Export image → Settings → Help →
+  Resize area (Resize area overflows first). Available width is derived from the
+  bar's siblings (not the container's own width — that would feed back and
+  over-collapse once items hide); recomputes via `ResizeObserver` on the parent,
+  so it adapts live. No new dependencies.
 
 ## Verification (do this every session)
 

@@ -8,6 +8,7 @@ import { ExportMenu } from "./ExportMenu";
 import { DesignFileMenu } from "./DesignFileMenu";
 import { HelpPanel } from "./HelpPanel";
 import { NewDesignDialog } from "./NewDesignDialog";
+import { OverflowBar, type OverflowBarItem } from "./OverflowBar";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -42,32 +43,35 @@ export function TopBar() {
     setNewOpen(true);
   };
 
-  return (
-    <header className="topbar">
-      <div className="topbar-brand">
-        <strong>Home Design</strong>
-        <span className="topbar-docname">{design.name}</span>
-      </div>
-
-      <LayoutToggle />
-
-      <div className="topbar-actions">
-        <button
-          type="button"
-          onClick={undo}
-          disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
-        >
+  // Top-bar controls in display order, each with an overflow priority (lower =
+  // kept visible longer; the highest numbers collapse into the "⋯" menu first):
+  // Undo/Redo > New > My Designs > Design JSON > Export image > Settings > Help >
+  // Resize area. Icon-only buttons carry a labelled menuNode for the dropdown;
+  // the two own-popover controls are flagged `submenu` so clicking them doesn't
+  // close the overflow menu.
+  const items: OverflowBarItem[] = [
+    {
+      key: "undo",
+      priority: 1,
+      node: (
+        <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
           Undo
         </button>
-        <button
-          type="button"
-          onClick={redo}
-          disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
-        >
+      ),
+    },
+    {
+      key: "redo",
+      priority: 2,
+      node: (
+        <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
           Redo
         </button>
+      ),
+    },
+    {
+      key: "settings",
+      priority: 7,
+      node: (
         <button
           type="button"
           className="topbar-icon-button"
@@ -77,6 +81,18 @@ export function TopBar() {
         >
           {GearIcon}
         </button>
+      ),
+      menuNode: (
+        <button type="button" onClick={() => setSettingsOpen(true)} title="Settings">
+          {GearIcon}
+          <span>Settings</span>
+        </button>
+      ),
+    },
+    {
+      key: "help",
+      priority: 8,
+      node: (
         <button
           type="button"
           className="topbar-icon-button"
@@ -86,8 +102,18 @@ export function TopBar() {
         >
           ?
         </button>
-        <ExportMenu />
-        <span className="topbar-divider" />
+      ),
+      menuNode: (
+        <button type="button" onClick={() => setHelpOpen(true)} title="Help & keyboard shortcuts">
+          Help &amp; shortcuts
+        </button>
+      ),
+    },
+    { key: "export", priority: 6, node: <ExportMenu />, submenu: true },
+    {
+      key: "mydesigns",
+      priority: 4,
+      node: (
         <button
           type="button"
           onClick={() => setLibraryOpen(true)}
@@ -95,18 +121,44 @@ export function TopBar() {
         >
           My Designs
         </button>
-        <button
-          type="button"
-          onClick={() => setResizeOpen(true)}
-          title="Resize the work area"
-        >
+      ),
+    },
+    {
+      key: "resize",
+      priority: 9,
+      node: (
+        <button type="button" onClick={() => setResizeOpen(true)} title="Resize the work area">
           Resize area
         </button>
+      ),
+    },
+    {
+      key: "new",
+      priority: 3,
+      node: (
         <button type="button" onClick={onNew} title="New design">
           New
         </button>
-        <DesignFileMenu onError={setError} />
+      ),
+    },
+    {
+      key: "designjson",
+      priority: 5,
+      node: <DesignFileMenu onError={setError} />,
+      submenu: true,
+    },
+  ];
+
+  return (
+    <header className="topbar">
+      <div className="topbar-brand">
+        <strong>Home Design</strong>
+        <span className="topbar-docname">{design.name}</span>
       </div>
+
+      <LayoutToggle />
+
+      <OverflowBar className="topbar-actions" items={items} menuLabel="More actions" />
 
       {error && (
         <div className="topbar-error" role="alert">

@@ -512,6 +512,18 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
   clicks) and contextual: it disappears as soon as a wall exists and reappears if
   every wall is deleted.
 
+### Responsive top bar
+
+- The top-bar controls are **responsive**: when the window is too narrow to show
+  every button, the lowest-priority ones collapse into a trailing **"⋯" overflow
+  menu** (same popover style as Export image / Design JSON) so nothing is ever
+  clipped or unreachable. The menu only appears when something actually overflows;
+  at full width the bar looks exactly as before. It recomputes live on window
+  resize. Priority, most-likely-to-stay-visible first:
+  **Undo/Redo → New → My Designs → Design JSON → Export image → Settings → Help →
+  Resize area** (so Resize area overflows first, Undo/Redo last). Implemented by
+  the reusable `OverflowBar` component.
+
 ## Controls & keyboard shortcuts
 
 | Action                    | Control                                     |

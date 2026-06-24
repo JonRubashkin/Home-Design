@@ -75,12 +75,47 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* Allow the actions cluster to shrink below its content width so the overflow
+     logic can detect when buttons no longer fit. */
+  min-width: 0;
 }
 .topbar-divider {
   width: 1px;
   height: 22px;
   background: var(--chrome-border);
   margin: 0 4px;
+}
+
+/* --- responsive top-bar overflow (OverflowBar) --- */
+/* Each visible action keeps its natural width; never squeezed. */
+.overflow-slot {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.overflow-more {
+  flex: none;
+}
+.overflow-more-button {
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+/* Anchor the overflow dropdown to the bar's right edge (it sits at the end). */
+.overflow-menu {
+  left: auto;
+  right: 0;
+}
+.overflow-menu-item {
+  display: block;
+}
+.overflow-menu button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
 }
 
 .topbar button {

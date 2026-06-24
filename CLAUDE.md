@@ -501,7 +501,22 @@ in code under `src/catalog/`:
   `clipboard`, `dragBaseline`, `mergeNotice`, undo coalescing, and the undo/redo
   history — and re-points `currentLevelId` at a level that exists in the new doc.
   This guarantees no dangling reference to a now-removed object survives into a
-  render (the old "New white-screens when objects exist" bug). Still: explicit "Export JSON" /
+  render (the old "New white-screens when objects exist" bug). **Reset-and-reboot
+  (the #185 cure):** resetting transient fields was not enough — swapping the doc
+  into the *live, running* app still left effects looping against the swap (React
+  error #185, below). So each of those four swap actions also bumps a monotonic
+  **`bootNonce`** (store, not persisted), and `main.tsx` renders `<App
+  key={bootNonce}>` inside a tiny `<Root>`: a bump fully unmounts and remounts the
+  entire editor tree (components, effects, memos, the R3F `<Canvas>`) — a clean
+  boot equivalent to a page reload, against the already-settled new design, which
+  is the state the app handles perfectly on first load. So **New lands the user
+  directly in a clean empty editor at the chosen size** (NOT back on the welcome
+  screen, size preserved), and Open/Import benefit from the same clean remount.
+  The new design is persisted to its library record by the **autosave** effect,
+  which runs fresh right after the remount (`started` + `openDesignId` are both set
+  by the swap), so a later real page reload safely resumes into it. The
+  `ErrorBoundary` stays ABOVE the key (persists as the safety net across reboots).
+  Still: explicit "Export JSON" /
   "Import JSON" (the unified **Design JSON**
   top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
@@ -517,8 +532,11 @@ in code under `src/catalog/`:
   pixels, the "⋯" width is cached in a ref (never alternating measured ↔ fallback),
   and every fit comparison carries a 1 px `FIT_TOLERANCE` so sub-pixel noise can't
   flip a borderline decision. Regression-tested in `OverflowBar.test.tsx` (the test
-  throws #185 without the fix). An app-wide **`ErrorBoundary`** (`main.tsx` wraps
-  `<App>`) is the safety net: any render crash now shows a readable "Something went
+  throws #185 without the fix). This OverflowBar fix and the reset-and-reboot above
+  are complementary: the reboot is the primary cure (New never mutates a live app
+  in place), the idempotent `recompute` keeps the steady-state bar from looping on
+  its own. An app-wide **`ErrorBoundary`** (`main.tsx` wraps `<Root>`/`<App>`) is
+  the safety net: any render crash now shows a readable "Something went
   wrong" card with a Reload button instead of a blank page, and — by not
   auto-retrying — it can't re-enter a render loop.
 

@@ -432,6 +432,15 @@ interface AppState {
   // The id of the open library record (Phase 5b). Autosave writes the open design
   // to this record. Null before a design is opened/created.
   openDesignId: string | null;
+  // Monotonic "reboot" counter. Bumped by every full-document swap (New, Open,
+  // Import). A top-level `<App key={bootNonce}>` reads this, so each bump fully
+  // unmounts and remounts the entire editor tree — a clean boot equivalent to a
+  // fresh page load. This is how "New" avoids the React #185 infinite-update loop:
+  // instead of mutating the live, running app into a fresh design in place (which
+  // left effects looping against the swap), we settle the new design into the
+  // store and then rebuild the UI from scratch, the state the app already handles
+  // perfectly on first load. Not persisted, not in history.
+  bootNonce: number;
 
   // Transient hover hint: which wall side to spotlight in the plan (paint tool
   // hover and the properties-panel side chips). Not persisted, not in history.
@@ -769,6 +778,7 @@ export const useStore = create<AppState>((set, get) => {
     started: false,
     hasSavedDesign: false,
     openDesignId: null,
+    bootNonce: 0,
     sideHighlight: null,
     placingCatalogId: null,
     placingVariant: null,
@@ -1825,6 +1835,7 @@ export const useStore = create<AppState>((set, get) => {
       }
       set({
         ...freshDocState(next, makeId("design")),
+        bootNonce: get().bootNonce + 1,
         ...(merged
           ? { mergeNotice: MERGE_NOTICE, mergeNoticeNonce: get().mergeNoticeNonce + 1 }
           : {}),
@@ -1832,7 +1843,10 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     newDesign: () => {
-      set(freshDocState(createDesign(), makeId("design")));
+      set({
+        ...freshDocState(createDesign(), makeId("design")),
+        bootNonce: get().bootNonce + 1,
+      });
     },
 
     continueDesign: () => set({ started: true }),
@@ -1841,16 +1855,27 @@ export const useStore = create<AppState>((set, get) => {
       // Fresh design with the chosen site, a clean history, and a new record id.
       // `freshDocState` resets every doc-dependent transient field atomically so
       // a previously selected/copied object from the old design can't leave a
-      // dangling reference and white-screen the editor.
+      // dangling reference and white-screen the editor. Bumping `bootNonce` then
+      // remounts the whole app against this settled new design (a clean boot),
+      // which is what actually defeats the React #185 loop the in-place swap hit.
+      // The new design is persisted to its library record by autosave, which runs
+      // fresh after the remount (started + openDesignId are both set here), so a
+      // later real page reload safely resumes into it.
       set({
         ...freshDocState(createDesign(undefined, site), makeId("design")),
         started: true,
+        bootNonce: get().bootNonce + 1,
       });
     },
 
-    // Open an existing library record into the editor.
+    // Open an existing library record into the editor. Reboots the app the same
+    // way New does so an in-app document switch is also a clean remount.
     openRecord: (id, design) => {
-      set({ ...freshDocState(clone(design), id), started: true });
+      set({
+        ...freshDocState(clone(design), id),
+        started: true,
+        bootNonce: get().bootNonce + 1,
+      });
     },
 
     // Rename the open design (undoable, persisted by autosave).

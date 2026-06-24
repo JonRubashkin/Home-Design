@@ -1214,4 +1214,23 @@ describe("new design resets all doc-dependent state (white-screen guard)", () =>
     expect(s.design.levels.some((l) => l.id === s.currentLevelId)).toBe(true);
     expect(selectCurrentLevel(s).furniture).toHaveLength(0);
   });
+
+  it("document swaps bump bootNonce so the app reboots (avoids the #185 loop)", () => {
+    const start = state().bootNonce;
+    // Each full-document swap forces a clean remount via <App key={bootNonce}>.
+    state().startNewDesign({ width: 8, depth: 8 });
+    const afterNew = state().bootNonce;
+    expect(afterNew).toBe(start + 1);
+
+    state().openRecord("rec-1", state().design);
+    expect(state().bootNonce).toBe(afterNew + 1);
+
+    const beforeImport = state().bootNonce;
+    state().setDesign(state().design);
+    expect(state().bootNonce).toBe(beforeImport + 1);
+
+    const beforeBare = state().bootNonce;
+    state().newDesign();
+    expect(state().bootNonce).toBe(beforeBare + 1);
+  });
 });

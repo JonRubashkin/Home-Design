@@ -242,9 +242,16 @@ npm run format   # Prettier
   **defaulted to the design you're currently working on** (its preset is
   pre-selected, or its width × depth pre-filled) — change it if you like, then
   confirm. (First-run, with no design open yet, keeps the standard default.)
-  Creating a new design (or opening/importing one) atomically resets all
-  doc-dependent state — selection, copy/paste clipboard, undo history, the active
-  level — so a fresh design always starts from a fully-clean, consistent state.
+  Creating a new design (or opening/importing one) **reboots the editor to a clean
+  initial state**: the chosen design is settled into the store and the whole app is
+  remounted from scratch (a `bootNonce`-keyed `<App>`), exactly as if the page had
+  reloaded into that design — so it lands directly in a clean empty editor at the
+  chosen size (no welcome-screen bounce, size preserved) with selection, clipboard,
+  undo history and the active level all reset. This rebuild-from-a-clean-boot is
+  what makes **New** safe even with walls/furniture/roofs already placed, instead
+  of mutating the live app in place (which used to hit a React infinite-update loop
+  — see below). The new design autosaves to its own library record and survives a
+  real reload.
 - **Branding:** the browser tab reads **"EZ Design Homes"** with an
   iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
   `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.
@@ -542,9 +549,13 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
   get a readable "Something went wrong" card with a **Reload** button instead of a
   blank white screen. This was added after fixing an infinite-render loop (React
   error #185) that could white-screen the editor when creating a **New** design
-  while walls/furniture/roofs were present — the loop's source (a layout-measuring
-  effect in the responsive top bar that wasn't idempotent under sub-pixel jitter)
-  is fixed, and the boundary guards against any future render crash.
+  while walls/furniture/roofs were present. The robust cure is **reset-and-reboot**:
+  **New** (and Open/Import) no longer mutates the live, running app in place — it
+  settles the new design into the store and remounts the whole editor from a clean
+  boot (a `bootNonce`-keyed `<App>`), so no stale effect survives to loop against
+  the swap. The loop's original trigger (a layout-measuring effect in the responsive
+  top bar that wasn't idempotent under sub-pixel jitter) is also fixed, and the
+  boundary remains as a safety net against any future render crash.
 
 ## Controls & keyboard shortcuts
 

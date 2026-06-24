@@ -237,6 +237,11 @@ npm run format   # Prettier
   width × depth — and the editor opens framed on it. From the first visit it shows
   two calm helper lines: the browser-storage note and **"Best used on a desktop or
   laptop."**
+- **New design pre-fills the current size.** Starting a **New design** from inside
+  the app (top-bar **New** or **My Designs → New**) opens the size chooser
+  **defaulted to the design you're currently working on** (its preset is
+  pre-selected, or its width × depth pre-filled) — change it if you like, then
+  confirm. (First-run, with no design open yet, keeps the standard default.)
 - **Branding:** the browser tab reads **"Home Design Visualizer"** with an
   iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
   `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.
@@ -506,6 +511,18 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
   faint centered "Draw a wall to begin" hint. It's non-interactive (never blocks
   clicks) and contextual: it disappears as soon as a wall exists and reappears if
   every wall is deleted.
+
+### Responsive top bar
+
+- The top-bar controls are **responsive**: when the window is too narrow to show
+  every button, the lowest-priority ones collapse into a trailing **"⋯" overflow
+  menu** (same popover style as Export image / Design JSON) so nothing is ever
+  clipped or unreachable. The menu only appears when something actually overflows;
+  at full width the bar looks exactly as before. It recomputes live on window
+  resize. Priority, most-likely-to-stay-visible first:
+  **Undo/Redo → New → My Designs → Design JSON → Export image → Settings → Help →
+  Resize area** (so Resize area overflows first, Undo/Redo last). Implemented by
+  the reusable `OverflowBar` component.
 
 ## Controls & keyboard shortcuts
 

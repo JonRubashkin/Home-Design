@@ -171,7 +171,13 @@ export function DesignLibrary({
 }
 
 // A modal wrapper used from inside the app (switch designs / Save As).
-export function DesignLibraryModal({ onClose }: { onClose: () => void }) {
+export function DesignLibraryModal({
+  onClose,
+  onRequestNew,
+}: {
+  onClose: () => void;
+  onRequestNew: () => void;
+}) {
   const [records, setRecords] = useState<DesignRecord[]>([]);
   const saveAs = useStore((s) => s.saveAs);
   const designName = useStore((s) => s.design.name);
@@ -181,9 +187,12 @@ export function DesignLibraryModal({ onClose }: { onClose: () => void }) {
   };
   useEffect(reload, []);
 
+  // New design opens the size chooser (pre-filled with the current site) rather
+  // than creating a fixed-size design immediately — handled by the parent so the
+  // chooser replaces this modal.
   const onNew = () => {
-    useStore.getState().newDesign();
     onClose();
+    onRequestNew();
   };
 
   const onSaveAs = () => {

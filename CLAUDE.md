@@ -973,7 +973,10 @@ in code under `src/catalog/`:
   comment at the list says so. It also shows the shared browser-storage disclosure
   (`STORAGE_DISCLOSURE`) as a muted footer note (see "Work area, welcome screen").
   It also ends with a muted **About** section (app name, "Made by <author>",
-  version, and a "Send feedback" link when one is set).
+  version, and a "Send feedback" link). The feedback/email line is currently
+  **hidden** behind a single `SHOW_FEEDBACK` flag in `src/lib/credits.ts` (the
+  `FEEDBACK_LINK` string + markup are kept; flip `SHOW_FEEDBACK` to `true` to
+  restore the line everywhere). The rest of About stays visible.
 - **Author credit:** the welcome screen shows a small muted "Made by <author>"
   signature pinned at the bottom, and the Help panel's About section repeats it.
   The strings (app name, author name, version, optional author/feedback links) are

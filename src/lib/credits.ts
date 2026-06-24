@@ -13,6 +13,12 @@ export const APP_VERSION = "v1.0";
 export const AUTHOR_URL = "";
 export const FEEDBACK_LINK = "ezdesign.homes@gmail.com";
 
+// Master switch for the feedback/email line (the "Send feedback" link in the Help
+// panel's About section, and anywhere else it might appear). Hidden for now but
+// kept in the code — flip this to `true` to restore it everywhere. The link string
+// and markup are intentionally retained above/below; only this gate is off.
+export const SHOW_FEEDBACK = false;
+
 // True when a link string is a bare email address (no scheme), so callers know to
 // prefix mailto: and skip target="_blank".
 export function isEmail(link: string): boolean {

@@ -27,7 +27,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run build
+      # Build for the GitHub Pages project page (served from /Home-Design/).
+      # The default build (e.g. Vercel) serves from the root.
+      - run: npm run build -- --mode pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

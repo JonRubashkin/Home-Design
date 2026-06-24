@@ -558,7 +558,23 @@ src/
 
 ## Deployment
 
+### Vercel (primary)
+
+The app deploys to Vercel, which serves the site from the **root** (`/`).
+`vercel.json` at the repo root makes the build explicit (`buildCommand: npm run
+build`, `outputDirectory: dist`) and adds an SPA fallback that rewrites unknown
+paths to `/index.html`. The default Vite build uses `base: '/'`, so the built
+`index.html` references assets as `/assets/...` (root-relative).
+
+> A blank white screen on Vercel is the classic symptom of a `base` mismatch:
+> the old GitHub Pages build emitted asset URLs under `/Home-Design/...`, which
+> 404 when the site is served from the root. Keeping `base: '/'` for the default
+> build fixes it.
+
+### GitHub Pages (legacy)
+
 Pushing to `main` triggers the GitHub Actions workflow in
-`.github/workflows/deploy.yml`, which builds the app and deploys it to GitHub
-Pages. The Vite `base` is set to `/Home-Design/` for the project page. Enable
-Pages for the repo with the **GitHub Actions** source.
+`.github/workflows/deploy.yml`, which builds the app with `npm run build --
+--mode pages` and deploys it to GitHub Pages. The `pages` mode sets the Vite
+`base` to `/Home-Design/` for the project page. Enable Pages for the repo with
+the **GitHub Actions** source.

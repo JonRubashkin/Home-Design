@@ -7,6 +7,7 @@ import { DesignLibraryModal } from "./DesignLibrary";
 import { ExportMenu } from "./ExportMenu";
 import { DesignFileMenu } from "./DesignFileMenu";
 import { HelpPanel } from "./HelpPanel";
+import { NewDesignDialog } from "./NewDesignDialog";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -26,18 +27,19 @@ export function TopBar() {
   const canRedo = useStore((s) => s.future.length > 0);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
-  const newDesign = useStore((s) => s.newDesign);
 
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resizeOpen, setResizeOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
 
   const onNew = () => {
     // The current design is already autosaved to its library record; New just
-    // opens a fresh one, so no data is lost.
-    newDesign();
+    // opens the size chooser (pre-filled with the current site) for a fresh one,
+    // so no data is lost.
+    setNewOpen(true);
   };
 
   return (
@@ -122,8 +124,12 @@ export function TopBar() {
       {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {resizeOpen && <ResizeAreaDialog onClose={() => setResizeOpen(false)} />}
+      {newOpen && <NewDesignDialog onClose={() => setNewOpen(false)} />}
       {libraryOpen && (
-        <DesignLibraryModal onClose={() => setLibraryOpen(false)} />
+        <DesignLibraryModal
+          onClose={() => setLibraryOpen(false)}
+          onRequestNew={() => setNewOpen(true)}
+        />
       )}
     </header>
   );

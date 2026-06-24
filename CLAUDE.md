@@ -487,8 +487,14 @@ in code under `src/catalog/`:
   single-slot localStorage autosave into the library (never lost) and clears it.
   The welcome screen and the in-app **My Designs** menu list records (New / Open /
   Duplicate / Rename / Delete; Continue = most recent; Save As forks a new record
-  via `saveAs`). Import (`setDesign`) and New (`newDesign`) start a fresh record
-  id. Still: explicit "Export JSON" / "Import JSON" (the unified **Design JSON**
+  via `saveAs`). Import (`setDesign`) starts a fresh record id. **New design**
+  (top-bar **New** and **My Designs → New**) opens the size chooser
+  (`NewDesignDialog` → `SiteSizeForm`) **pre-filled with the current design's
+  `site`** (matching preset pre-selected, else custom width × depth pre-filled —
+  it's a default, still editable); confirming creates a fresh record at the chosen
+  size via `startNewDesign`. (First-run "New" from the welcome screen keeps its own
+  10×10 default and does NOT use this dialog.) Still: explicit "Export JSON" /
+  "Import JSON" (the unified **Design JSON**
   top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
   rather than corrupting data.

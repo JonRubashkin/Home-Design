@@ -237,6 +237,11 @@ npm run format   # Prettier
   width × depth — and the editor opens framed on it. From the first visit it shows
   two calm helper lines: the browser-storage note and **"Best used on a desktop or
   laptop."**
+- **New design pre-fills the current size.** Starting a **New design** from inside
+  the app (top-bar **New** or **My Designs → New**) opens the size chooser
+  **defaulted to the design you're currently working on** (its preset is
+  pre-selected, or its width × depth pre-filled) — change it if you like, then
+  confirm. (First-run, with no design open yet, keeps the standard default.)
 - **Branding:** the browser tab reads **"Home Design Visualizer"** with an
   iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
   `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.

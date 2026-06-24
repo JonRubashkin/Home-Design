@@ -1333,6 +1333,12 @@ button:focus-visible,
   flex-direction: column;
   gap: 14px;
 }
+.welcome-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
 .welcome-storage-note {
   margin: 0;
   color: var(--text-dim);

@@ -9,7 +9,7 @@ import {
 } from "../storage/library";
 import { DesignLibrary } from "./DesignLibrary";
 import { SiteSizeForm } from "./SiteSizeForm";
-import { STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
+import { DESKTOP_RECOMMENDATION, STORAGE_DISCLOSURE } from "../lib/storageDisclosure";
 
 // Shown before the editor on load. Loads the design library (migrating any legacy
 // localStorage autosave into it on first run). If saved designs exist, offer the
@@ -65,6 +65,16 @@ export function WelcomeScreen() {
           <p className="welcome-sub">Draw walls, furnish rooms, see it in 3D.</p>
         </div>
 
+        {/* Both helper lines show on the genuine entry screen from the very first
+            visit (size chooser) as well as for returning users (recents list) —
+            never gated behind starting a design. */}
+        {!loading && (
+          <div className="welcome-notices">
+            <p className="welcome-storage-note">{STORAGE_DISCLOSURE}</p>
+            <p className="welcome-storage-note">{DESKTOP_RECOMMENDATION}</p>
+          </div>
+        )}
+
         {loading ? (
           <p className="welcome-size-hint">Loading your designs…</p>
         ) : step === "size" ? (
@@ -92,7 +102,6 @@ export function WelcomeScreen() {
                 Continue your most recent design
               </button>
             )}
-            <p className="welcome-storage-note">{STORAGE_DISCLOSURE}</p>
             <DesignLibrary
               records={records}
               reload={reload}

@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { TopBar } from "./components/TopBar";
 import { Toolbar } from "./components/Toolbar";
 import { PlanEditor } from "./components/PlanEditor";
@@ -23,12 +24,22 @@ export default function App() {
 
   // Dev-only catalog QA view, opened with #catalog in the URL.
   if (typeof window !== "undefined" && window.location.hash === "#catalog") {
-    return <CatalogQA />;
+    return (
+      <>
+        <CatalogQA />
+        <Analytics />
+      </>
+    );
   }
 
   // Welcome screen (size chooser / Continue) before the editor canvas.
   if (!started) {
-    return <WelcomeScreen />;
+    return (
+      <>
+        <WelcomeScreen />
+        <Analytics />
+      </>
+    );
   }
 
   return (
@@ -42,6 +53,7 @@ export default function App() {
         </div>
         {showEditingChrome && <PropertiesPanel />}
       </div>
+      <Analytics />
     </div>
   );
 }

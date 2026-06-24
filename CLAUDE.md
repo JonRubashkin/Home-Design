@@ -622,9 +622,19 @@ in code under `src/catalog/`:
   current domain (the IndexedDB library is per-origin, not cloud-synced, lost if
   browser data is cleared). A calm muted line — *"Designs are saved in this
   browser. Use Export to back up or move them."* — appears in TWO places: the
-  Welcome screen **above the My Designs list** and the Help panel (footer note).
+  Welcome screen **above the My Designs area** and the Help panel (footer note).
   Single-sourced as `STORAGE_DISCLOSURE` (`src/lib/storageDisclosure.ts`) so the
-  two can't drift; informational text only — no new storage behavior.
+  two can't drift; informational text only — no new storage behavior. On the
+  Welcome screen the disclosure shows **from the very first visit** (including the
+  first-run/no-saved-designs size-chooser step, not gated behind starting a
+  design), in a `.welcome-notices` block, with a second muted line directly below
+  it — *"Best used on a desktop or laptop."* (`DESKTOP_RECOMMENDATION`, same file)
+  — noting the app is desktop-oriented (mouse + keyboard) without hard-blocking.
+- **Favicon & tab title:** `index.html` sets `<title>` to *"Home Design
+  Visualizer"* and links an SVG favicon (`public/favicon.svg`, the primary icon —
+  an iso wall-corner mark in a warm palette) plus PNG fallbacks
+  (`favicon-32.png`, `apple-touch-icon.png`) generated from the SAME artwork.
+  Branding only — no functional change.
 - **Site rendering:** the 2D plan shades the site rectangle with a border +
   dimension label and dims the grid outside it (soft — drawing outside still
   works). The 3D ground shows the site as a lighter "lot" over the dark

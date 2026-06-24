@@ -158,9 +158,11 @@ npm run format   # Prettier
   (never lost). Per-design `schemaVersion` migrations still run on open.
 - **Designs live only in the current browser on the current domain** (IndexedDB) —
   they don't sync across devices and are cleared if you clear browser data. The
-  welcome screen (above the My Designs list) and the Help panel both show a calm
-  note about this; use **Export JSON** to back up or move a design. Single-sourced
-  in `src/lib/storageDisclosure.ts`.
+  welcome screen (above the My Designs area, from the very first visit) and the
+  Help panel both show a calm note about this; use **Export JSON** to back up or
+  move a design. The welcome screen also notes the app is **best used on a desktop
+  or laptop** (mouse + keyboard) directly below it. Both lines are single-sourced
+  in `src/lib/storageDisclosure.ts` (`STORAGE_DISCLOSURE`, `DESKTOP_RECOMMENDATION`).
 
 ### Image export (phase 5a)
 
@@ -232,7 +234,12 @@ npm run format   # Prettier
   untouched, or start a **New design**; first-timers go straight to the size
   chooser. Pick a work-area size — **Small** (100 m² → 10 × 10 m), **Medium**
   (300 m² → ≈17.3 × 17.3 m), **Large** (1000 m² → ≈31.6 × 31.6 m), or a custom
-  width × depth — and the editor opens framed on it.
+  width × depth — and the editor opens framed on it. From the first visit it shows
+  two calm helper lines: the browser-storage note and **"Best used on a desktop or
+  laptop."**
+- **Branding:** the browser tab reads **"Home Design Visualizer"** with an
+  iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
+  `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.
 - **Work area ("site")** — a *soft* buildable rectangle stored in the design
   (origin at the top-left corner). The 2D plan shades it, labels its dimensions,
   and de-emphasizes the grid outside it; the 3D ground shows it as a lighter lot.

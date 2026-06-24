@@ -1318,6 +1318,11 @@ button:focus-visible,
 .help-label {
   color: var(--text);
 }
+.help-footer-note {
+  margin: 14px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
 
 /* --- design library ("My Designs") --- */
 .welcome-wide {
@@ -1327,6 +1332,11 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+.welcome-storage-note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 13px;
 }
 .library-modal {
   width: min(680px, 100%);

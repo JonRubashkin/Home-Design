@@ -493,7 +493,15 @@ in code under `src/catalog/`:
   `site`** (matching preset pre-selected, else custom width × depth pre-filled —
   it's a default, still editable); confirming creates a fresh record at the chosen
   size via `startNewDesign`. (First-run "New" from the welcome screen keeps its own
-  10×10 default and does NOT use this dialog.) Still: explicit "Export JSON" /
+  10×10 default and does NOT use this dialog.) **Opening/replacing the active
+  document** (New, Open, Import) goes through one shared `freshDocState(design,
+  openDesignId)` helper (`store.ts`) used by `newDesign`/`startNewDesign`/`setDesign`/
+  `openRecord`, so the four paths can't drift: it swaps in the design AND atomically
+  resets every doc-dependent transient field — `selection`, `sideHighlight`,
+  `clipboard`, `dragBaseline`, `mergeNotice`, undo coalescing, and the undo/redo
+  history — and re-points `currentLevelId` at a level that exists in the new doc.
+  This guarantees no dangling reference to a now-removed object survives into a
+  render (the old "New white-screens when objects exist" bug). Still: explicit "Export JSON" /
   "Import JSON" (the unified **Design JSON**
   top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused

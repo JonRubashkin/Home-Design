@@ -274,6 +274,33 @@ function levelOf(design: Design, levelId: string): Level {
   return level;
 }
 
+// The full set of store fields for opening/replacing the active design document
+// (New, Open, Import). Resets EVERY piece of transient state that referenced the
+// previous document — selection, side-highlight, copy/paste clipboard, the drag
+// baseline, the merge notice, undo coalescing, and undo/redo history — and points
+// `currentLevelId` at a level that actually exists in the new doc. This guarantees
+// a fully-consistent clean state: no dangling reference to a now-removed object
+// (a deleted wall/furniture/level) can survive into a render and white-screen the
+// app. Shared by newDesign / startNewDesign / setDesign / openRecord so the four
+// paths can never drift. Callers spread extra fields (e.g. `started`, a
+// merge-notice) AFTER this base.
+function freshDocState(design: Design, openDesignId: string | null) {
+  return {
+    design,
+    currentLevelId: design.levels[0]!.id,
+    selection: null,
+    sideHighlight: null,
+    clipboard: null,
+    dragBaseline: null,
+    mergeNotice: null,
+    coalesceKey: null,
+    coalesceAt: 0,
+    past: [],
+    future: [],
+    openDesignId,
+  } satisfies Partial<AppState>;
+}
+
 function findWall(
   design: Design,
   levelId: string,
@@ -1797,12 +1824,7 @@ export const useStore = create<AppState>((set, get) => {
         }
       }
       set({
-        design: next,
-        currentLevelId: next.levels[0]!.id,
-        selection: null,
-        past: [],
-        future: [],
-        openDesignId: makeId("design"),
+        ...freshDocState(next, makeId("design")),
         ...(merged
           ? { mergeNotice: MERGE_NOTICE, mergeNoticeNonce: get().mergeNoticeNonce + 1 }
           : {}),
@@ -1810,45 +1832,25 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     newDesign: () => {
-      const design = createDesign();
-      set({
-        design,
-        currentLevelId: design.levels[0]!.id,
-        selection: null,
-        past: [],
-        future: [],
-        openDesignId: makeId("design"),
-      });
+      set(freshDocState(createDesign(), makeId("design")));
     },
 
     continueDesign: () => set({ started: true }),
 
     startNewDesign: (site) => {
       // Fresh design with the chosen site, a clean history, and a new record id.
-      const design = createDesign(undefined, site);
+      // `freshDocState` resets every doc-dependent transient field atomically so
+      // a previously selected/copied object from the old design can't leave a
+      // dangling reference and white-screen the editor.
       set({
-        design,
-        currentLevelId: design.levels[0]!.id,
-        selection: null,
-        past: [],
-        future: [],
+        ...freshDocState(createDesign(undefined, site), makeId("design")),
         started: true,
-        openDesignId: makeId("design"),
       });
     },
 
     // Open an existing library record into the editor.
     openRecord: (id, design) => {
-      const next = clone(design);
-      set({
-        design: next,
-        currentLevelId: next.levels[0]!.id,
-        selection: null,
-        past: [],
-        future: [],
-        started: true,
-        openDesignId: id,
-      });
+      set({ ...freshDocState(clone(design), id), started: true });
     },
 
     // Rename the open design (undoable, persisted by autosave).

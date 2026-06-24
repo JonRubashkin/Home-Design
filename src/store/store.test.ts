@@ -1161,3 +1161,57 @@ describe("copy / paste", () => {
     expect(roofs()).toHaveLength(1);
   });
 });
+
+describe("new design resets all doc-dependent state (white-screen guard)", () => {
+  // Regression: starting a New design while objects were placed/selected used to
+  // leave dangling references (selection, clipboard, a stale current level, undo
+  // history) pointing at now-removed objects, which could crash a render. New must
+  // produce a fully-consistent clean state.
+  function seedPopulatedDesign() {
+    state().addWall({ x: 0, y: 0 }, { x: 4, y: 0 });
+    state().placeFurniture("sofa-3seat", { x: 1, y: 1 }, 0, undefined);
+    state().placeStaircase({ x: 3, y: 3 }, 0); // auto-creates a level above
+    const furnId = selectCurrentLevel(useStore.getState()).furniture[0]!.id;
+    state().setSelection({ kind: "furniture", id: furnId });
+    state().copySelection(); // fills the clipboard
+    state().setSideHighlight({ wallId: walls()[0]!.id, side: "A" });
+    expect(state().clipboard).not.toBeNull();
+    expect(state().past.length).toBeGreaterThan(0);
+  }
+
+  it("startNewDesign clears selection/clipboard/highlight/history and a valid level", () => {
+    seedPopulatedDesign();
+    // Make the active level the auto-created upper one to prove it's reset too.
+    const upperId = state().design.levels[1]!.id;
+    state().setCurrentLevel(upperId);
+
+    state().startNewDesign({ width: 8, depth: 8 });
+
+    const s = state();
+    expect(s.selection).toBeNull();
+    expect(s.sideHighlight).toBeNull();
+    expect(s.clipboard).toBeNull();
+    expect(s.dragBaseline).toBeNull();
+    expect(s.past).toHaveLength(0);
+    expect(s.future).toHaveLength(0);
+    // currentLevelId points at a level that exists in the NEW design.
+    expect(s.design.levels.some((l) => l.id === s.currentLevelId)).toBe(true);
+    expect(s.design.levels).toHaveLength(1);
+    // Fresh, empty design at the chosen size, with a new record id.
+    expect(selectCurrentLevel(s).walls).toHaveLength(0);
+    expect(selectCurrentLevel(s).furniture).toHaveLength(0);
+    expect(s.design.site).toEqual({ width: 8, depth: 8 });
+    expect(s.openDesignId).not.toBeNull();
+    expect(s.started).toBe(true);
+  });
+
+  it("newDesign clears selection and resets to a valid level", () => {
+    seedPopulatedDesign();
+    state().newDesign();
+    const s = state();
+    expect(s.selection).toBeNull();
+    expect(s.clipboard).toBeNull();
+    expect(s.design.levels.some((l) => l.id === s.currentLevelId)).toBe(true);
+    expect(selectCurrentLevel(s).furniture).toHaveLength(0);
+  });
+});

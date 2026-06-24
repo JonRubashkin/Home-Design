@@ -242,6 +242,9 @@ npm run format   # Prettier
   **defaulted to the design you're currently working on** (its preset is
   pre-selected, or its width × depth pre-filled) — change it if you like, then
   confirm. (First-run, with no design open yet, keeps the standard default.)
+  Creating a new design (or opening/importing one) atomically resets all
+  doc-dependent state — selection, copy/paste clipboard, undo history, the active
+  level — so a fresh design always starts from a fully-clean, consistent state.
 - **Branding:** the browser tab reads **"Home Design Visualizer"** with an
   iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
   `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.

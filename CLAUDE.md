@@ -9,7 +9,8 @@ something here, stop and ask the user instead of improvising.
 A browser-based home design tool. Users draw walls in a **2D plan editor** and see a
 live **3D isometric-style preview** (orthographic camera, rotatable). They will add
 windows, paint walls, assign floor materials, and later place furniture. Everything
-runs client-side. No backend. Deploys to GitHub Pages.
+runs client-side. No backend. Deploys to Vercel (root `base: '/'` + a
+`vercel.json` SPA rewrite).
 
 The product is built in phases (see "Phase plan" at the bottom). Never build ahead
 of the current phase, but never design the data model in a way that blocks a later
@@ -1061,7 +1062,7 @@ in code under `src/catalog/`:
 
 - **Desktop, mouse + keyboard only.** Do not write touch handling.
 - Multiple levels are supported (Phase 3c). Editing acts on the **active level**
-  only; staircases are NOT built yet (a later session).
+  only; staircases are built (Phase 3d — straight stairs).
 - Roofs exist (Phase 5e → 5.1 → 5.2: now a **manual** roof tool — user-placed
   rectangles, no auto-detection); ceiling-light fixtures exist (Phase 5f) but
   there is no real lighting/illumination design, and no measurements/dimension
@@ -1071,7 +1072,7 @@ in code under `src/catalog/`:
 ## Phase plan
 
 - **1a (foundation):** project scaffold, store + schema + undo, 2D plan editor with
-  wall draw/select/drag/delete + properties panel, save/load, GitHub Pages deploy.
+  wall draw/select/drag/delete + properties panel, save/load, Vercel deploy.
 - **1b (preview):** 3D orthographic preview, rotation/zoom, the three wall view
   modes incl. invisible/ghost cutaway sub-option, Plan/3D/Split layout.
 - **1c (surfaces & openings):** windows (tool + rendering via sub-boxes), paint

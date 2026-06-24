@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TopBar } from "./components/TopBar";
 import { Toolbar } from "./components/Toolbar";
 import { PlanEditor } from "./components/PlanEditor";
@@ -28,6 +29,7 @@ export default function App() {
       <>
         <CatalogQA />
         <Analytics />
+        <SpeedInsights />
       </>
     );
   }
@@ -38,6 +40,7 @@ export default function App() {
       <>
         <WelcomeScreen />
         <Analytics />
+        <SpeedInsights />
       </>
     );
   }
@@ -54,6 +57,7 @@ export default function App() {
         {showEditingChrome && <PropertiesPanel />}
       </div>
       <Analytics />
+      <SpeedInsights />
     </div>
   );
 }

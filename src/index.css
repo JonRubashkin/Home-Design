@@ -101,13 +101,25 @@ body {
   line-height: 1;
   padding: 4px 10px;
 }
-/* Anchor the overflow dropdown to the bar's right edge (it sits at the end). */
-.overflow-menu {
+/* Anchor the overflow dropdown to the bar's right edge (the "⋯" sits flush at
+   the end of the bar). Right-aligning makes the menu extend LEFTWARD into view
+   instead of off the right edge of the viewport. The compound selector
+   (.export-popover.overflow-menu) is required to beat the base .export-popover
+   { left: 0 } rule, which is defined later in this file. */
+.export-popover.overflow-menu {
   left: auto;
   right: 0;
+  /* Let labels size to content (growing leftward), and never clip them. */
+  width: max-content;
+  max-width: 90vw;
+  /* Stay on-screen when the window is very short: scroll instead of clipping
+     off the bottom. */
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 .overflow-menu-item {
   display: block;
+  white-space: nowrap;
 }
 .overflow-menu button {
   display: inline-flex;

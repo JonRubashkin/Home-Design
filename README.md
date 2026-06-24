@@ -511,6 +511,10 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
   faint centered "Draw a wall to begin" hint. It's non-interactive (never blocks
   clicks) and contextual: it disappears as soon as a wall exists and reappears if
   every wall is deleted.
+- **Author credit** — a small muted "Made by Jonathan Rubashkin" signature sits at
+  the bottom of the **welcome screen**, and the **Help panel** has an **About**
+  section (app name, author, version, and a "Send feedback" link). The strings are
+  single-sourced in `src/lib/credits.ts`; nothing is shown on the editor canvas.
 
 ### Responsive top bar
 

@@ -964,6 +964,13 @@ in code under `src/catalog/`:
   binding changes, update that list too or the panel silently drifts. A prominent
   comment at the list says so. It also shows the shared browser-storage disclosure
   (`STORAGE_DISCLOSURE`) as a muted footer note (see "Work area, welcome screen").
+  It also ends with a muted **About** section (app name, "Made by <author>",
+  version, and a "Send feedback" link when one is set).
+- **Author credit:** the welcome screen shows a small muted "Made by <author>"
+  signature pinned at the bottom, and the Help panel's About section repeats it.
+  The strings (app name, author name, version, optional author/feedback links) are
+  single-sourced as constants in `src/lib/credits.ts` so the two never drift —
+  muted/secondary styling only, and **nothing on the editor canvas**.
 - **Empty-state nudge:** when the **active level has no walls** (the primary
   "nothing to see" case), the plan shows a faint centered hint
   ("Draw a wall to begin", `.plan-empty-hint`). It is **non-interactive**

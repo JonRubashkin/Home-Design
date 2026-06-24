@@ -29,6 +29,15 @@ export interface OverflowBarItem {
 
 const GAP = 6; // must match the .topbar-actions CSS gap
 const MORE_FALLBACK = 44; // estimated "⋯" button width before it is measured
+// Slack (px) added to every fit comparison. getBoundingClientRect returns
+// sub-pixel, frame-to-frame-jittery widths; without slack a width that lands
+// exactly on a fit boundary can flip an item in/out of the overflow menu on
+// every render. Because the recompute runs in a layout effect on every render
+// (to measure a freshly-mounted "⋯"), such a flip is a SYNCHRONOUS infinite
+// update loop → React error #185 ("Maximum update depth exceeded") → white
+// screen. Rounding measurements to whole pixels + this tolerance makes the
+// decision idempotent so the loop can't start.
+const FIT_TOLERANCE = 1;
 
 function sameSet(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false;
@@ -72,6 +81,11 @@ export function OverflowBar({
   const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const widths = useRef<Map<string, number>>(new Map());
   const moreRef = useRef<HTMLDivElement>(null);
+  // Last measured "⋯" button width, kept stable across renders. The button is
+  // only mounted while something overflows, so re-measuring it (vs. falling back
+  // to MORE_FALLBACK) would make `moreW` alternate as items hide/show — another
+  // way recompute could stop being idempotent. Cache it once and reuse it.
+  const moreWidth = useRef<number>(MORE_FALLBACK);
   const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -82,27 +96,34 @@ export function OverflowBar({
     if (!container) return;
 
     // Refresh the width cache from whatever slots are currently mounted (the
-    // visible items). Hidden items keep their last-measured width.
+    // visible items). Hidden items keep their last-measured width. Round to whole
+    // pixels so sub-pixel jitter between renders can't perturb the totals.
     slotRefs.current.forEach((el, key) => {
-      const w = el.getBoundingClientRect().width;
+      const w = Math.round(el.getBoundingClientRect().width);
       if (w > 0) widths.current.set(key, w);
     });
+    // Keep the "⋯" width stable: measure it when present, otherwise reuse the
+    // last value (never alternate between measured and the fallback).
+    if (moreRef.current) {
+      const mw = Math.round(moreRef.current.getBoundingClientRect().width);
+      if (mw > 0) moreWidth.current = mw;
+    }
 
-    const avail = availableWidth(container);
+    const avail = Math.round(availableWidth(container));
     const widthOf = (key: string) => widths.current.get(key) ?? 0;
 
     const totalAll = items.reduce(
       (sum, it, i) => sum + widthOf(it.key) + (i > 0 ? GAP : 0),
       0,
     );
-    if (totalAll <= avail) {
+    if (totalAll <= avail + FIT_TOLERANCE) {
       setHiddenKeys((prev) => (prev.size === 0 ? prev : new Set()));
       return;
     }
 
     // Doesn't all fit: hide the least-important items (highest priority number,
     // ties broken by later display position) until the rest + the "⋯" button fit.
-    const moreW = moreRef.current?.getBoundingClientRect().width || MORE_FALLBACK;
+    const moreW = moreWidth.current;
     const byImportance = items
       .map((it, i) => ({ it, i }))
       .sort((a, b) => b.it.priority - a.it.priority || b.i - a.i);
@@ -116,7 +137,7 @@ export function OverflowBar({
         w += widthOf(it.key) + (first ? 0 : GAP);
         first = false;
       }
-      return w <= avail;
+      return w <= avail + FIT_TOLERANCE;
     };
     for (const { it } of byImportance) {
       if (fits()) break;

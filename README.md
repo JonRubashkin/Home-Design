@@ -1,4 +1,4 @@
-# Home Design Visualizer
+# EZ Design Homes
 
 A browser-based home design tool. Draw walls in a 2D plan editor and see them
 live in a 3D preview; later phases add windows, paint, and floor materials.
@@ -242,9 +242,15 @@ npm run format   # Prettier
   **defaulted to the design you're currently working on** (its preset is
   pre-selected, or its width × depth pre-filled) — change it if you like, then
   confirm. (First-run, with no design open yet, keeps the standard default.)
-- **Branding:** the browser tab reads **"Home Design Visualizer"** with an
+  Creating a new design (or opening/importing one) atomically resets all
+  doc-dependent state — selection, copy/paste clipboard, undo history, the active
+  level — so a fresh design always starts from a fully-clean, consistent state.
+- **Branding:** the browser tab reads **"EZ Design Homes"** with an
   iso-wall-corner favicon (warm palette) — `public/favicon.svg` (primary) plus
   `favicon-32.png` / `apple-touch-icon.png` PNG fallbacks, wired in `index.html`.
+  The user-visible product name is single-sourced as `APP_NAME` in
+  `src/lib/credits.ts` (welcome heading, top-bar brand, Help/About all read it);
+  `index.html`'s `<title>` and this README are updated to match by hand.
 - **Work area ("site")** — a *soft* buildable rectangle stored in the design
   (origin at the top-left corner). The 2D plan shades it, labels its dimensions,
   and de-emphasizes the grid outside it; the 3D ground shows it as a lighter lot.

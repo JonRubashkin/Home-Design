@@ -1,7 +1,11 @@
 // Single source for author/version credit strings, shown on the Welcome screen
 // footer ("Made by …") and in the Help panel's About section. Kept here so the two
 // places can't drift. Muted/secondary styling only — never a banner or watermark.
-export const APP_NAME = "Home Design Visualizer";
+// The user-visible product name. Single-sourced here and used by every UI spot
+// (welcome heading, in-app top-bar brand, Help-panel About). index.html's <title>
+// and the README are static and updated to match by hand. Change this in one place
+// to rename the app everywhere in the UI.
+export const APP_NAME = "EZ Design Homes";
 export const AUTHOR_NAME = "Jonathan Rubashkin";
 export const APP_VERSION = "v1.0";
 
@@ -12,6 +16,12 @@ export const APP_VERSION = "v1.0";
 // as-is (opens in a new tab).
 export const AUTHOR_URL = "";
 export const FEEDBACK_LINK = "ezdesign.homes@gmail.com";
+
+// Master switch for the feedback/email line (the "Send feedback" link in the Help
+// panel's About section, and anywhere else it might appear). Hidden for now but
+// kept in the code — flip this to `true` to restore it everywhere. The link string
+// and markup are intentionally retained above/below; only this gate is off.
+export const SHOW_FEEDBACK = false;
 
 // True when a link string is a bare email address (no scheme), so callers know to
 // prefix mailto: and skip target="_blank".

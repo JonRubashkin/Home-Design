@@ -9,6 +9,7 @@ import { DesignFileMenu } from "./DesignFileMenu";
 import { HelpPanel } from "./HelpPanel";
 import { NewDesignDialog } from "./NewDesignDialog";
 import { OverflowBar, type OverflowBarItem } from "./OverflowBar";
+import { APP_NAME } from "../lib/credits";
 
 const GearIcon = (
   <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
@@ -152,7 +153,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-brand">
-        <strong>Home Design</strong>
+        <strong>{APP_NAME}</strong>
         <span className="topbar-docname">{design.name}</span>
       </div>
 

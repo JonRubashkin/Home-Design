@@ -15,6 +15,7 @@ import {
   AUTHOR_NAME,
   AUTHOR_URL,
   FEEDBACK_LINK,
+  SHOW_FEEDBACK,
   feedbackHref,
   isEmail,
 } from "../lib/credits";
@@ -117,7 +118,7 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
             )}
           </p>
           <p className="help-about-line help-about-muted">{APP_VERSION}</p>
-          {FEEDBACK_LINK && (
+          {SHOW_FEEDBACK && FEEDBACK_LINK && (
             <p className="help-about-line">
               <a
                 href={feedbackHref(FEEDBACK_LINK)}

@@ -1,4 +1,4 @@
-# CLAUDE.md — Home Design Visualizer
+# CLAUDE.md — EZ Design Homes
 
 Read this file fully before writing any code. It is the single source of truth for
 conventions, the data model, and scope. If a task seems to require violating
@@ -493,7 +493,15 @@ in code under `src/catalog/`:
   `site`** (matching preset pre-selected, else custom width × depth pre-filled —
   it's a default, still editable); confirming creates a fresh record at the chosen
   size via `startNewDesign`. (First-run "New" from the welcome screen keeps its own
-  10×10 default and does NOT use this dialog.) Still: explicit "Export JSON" /
+  10×10 default and does NOT use this dialog.) **Opening/replacing the active
+  document** (New, Open, Import) goes through one shared `freshDocState(design,
+  openDesignId)` helper (`store.ts`) used by `newDesign`/`startNewDesign`/`setDesign`/
+  `openRecord`, so the four paths can't drift: it swaps in the design AND atomically
+  resets every doc-dependent transient field — `selection`, `sideHighlight`,
+  `clipboard`, `dragBaseline`, `mergeNotice`, undo coalescing, and the undo/redo
+  history — and re-points `currentLevelId` at a level that exists in the new doc.
+  This guarantees no dangling reference to a now-removed object survives into a
+  render (the old "New white-screens when objects exist" bug). Still: explicit "Export JSON" /
   "Import JSON" (the unified **Design JSON**
   top-bar menu); per-design `schemaVersion`
   migrations run on open via `validateDesign`; a future unknown version is refused
@@ -636,8 +644,13 @@ in code under `src/catalog/`:
   design), in a `.welcome-notices` block, with a second muted line directly below
   it — *"Best used on a desktop or laptop."* (`DESKTOP_RECOMMENDATION`, same file)
   — noting the app is desktop-oriented (mouse + keyboard) without hard-blocking.
-- **Favicon & tab title:** `index.html` sets `<title>` to *"Home Design
-  Visualizer"* and links an SVG favicon (`public/favicon.svg`, the primary icon —
+- **App name:** the user-visible product name is **"EZ Design Homes"**,
+  single-sourced as `APP_NAME` in `src/lib/credits.ts` and read by every UI spot
+  (welcome heading, in-app top-bar brand, Help-panel About). `index.html`'s
+  `<title>` and the README are static and kept in sync by hand. Internal
+  identifiers/filenames/repo are NOT renamed — only user-visible text.
+- **Favicon & tab title:** `index.html` sets `<title>` to *"EZ Design Homes"*
+  and links an SVG favicon (`public/favicon.svg`, the primary icon —
   an iso wall-corner mark in a warm palette) plus PNG fallbacks
   (`favicon-32.png`, `apple-touch-icon.png`) generated from the SAME artwork.
   Branding only — no functional change.
@@ -965,7 +978,10 @@ in code under `src/catalog/`:
   comment at the list says so. It also shows the shared browser-storage disclosure
   (`STORAGE_DISCLOSURE`) as a muted footer note (see "Work area, welcome screen").
   It also ends with a muted **About** section (app name, "Made by <author>",
-  version, and a "Send feedback" link when one is set).
+  version, and a "Send feedback" link). The feedback/email line is currently
+  **hidden** behind a single `SHOW_FEEDBACK` flag in `src/lib/credits.ts` (the
+  `FEEDBACK_LINK` string + markup are kept; flip `SHOW_FEEDBACK` to `true` to
+  restore the line everywhere). The rest of About stays visible.
 - **Author credit:** the welcome screen shows a small muted "Made by <author>"
   signature pinned at the bottom, and the Help panel's About section repeats it.
   The strings (app name, author name, version, optional author/feedback links) are

@@ -1,0 +1,48 @@
+name: Tests
+
+# Runs the test gate on every push and pull request. This is independent of
+# deployment: Vercel still deploys on push as before; this workflow only runs
+# the Vitest unit tests and the Playwright end-to-end suite.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Also guard that the production build still type-checks and bundles.
+      - run: npm run build
+
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Install only the Chromium browser (the single project in our config)
+      # plus its OS dependencies.
+      - run: npx playwright install --with-deps chromium
+      # Playwright's webServer option auto-starts the Vite dev server for the run.
+      - run: npm run test:e2e
+      # On failure, upload the HTML report (with traces from any retried
+      # failures) so a broken run can be inspected from the Actions UI.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

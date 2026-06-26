@@ -96,8 +96,9 @@ function orientedFootprint(
 }
 
 // A height-aware collision item for a placed furniture piece: footprint plus its
-// vertical extent (base 0 on the floor) and tuck info (leg clearance / tuck
-// height) so chairs can tuck under tables (Phase 4d Part C).
+// vertical extent ([base, base+height] — base is the entry's mounted elevation,
+// 0 for floor items, raised for an upper cabinet) and tuck info (leg clearance /
+// tuck height) so chairs can tuck under tables (Phase 4d Part C).
 function furnitureCollisionItem(
   item: FurnitureItem,
   entry: CatalogEntry,
@@ -107,7 +108,7 @@ function furnitureCollisionItem(
     id: item.id,
     collidable: entry.collidable,
     footprint: orientedFootprint(item, entry),
-    vertical: { base: 0, height: ext.height },
+    vertical: { base: ext.base, height: ext.height },
     tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
   };
 }

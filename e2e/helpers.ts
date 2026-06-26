@@ -71,6 +71,37 @@ export function site(page: Page): Promise<{ width: number; depth: number }> {
   });
 }
 
+// Place a furniture item directly via the store action (same path the plan
+// editor's placement click uses), bypassing the palette UI. Used by the
+// collision specs to drop overlapping items deterministically.
+export async function placeFurniture(
+  page: Page,
+  catalogId: string,
+  position: Vec2,
+  rotation = 0,
+): Promise<void> {
+  await page.evaluate(
+    ({ catalogId, position, rotation }) => {
+      const t = (
+        window as unknown as {
+          __EZ_TEST__?: {
+            getState: () => {
+              placeFurniture: (
+                id: string,
+                pos: Vec2,
+                rot: number,
+              ) => void;
+            };
+          };
+        }
+      ).__EZ_TEST__;
+      if (!t) throw new Error("__EZ_TEST__ not present — load with ?e2e=1");
+      t.getState().placeFurniture(catalogId, position, rotation);
+    },
+    { catalogId, position, rotation },
+  );
+}
+
 // ---- editor entry ---------------------------------------------------------
 
 // Load the app and enter the editor from the welcome screen. On a fresh browser

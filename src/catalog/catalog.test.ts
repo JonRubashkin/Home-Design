@@ -7,6 +7,12 @@ import {
   resolveVariantId,
   defaultVariantId,
 } from "./index";
+import { collisionExtent, UNIT_SCALE } from "./scale";
+import {
+  collidableItemsCollide,
+  collidingIds,
+  type CollisionItem,
+} from "../geometry/furniture";
 
 describe("catalog", () => {
   it("has 74 items with unique ids", () => {
@@ -103,6 +109,81 @@ describe("catalog", () => {
       expect(e.collidable).toBe(false);
       expect(e.wallHugger).toBe(false);
     }
+  });
+
+  describe("elevation-aware collision (Part B)", () => {
+    // Build a collision item from a real catalog entry at a plan position, the
+    // same way the store / plan editor / 3D preview do (footprint + vertical
+    // extent from collisionExtent + tuck info). Two items at the same x/y have
+    // fully overlapping footprints, so only the vertical extent separates them.
+    const collisionItemFor = (
+      id: string,
+      center = { x: 0, y: 0 },
+      forceBase?: number,
+    ): CollisionItem => {
+      const entry = getCatalogEntry(id)!;
+      const ext = collisionExtent(entry, UNIT_SCALE);
+      return {
+        id,
+        collidable: entry.collidable,
+        footprint: {
+          center,
+          rotation: 0,
+          footprint: { width: entry.footprint.width, depth: entry.footprint.depth },
+        },
+        vertical: { base: forceBase ?? ext.base, height: ext.height },
+        tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
+      };
+    };
+
+    it("the upper cabinet declares a mounted base above the floor", () => {
+      const ext = collisionExtent(getCatalogEntry("upper-cabinet")!, UNIT_SCALE);
+      expect(ext.base).toBeGreaterThan(1); // hangs above counter height
+      // counter (a floor item) reports base 0
+      expect(collisionExtent(getCatalogEntry("counter")!, UNIT_SCALE).base).toBe(0);
+    });
+
+    it("an upper cabinet directly over a counter does NOT collide (clear above)", () => {
+      const cabinet = collisionItemFor("upper-cabinet");
+      const counter = collisionItemFor("counter");
+      // Footprints fully overlap but vertical extents are clear.
+      expect(collidableItemsCollide(cabinet, counter)).toBe(false);
+    });
+
+    it("the same cabinet forced down to the floor DOES collide (guard not vacuous)", () => {
+      const cabinetAtFloor = collisionItemFor("upper-cabinet", { x: 0, y: 0 }, 0);
+      const counter = collisionItemFor("counter");
+      expect(collidableItemsCollide(cabinetAtFloor, counter)).toBe(true);
+    });
+
+    it("two overlapping floor cabinets (counter + fridge) still collide", () => {
+      const counter = collisionItemFor("counter");
+      const fridge = collisionItemFor("fridge");
+      expect(collidableItemsCollide(counter, fridge)).toBe(true);
+    });
+
+    it("mount:wall / mount:ceiling items are excluded from collision (non-collidable)", () => {
+      const wallCeilingIds = [
+        "wall-art",
+        "wall-tv",
+        "floating-shelf",
+        "wall-sconce",
+        "wall-mirror",
+        "range-hood",
+        "pendant-light",
+        "flush-light",
+        "chandelier",
+      ];
+      for (const id of wallCeilingIds) {
+        const entry = getCatalogEntry(id)!;
+        expect(entry.collidable).toBe(false);
+        // Even with a fully overlapping footprint against a bulky floor item,
+        // collidingIds (which only pairs collidable items) excludes it.
+        const mounted = collisionItemFor(id);
+        const counter = collisionItemFor("counter");
+        expect(collidingIds([mounted, counter]).has(id)).toBe(false);
+      }
+    });
   });
 
   it("declares the expected wall-huggers", () => {

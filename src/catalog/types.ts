@@ -84,6 +84,15 @@ export interface CatalogEntry {
   // collide even when footprints overlap (chairs tuck under tables/desks).
   legClearance?: number;
   tuckHeight?: number;
+  // Elevation-aware collision. `baseHeight` is the floor-to-bottom elevation
+  // (meters) of a floor-standing item that actually hangs ABOVE the floor — e.g.
+  // an upper/wall cabinet that sits above a counter. Default/omitted = 0 (rests on
+  // the floor). The collision vertical extent becomes [baseHeight, baseHeight +
+  // height], so a high cabinet no longer false-collides with the counter beneath
+  // it. Keep this in sync with the entry's build() vertical offset. (mount:"wall"
+  // / mount:"ceiling" items are excluded from collision entirely, so they don't
+  // need this.)
+  baseHeight?: number;
   // Mounting (Phase 4d/5f). "floor" (default) items stand on the floor and live
   // in a level's `furniture`. "wall" items attach to a wall face as a `WallMount`
   // child of the wall: `footprint` is interpreted as (width along the wall) ×

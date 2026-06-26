@@ -413,10 +413,30 @@ in code under `src/catalog/`:
 - Two **collidable** items on the **same level** collide when their oriented
   (scaled, rotated) footprint rectangles overlap beyond a small tolerance
   (Separating Axis Theorem, `footprintsOverlap`) **AND** their vertical extents
-  `[base, base + scaledHeight]` overlap (`verticalExtentsOverlap`; `base` is 0 on
-  the floor) **AND** neither tucks under the other. The full predicate is
-  `collidableItemsCollide`; `collidingIds` / `collidingMovableIds` use it (all in
-  pure tested `src/geometry/furniture.ts`).
+  `[base, base + scaledHeight]` overlap (`verticalExtentsOverlap`) **AND** neither
+  tucks under the other. The full predicate is `collidableItemsCollide`;
+  `collidingIds` / `collidingMovableIds` use it (all in pure tested
+  `src/geometry/furniture.ts`).
+- **Elevation-aware vertical extent (Part B).** `base` is an item's **mounted base
+  elevation** — the floor-to-bottom height — **not always 0**. A floor item sits at
+  `base = 0`; an item that hangs above the floor (the kitchen **upper cabinet**,
+  which renders above a counter) carries `baseHeight` on its `CatalogEntry`, so its
+  extent `[baseHeight, baseHeight + height]` sits **above** the items below it and
+  it no longer false-reds against the counter/lower cabinet beneath. `base` flows
+  from `collisionExtent(entry, scale).base` (= `entry.baseHeight ?? 0`, an absolute
+  mount height that does **not** scale with the item's own y-scale) into **every**
+  collision call site (store `furnitureCollisionItem`, the plan editor's
+  `collidablesOf`/`furnitureOverlaps`, and the 3D `warnedIdsFor`), so the 2D + 3D
+  red tints and the Hard guards all agree. Keep `baseHeight` in sync with the
+  entry's `build()` vertical offset. (Regression-tested in `catalog.test.ts` and
+  `e2e/collision.spec.ts`.)
+- **Wall/ceiling items are excluded from collision** everywhere it's computed.
+  Every `mount:"wall"` (framed wall art, wall TV, floating shelf, wall sconce,
+  wall mirror, range hood) and `mount:"ceiling"` (pendant, flush, chandelier) entry
+  is `collidable: false` AND lives outside `level.furniture`/`staircases` (mounts
+  are `wall.mounts` children; lights are `level.ceilingLights`), so they never
+  enter `levelCollidables`/`collidablesOf`/`warnedIdsFor` and never show or trigger
+  a red tint. Do not add them to a collision set.
 - **Tuck-under (Part C).** Leggy entries (dining table, desk, console table,
   coffee table, kitchen island, patio table) carry `legClearance` (open space
   beneath the top); tuckable entries (dining chair, bar stool, office chair, patio

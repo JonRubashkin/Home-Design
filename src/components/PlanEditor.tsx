@@ -442,7 +442,7 @@ export function PlanEditor() {
           rotation: item.rotation,
           footprint: scaledFootprint(entry, item.scale),
         },
-        vertical: { base: 0, height: ext.height },
+        vertical: { base: ext.base, height: ext.height },
         tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
       });
     }
@@ -532,7 +532,7 @@ export function PlanEditor() {
         id: excludeId || "candidate",
         collidable: true,
         footprint: { center: pos, rotation, footprint: scaledFootprint(entry, scale) },
-        vertical: { base: 0, height: ext.height },
+        vertical: { base: ext.base, height: ext.height },
         tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
       },
       excludeId,

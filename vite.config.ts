@@ -15,6 +15,10 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: "jsdom",
+    // Unit tests live under src/. Playwright E2E specs live in e2e/ and are run
+    // by Playwright, never Vitest — exclude them explicitly so the two runners
+    // never collide.
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["e2e/**", "node_modules/**", "dist/**"],
   },
 }));

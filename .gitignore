@@ -7,6 +7,13 @@ coverage
 .vite
 *.tsbuildinfo
 
+# Playwright E2E artifacts
+/test-results
+/playwright-report
+/blob-report
+/.playwright
+/playwright/.cache
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

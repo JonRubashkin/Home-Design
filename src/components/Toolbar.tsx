@@ -187,6 +187,7 @@ export function Toolbar() {
           <button
             key={tool}
             type="button"
+            data-testid={`tool-${tool}`}
             className={`tool-button${active ? " active" : ""}`}
             aria-pressed={active}
             title={shortcut ? `${label} (${shortcut})` : label}

@@ -30,5 +30,13 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Playwright E2E specs and Node-run config files use Node globals
+    // (process, etc.) and aren't part of the browser app bundle.
+    files: ["e2e/**/*.ts", "playwright.config.ts", "vite.config.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
   prettier,
 );

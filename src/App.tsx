@@ -46,7 +46,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" data-testid="editor">
       <TopBar />
       <div className="workspace">
         {showEditingChrome && <Toolbar />}

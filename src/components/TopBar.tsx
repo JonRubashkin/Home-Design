@@ -137,7 +137,12 @@ export function TopBar() {
       key: "new",
       priority: 3,
       node: (
-        <button type="button" onClick={onNew} title="New design">
+        <button
+          type="button"
+          data-testid="new-design"
+          onClick={onNew}
+          title="New design"
+        >
           New
         </button>
       ),

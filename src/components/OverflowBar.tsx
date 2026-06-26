@@ -208,6 +208,7 @@ export function OverflowBar({
           <button
             type="button"
             className="overflow-more-button"
+            data-testid="overflow-more"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             aria-label={menuLabel}
@@ -217,7 +218,11 @@ export function OverflowBar({
             ⋯
           </button>
           {menuOpen && (
-            <div className="export-popover overflow-menu" role="menu">
+            <div
+              className="export-popover overflow-menu"
+              data-testid="overflow-menu"
+              role="menu"
+            >
               {hiddenItems.map((it) => (
                 <div
                   key={it.key}

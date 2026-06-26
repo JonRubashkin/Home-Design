@@ -132,7 +132,11 @@ export function SiteSizeForm({
             Cancel
           </button>
         )}
-        <button type="submit" className="primary-button">
+        <button
+          type="submit"
+          className="primary-button"
+          data-testid="site-confirm"
+        >
           {confirmLabel}
         </button>
       </div>

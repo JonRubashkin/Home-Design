@@ -16,17 +16,23 @@ read-only.
 - Plain React-rendered SVG for the 2D plan editor
 - three + @react-three/fiber + @react-three/drei for the 3D preview
 - Vitest for unit tests
+- Playwright for end-to-end (browser) tests
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev      # start the dev server (http://localhost:5173)
-npm test         # run unit tests
-npm run build    # type-check + production build
-npm run lint     # ESLint
-npm run format   # Prettier
+npm run dev         # start the dev server (http://localhost:5173)
+npm test            # run unit tests (Vitest)
+npm run test:e2e    # run end-to-end tests (Playwright; auto-starts the app)
+npm run test:e2e:ui # run the E2E suite in Playwright's interactive UI
+npm run build       # type-check + production build
+npm run lint        # ESLint
+npm run format      # Prettier
 ```
+
+The first time you run the E2E suite locally, install the Chromium browser
+Playwright drives: `npx playwright install --with-deps chromium`.
 
 ## Features
 
@@ -600,6 +606,52 @@ _Deferred to a future ceiling-attach pass: curtains, pendant / ceiling lights._
 | Cutaway style             | **Invisible / Ghost** (Cutaway mode only)   |
 | Layout                    | **Plan / Split / 3D** (top bar)             |
 
+## Testing
+
+Two layers, two runners that don't overlap:
+
+- **Unit tests (Vitest)** live next to the code under `src/**/*.test.ts(x)` and
+  cover the pure geometry, the store, migrations, and a few focused component
+  regressions. Run with `npm test`.
+- **End-to-end tests (Playwright)** live under `e2e/` and drive the real app in
+  a browser. Run with `npm run test:e2e` (the Playwright `webServer` option
+  auto-starts the Vite dev server and reuses one if it's already running). The
+  two runners are kept apart: Vitest's `include` is `src/**` and it explicitly
+  excludes `e2e/**`; Playwright only picks up `e2e/`.
+
+### What the E2E suite covers
+
+- **Smoke / regression** (`e2e/smoke.spec.ts`):
+  - the app boots from the welcome screen into the editor with **no crash and no
+    uncaught console errors** (known Vercel-analytics noise is ignored);
+  - **New design with content lands clean** — draw a wall, then New + confirm a
+    size, and you land in a clean empty editor at the chosen size with no
+    `ErrorBoundary` (guards the React #185 white-screen-on-New regression);
+  - the **overflow "⋯" menu stays inside the viewport** at a narrow width and is
+    absent at a wide width (guards the off-screen-menu regression);
+  - a drawn wall **persists across a reload** via the autosave + design library.
+- **Core 2D drawing flows** (`e2e/drawing.spec.ts`): draw a wall, draw a room
+  (four joined walls), select + delete a wall, and Fill Room creating a floor.
+
+### Scope: DOM/store state, not pixels
+
+E2E assertions are made on the **DOM and the app/store state**, never on the 3D
+WebGL canvas pixels — the Three.js preview is deliberately **not** pixel-tested
+to keep the suite stable (a possible future tier). Tests prefer stable
+`data-testid` selectors and read store state through a **test-only accessor**
+(`window.__EZ_TEST__`) that is exposed **only** when the page is loaded with the
+`?e2e=1` query flag (see `src/store/store.ts`); it is absent in normal app usage
+and changes no app behavior. A small drawing helper maps plan-space (meter)
+coordinates to client pixels through the plan's live pan/zoom transform.
+
+### CI
+
+`.github/workflows/e2e.yml` runs on **push** and **pull requests**: one job runs
+the Vitest unit tests (plus `npm run build`), a second installs Chromium and runs
+the Playwright suite, uploading the HTML report (with traces) as an artifact on
+failure. This is independent of deployment — Vercel still deploys on push as
+before; CI is just the test gate.
+
 ## Project structure
 
 ```
@@ -616,6 +668,7 @@ src/
     preview/      3D preview: Canvas/scene, wall + floor meshes, cutaway, camera
   hooks/          global shortcuts, autosave
   lib/            small UI utilities
+e2e/              Playwright end-to-end tests (smoke + 2D drawing flows) + helpers
 ```
 
 ## Deployment

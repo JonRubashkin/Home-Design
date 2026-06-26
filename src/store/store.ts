@@ -2049,3 +2049,25 @@ export const useStore = create<AppState>((set, get) => {
 export function selectCurrentLevel(s: AppState): Level {
   return levelOf(s.design, s.currentLevelId);
 }
+
+// --- Test-only store accessor (Playwright E2E) -----------------------------
+// Exposed on `window.__EZ_TEST__` ONLY when the page is loaded with the
+// `?e2e=1` query flag, so end-to-end tests can read and drive store state
+// directly instead of scraping the DOM (e.g. "a wall now exists", "set the
+// active tool"). It is absent in all normal app usage (no flag) — so this is
+// not a production surface and doesn't change app behavior. See `e2e/`.
+if (typeof window !== "undefined") {
+  try {
+    if (new URLSearchParams(window.location.search).has("e2e")) {
+      (
+        window as unknown as { __EZ_TEST__?: unknown }
+      ).__EZ_TEST__ = {
+        getState: () => useStore.getState(),
+        setState: useStore.setState,
+        currentLevel: () => selectCurrentLevel(useStore.getState()),
+      };
+    }
+  } catch {
+    /* ignore (e.g. restricted window.location access) */
+  }
+}

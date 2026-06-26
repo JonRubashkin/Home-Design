@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.error) {
       return (
-        <div className="crash-screen" role="alert">
+        <div className="crash-screen" role="alert" data-testid="error-boundary">
           <div className="crash-card">
             <h1>Something went wrong</h1>
             <p>

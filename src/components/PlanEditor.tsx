@@ -1699,6 +1699,7 @@ export function PlanEditor() {
     <div className="plan" ref={containerRef}>
       <svg
         ref={svgRef}
+        data-testid="plan-svg"
         className={`plan-svg ${cursorClass}`}
         width="100%"
         height="100%"
@@ -1843,7 +1844,7 @@ export function PlanEditor() {
           {walls.map((w) => {
             const isSel = selection?.kind === "wall" && selection.id === w.id;
             return (
-              <g key={w.id}>
+              <g key={w.id} data-testid="wall" data-wall-id={w.id}>
                 {wallPlanSegments(w).map((seg, i) => (
                   <g key={i}>
                     {/* Each side filled with its own per-segment paint, clipped

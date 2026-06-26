@@ -20,6 +20,7 @@ export function NewDesignDialog({ onClose }: { onClose: () => void }) {
     >
       <div
         className="modal-card"
+        data-testid="new-design-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="New design"

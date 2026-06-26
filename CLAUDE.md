@@ -1056,6 +1056,19 @@ in code under `src/catalog/`:
   snapping, `wallToBoxes`, plan→world mapping, wall hit-testing helpers,
   polygon validity.
 - `npm run build` must succeed before finishing a session.
+- **End-to-end tests (Playwright).** A small, deterministic browser suite lives in
+  `e2e/` (separate from Vitest, which excludes `e2e/**`); run it with `npm run
+  test:e2e` (the Playwright `webServer` auto-starts/reuses the Vite dev server).
+  It covers the high-value integration regressions (clean boot, **New-with-content
+  doesn't white-screen** = React #185, the overflow "⋯" menu stays on-screen,
+  autosave persists across reload) plus core 2D drawing flows (draw wall, draw
+  room, select+delete, Fill Room). **Assert on DOM and app/store state — NEVER on
+  the 3D WebGL canvas pixels** (deliberately out of scope to stay stable). Store
+  state is read through a test-only `window.__EZ_TEST__` accessor exposed ONLY
+  under the `?e2e=1` query flag (no app-behavior change). When you change a tool
+  shortcut, a `data-testid` hook, or the welcome/New flow, keep the relevant
+  `e2e/` spec in sync. CI (`.github/workflows/e2e.yml`) runs both Vitest and
+  Playwright on push/PR.
 - Keep `README.md` current: how to run, current feature list, controls/shortcuts.
 
 ## Scope guards

@@ -19,6 +19,12 @@ import "./index.css";
 // load. This component only depends on the `bootNonce` primitive, so it can't
 // itself loop. The ErrorBoundary lives ABOVE the key so it persists as the safety
 // net across reboots.
+//
+// main.tsx is the Vite entry module: it intentionally mixes this tiny reboot
+// wrapper component with the createRoot() bootstrap below and is never itself
+// hot-refreshed, so the Fast-Refresh "move components to their own file" rule
+// does not apply — disable it precisely on the component declaration.
+// eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   const bootNonce = useStore((s) => s.bootNonce);
   return <App key={bootNonce} />;

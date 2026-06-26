@@ -442,6 +442,15 @@ Playwright drives: `npx playwright install --with-deps chromium`.
   when its tuck height clears. Two chairs, a chair vs a wardrobe, and a chair vs a
   **wall** all still collide (walls/stairwell openings stay hard barriers — no
   tuck-under).
+- **Elevation-aware collision** — the vertical extent uses an item's **mounted
+  base**, not just floor 0, so a kitchen **upper/wall cabinet** that hangs above a
+  counter no longer shows a false red warning over the lower cabinet beneath it
+  (its `[base, base+height]` sits clear above). Items that hang high carry a
+  `baseHeight` on their catalog entry. Genuine floor-level overlaps (and item-vs-
+  wall) still warn. **Wall-mounted** items (art, TV, shelf, sconce, mirror, range
+  hood) and **ceiling lights** are fully excluded from collision — they never tint
+  or trigger red. Regression-covered by unit (`catalog.test.ts`) and E2E
+  (`e2e/collision.spec.ts`) tests.
 - **Paint tool** — clicking a furniture item recolors its primary slot in one
   click; per-slot chips remain the precise route. Patterns work on furniture.
 - **Catalog instances reference a catalog id, never geometry.** Items are

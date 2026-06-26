@@ -35,7 +35,7 @@ function warnedIdsFor(level: Level, below: Level | undefined): Set<string> {
         rotation: item.rotation,
         footprint: { width: d.width, depth: d.depth },
       },
-      vertical: { base: 0, height: ext.height },
+      vertical: { base: ext.base, height: ext.height },
       tuck: { legClearance: ext.legClearance, tuckHeight: ext.tuckHeight },
     });
   }

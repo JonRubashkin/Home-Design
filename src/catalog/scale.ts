@@ -40,14 +40,20 @@ export function effectiveDimensions(
 }
 
 // Height-aware collision inputs (Phase 4d Part C) for an item at the given
-// scale: its scaled height, the scaled leg clearance (if leggy), and the scaled
-// tuck height (defaulting to the full height when the entry omits one). Every
-// collision call site builds its CollisionItem vertical/tuck fields from this.
+// scale: its mounted base elevation, scaled height, the scaled leg clearance (if
+// leggy), and the scaled tuck height (defaulting to the full height when the
+// entry omits one). Every collision call site builds its CollisionItem
+// vertical/tuck fields from this. `base` is the floor-to-bottom elevation
+// (`entry.baseHeight`, default 0) — an item that hangs above the floor (upper
+// cabinet) reports its real base so its vertical extent sits above floor items.
+// The base is an absolute mount height (anchored at the floor below), so it does
+// NOT scale with the item's own y-scale; only the height does.
 export function collisionExtent(
   entry: CatalogEntry,
   scale: Vec3,
-): { height: number; legClearance?: number; tuckHeight: number } {
+): { base: number; height: number; legClearance?: number; tuckHeight: number } {
   return {
+    base: entry.baseHeight ?? 0,
     height: entry.height * scale.y,
     legClearance:
       entry.legClearance != null ? entry.legClearance * scale.y : undefined,

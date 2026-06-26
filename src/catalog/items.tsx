@@ -760,6 +760,11 @@ export const CATALOG_ITEMS: CatalogEntry[] = [
     category: "kitchen",
     footprint: { width: 0.8, depth: 0.35 },
     height: 0.7,
+    // Hangs above a counter: bottom at 1.45 m (build() centers the 0.7 m-tall
+    // body at y=1.8). baseHeight makes collision elevation-aware so it no longer
+    // false-reds against the counter/lower cabinet beneath it. Keep in sync with
+    // the build() y-offset below.
+    baseHeight: 1.45,
     wallHugger: true,
     collidable: true,
     scaling: axesScale({ x: [0.4, 3] }),
